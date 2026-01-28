@@ -1,0 +1,3865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Web - Particle Network Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            background: #0a0015;
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+            background: #0a0015;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0015;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4);
+            letter-spacing: 8px;
+            margin-bottom: 40px;
+            animation: titlePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+        }
+
+        .loading-orbs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .loading-orb {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            animation: orbBounce 1.4s ease-in-out infinite;
+        }
+
+        .loading-orb:nth-child(1) { animation-delay: 0s; }
+        .loading-orb:nth-child(2) { animation-delay: 0.2s; }
+        .loading-orb:nth-child(3) { animation-delay: 0.4s; }
+        .loading-orb:nth-child(4) { animation-delay: 0.6s; }
+        .loading-orb:nth-child(5) { animation-delay: 0.8s; }
+
+        @keyframes orbBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+            40% { transform: translateY(-20px); opacity: 1; }
+        }
+
+        .loading-text {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* Pomodoro Timer */
+        .pomodoro-display {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            background: rgba(10, 20, 40, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 25px;
+            z-index: 2000;
+            display: none;
+            text-align: center;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pomodoro-display.active {
+            display: block;
+        }
+
+        .pomodoro-ring {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 15px;
+        }
+
+        .pomodoro-ring svg {
+            transform: rotate(-90deg);
+            width: 160px;
+            height: 160px;
+        }
+
+        .pomodoro-ring-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 8;
+        }
+
+        .pomodoro-ring-progress {
+            fill: none;
+            stroke: #00ffff;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .pomodoro-time {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ffff;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .pomodoro-label {
+            color: #aaa;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+        }
+
+        .pomodoro-session {
+            color: #666;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Focus Mode - Timer centered, UI hidden */
+        .pomodoro-display.focus-mode {
+            left: 50%;
+            top: 50%;
+            bottom: auto;
+            transform: translate(-50%, -50%) scale(1.4);
+            background: rgba(10, 20, 40, 0.15);
+            border-color: transparent;
+            box-shadow: none !important;
+            backdrop-filter: none;
+        }
+
+        .pomodoro-display.focus-mode .pomodoro-ring-bg {
+            stroke: rgba(255, 255, 255, 0.05);
+        }
+
+        .pomodoro-display.focus-mode .pomodoro-ring-progress {
+            opacity: 0.7;
+        }
+
+        .pomodoro-display.focus-mode .pomodoro-time {
+            opacity: 0.7;
+        }
+
+        .pomodoro-display.focus-mode .pomodoro-label,
+        .pomodoro-display.focus-mode .pomodoro-session {
+            opacity: 0.4;
+        }
+
+        .pomodoro-display.focus-mode {
+            cursor: pointer;
+        }
+
+        .pomodoro-display.focus-mode:hover .pomodoro-time {
+            opacity: 0.9;
+        }
+
+        .hidden-for-focus {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.5s ease !important;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(10, 20, 40, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease, opacity 0.5s ease;
+        }
+
+        .control-panel.collapsed {
+            transform: translateY(-50%) translateX(calc(100% + 20px));
+        }
+
+        .panel-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ffff;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            letter-spacing: 2px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #fff;
+            font-size: 13px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group .value-display {
+            color: #00ffaa;
+            font-weight: bold;
+            float: right;
+            text-shadow: 0 0 5px rgba(0, 255, 170, 0.6);
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            color: #fff;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Music Section */
+        .music-section {
+            margin-top: 10px;
+        }
+
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #ff00ff, transparent);
+            margin: 15px 0;
+        }
+
+        .section-title {
+            color: #ff00ff;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+        }
+
+        /* Accordion Sections */
+        .accordion-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .accordion-section:first-child {
+            border-top: none;
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .accordion-header:hover .accordion-title {
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            color: #00ffff;
+        }
+
+        .accordion-header:hover .accordion-chevron {
+            border-left-color: #00ffff;
+        }
+
+        .accordion-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #ff00ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 6px rgba(255, 0, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .accordion-chevron {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 5px solid #ff00ff;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            transition: transform 0.3s ease, border-left-color 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .accordion-section.open .accordion-chevron {
+            transform: rotate(90deg);
+        }
+
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.35s ease, opacity 0.25s ease;
+        }
+
+        .accordion-section.open .accordion-body {
+            max-height: 600px;
+            opacity: 1;
+            padding-bottom: 10px;
+        }
+
+        .music-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.3), rgba(0, 255, 255, 0.3));
+            border: 2px solid #ff00ff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+        }
+
+        .music-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 0, 255, 0.5), rgba(0, 255, 255, 0.5));
+            box-shadow: 0 0 25px rgba(255, 0, 255, 0.6);
+        }
+
+        .music-btn.playing {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.5), rgba(255, 0, 255, 0.5));
+            border-color: #00ffff;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+
+        /* Theme Section */
+        .theme-section {
+            margin-top: 10px;
+        }
+
+        .theme-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00ffff;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+            margin-bottom: 15px;
+        }
+
+        .theme-select option {
+            background: #0a1428;
+            color: #fff;
+        }
+
+        .color-picker-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .color-picker-label {
+            color: #fff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .color-picker-wrapper {
+            position: relative;
+            width: 40px;
+            height: 40px;
+        }
+
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #00ffff;
+            border-radius: 8px;
+            cursor: pointer;
+            padding: 0;
+            background: none;
+        }
+
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 6px;
+        }
+
+        .color-picker::-moz-color-swatch {
+            border: none;
+            border-radius: 6px;
+        }
+
+        /* Collapse Button */
+        .collapse-btn {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            background: rgba(10, 20, 40, 0.95);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1001;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .collapse-btn:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+
+        /* Statistics Panel */
+        .stats-panel {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            background: rgba(10, 20, 40, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 220px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            z-index: 1000;
+            font-family: 'Courier New', monospace;
+            transition: opacity 0.5s ease;
+        }
+
+        .stats-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff41;
+            margin-bottom: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.8);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #00ffaa;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 170, 0.6);
+        }
+
+        /* Scrollbar styling */
+        .control-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .control-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 5px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-title">STELLAR WEB</div>
+        <div class="loading-orbs">
+            <div class="loading-orb"></div>
+            <div class="loading-orb"></div>
+            <div class="loading-orb"></div>
+            <div class="loading-orb"></div>
+            <div class="loading-orb"></div>
+        </div>
+        <div class="loading-text">Initializing Network</div>
+    </div>
+
+    <!-- Pomodoro Timer Display -->
+    <div class="pomodoro-display" id="pomodoroDisplay">
+        <div class="pomodoro-label" id="pomodoroLabel">Focus Time</div>
+        <div class="pomodoro-ring">
+            <svg viewBox="0 0 160 160">
+                <circle class="pomodoro-ring-bg" cx="80" cy="80" r="70"></circle>
+                <circle class="pomodoro-ring-progress" id="pomodoroProgress" cx="80" cy="80" r="70"
+                    stroke-dasharray="439.82" stroke-dashoffset="0"></circle>
+            </svg>
+            <div class="pomodoro-time" id="pomodoroTime">25:00</div>
+        </div>
+        <div class="pomodoro-session" id="pomodoroSession">Session 1</div>
+    </div>
+
+    <canvas id="network"></canvas>
+
+    <button class="collapse-btn" id="collapseBtn">Hide Controls</button>
+    <button class="collapse-btn" id="fullscreenBtn" style="right: 160px;">⛶ Fullscreen</button>
+
+    <!-- Statistics Panel -->
+    <div class="stats-panel">
+        <div class="stats-title">NETWORK STATS</div>
+        <div class="stat-row">
+            <span class="stat-label">Nodes:</span>
+            <span class="stat-value" id="stat-nodes">100</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Edges:</span>
+            <span class="stat-value" id="stat-edges">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Avg Connections:</span>
+            <span class="stat-value" id="stat-avg">0.0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Density:</span>
+            <span class="stat-value" id="stat-density">0.0%</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">FPS:</span>
+            <span class="stat-value" id="stat-fps">60</span>
+        </div>
+        <div class="stat-row snake-stat" id="snakeScoreRow" style="display: none;">
+            <span class="stat-label">Snake Score:</span>
+            <span class="stat-value" id="stat-snake-score">0</span>
+        </div>
+        <div class="stat-row snake-stat" id="snakeHighScoreRow" style="display: none;">
+            <span class="stat-label">High Score:</span>
+            <span class="stat-value" id="stat-snake-highscore">0</span>
+        </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-header">⚙ CONTROLS</div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">PARTICLES</span>
+            </div>
+            <div class="accordion-body">
+                <div class="control-group">
+                    <label>
+                        Node Count
+                        <span class="value-display" id="nodeCountValue">100</span>
+                    </label>
+                    <input type="range" id="nodeCount" min="50" max="300" value="100" step="10">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Node Speed
+                        <span class="value-display" id="nodeSpeedValue">1.0</span>
+                    </label>
+                    <input type="range" id="nodeSpeed" min="0.1" max="5" value="1" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Node Size
+                        <span class="value-display" id="nodeSizeValue">3</span>
+                    </label>
+                    <input type="range" id="nodeSize" min="1" max="10" value="3" step="0.5">
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">CONNECTIONS</span>
+            </div>
+            <div class="accordion-body">
+                <div class="control-group">
+                    <label>
+                        Connectivity Radius
+                        <span class="value-display" id="connectivityValue">120</span>
+                    </label>
+                    <input type="range" id="connectivity" min="50" max="300" value="120" step="10">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Edge Thickness
+                        <span class="value-display" id="edgeThicknessValue">1.5</span>
+                    </label>
+                    <input type="range" id="edgeThickness" min="0.5" max="5" value="1.5" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Edge Opacity
+                        <span class="value-display" id="edgeOpacityValue">0.5</span>
+                    </label>
+                    <input type="range" id="edgeOpacity" min="0.1" max="1" value="0.5" step="0.05">
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">EFFECTS</span>
+            </div>
+            <div class="accordion-body">
+                <div class="control-group">
+                    <label>
+                        Pulse Speed
+                        <span class="value-display" id="pulseSpeedValue">1.0</span>
+                    </label>
+                    <input type="range" id="pulseSpeed" min="0" max="5" value="1" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Depth Effect
+                        <span class="value-display" id="depthEffectValue">1.5</span>
+                    </label>
+                    <input type="range" id="depthEffect" min="0" max="3" value="1.5" step="0.1">
+                </div>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Mouse Interaction</span>
+                    <div class="toggle-switch" id="mouseToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Attraction Mode</span>
+                    <div class="toggle-switch" id="attractionToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Beat Reactive</span>
+                    <div class="toggle-switch" id="beatToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Constellation</span>
+                    <div class="toggle-switch" id="constellationToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <select class="theme-select" id="constellationSelect" style="display: none; margin-top: 10px;">
+                    <option value="star">Star</option>
+                    <option value="heart">Heart</option>
+                    <option value="spiral">Spiral</option>
+                    <option value="infinity">Infinity</option>
+                    <option value="wave">Wave</option>
+                </select>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Shooting Stars</span>
+                    <div class="toggle-switch active" id="shootingStarsToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <span class="toggle-label">Text Mode</span>
+                    <div class="toggle-switch" id="textModeToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <input type="text" id="textModeInput" placeholder="Type text here..." style="display: none; width: 100%; padding: 8px 10px; margin-top: 10px; background: rgba(255, 255, 255, 0.1); border: 2px solid #00ffff; border-radius: 8px; color: #fff; font-family: 'Courier New', monospace; font-size: 13px; outline: none;">
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">SNAKE MODE</span>
+            </div>
+            <div class="accordion-body">
+                <div class="toggle-container">
+                    <span class="toggle-label">Enable Snake</span>
+                    <div class="toggle-switch" id="snakeToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="snake-instructions" id="snakeInstructions" style="display: none; font-size: 11px; color: #aaa; margin-bottom: 10px; line-height: 1.4;">
+                    Use <span style="color: #00ffff;">Arrow Keys</span> or <span style="color: #00ffff;">WASD</span> to control the snake. Collect glowing food to grow!
+                </div>
+
+                <div class="control-group" id="snakeSpeedControl" style="display: none;">
+                    <label>
+                        Snake Speed
+                        <span class="value-display" id="snakeSpeedValue">8</span>
+                    </label>
+                    <input type="range" id="snakeSpeedSlider" min="3" max="20" value="8" step="1">
+                </div>
+
+                <button class="music-btn" id="snakeRestartBtn" style="display: none; background: linear-gradient(135deg, rgba(0, 255, 100, 0.3), rgba(0, 255, 255, 0.3)); border-color: #00ff64;">↻ RESTART</button>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">MUSIC</span>
+            </div>
+            <div class="accordion-body">
+                <select class="theme-select" id="musicGenre" style="margin-bottom: 10px;">
+                    <option value="house">House</option>
+                    <option value="wii">Wii Lounge</option>
+                    <option value="lofi">Lo-fi Hip Hop</option>
+                    <option value="ambient">Ambient</option>
+                    <option value="jazz">Jazz</option>
+                    <option value="space">Space</option>
+                </select>
+
+                <button class="music-btn" id="musicBtn">▶ PLAY</button>
+
+                <div class="control-group">
+                    <label>
+                        BPM
+                        <span class="value-display" id="bpmValue">128</span>
+                    </label>
+                    <input type="range" id="bpm" min="60" max="160" value="128" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Volume
+                        <span class="value-display" id="volumeValue">0.5</span>
+                    </label>
+                    <input type="range" id="volume" min="0" max="1" value="0.5" step="0.05">
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">THEMES</span>
+            </div>
+            <div class="accordion-body">
+                <select class="theme-select" id="themeSelect">
+                    <option value="cyber">Cyber (Default)</option>
+                    <option value="sunset">Sunset</option>
+                    <option value="ocean">Ocean</option>
+                    <option value="forest">Forest</option>
+                    <option value="neonPink">Neon Pink</option>
+                    <option value="galaxy">Galaxy</option>
+                    <option value="fire">Fire</option>
+                    <option value="ice">Ice</option>
+                    <option value="custom">Custom</option>
+                </select>
+
+                <div class="color-picker-group">
+                    <span class="color-picker-label">Background</span>
+                    <input type="color" class="color-picker" id="bgColor" value="#0a0015">
+                </div>
+
+                <div class="color-picker-group">
+                    <span class="color-picker-label">Node Color 1</span>
+                    <input type="color" class="color-picker" id="nodeColor1" value="#00ffff">
+                </div>
+
+                <div class="color-picker-group">
+                    <span class="color-picker-label">Node Color 2</span>
+                    <input type="color" class="color-picker" id="nodeColor2" value="#ff00ff">
+                </div>
+
+                <div class="color-picker-group">
+                    <span class="color-picker-label">Edge Color 1</span>
+                    <input type="color" class="color-picker" id="edgeColor1" value="#00ffff">
+                </div>
+
+                <div class="color-picker-group">
+                    <span class="color-picker-label">Edge Color 2</span>
+                    <input type="color" class="color-picker" id="edgeColor2" value="#8000ff">
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <label style="display: block; color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Background Image</label>
+                    <input type="file" id="bgImageUpload" accept="image/*" style="display: none;">
+                    <button class="music-btn" id="bgImageBtn" style="background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2)); border-color: #00ffff; font-size: 12px; padding: 8px;">Upload Image</button>
+                    <button class="music-btn" id="bgImageClearBtn" style="display: none; background: rgba(100, 100, 100, 0.3); border-color: #888; font-size: 12px; padding: 8px;">Clear Image</button>
+                    <div class="control-group" id="bgImageOpacityControl" style="display: none; margin-top: 10px;">
+                        <label>
+                            Image Opacity
+                            <span class="value-display" id="bgImageOpacityValue">0.3</span>
+                        </label>
+                        <input type="range" id="bgImageOpacity" min="0.05" max="1" value="0.3" step="0.05">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">
+                <span class="accordion-chevron"></span>
+                <span class="accordion-title">POMODORO</span>
+            </div>
+            <div class="accordion-body">
+                <div class="toggle-container">
+                    <span class="toggle-label">Enable Timer</span>
+                    <div class="toggle-switch" id="pomodoroToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div id="pomodoroControls" style="display: none;">
+                    <div class="control-group">
+                        <label>
+                            Work Duration
+                            <span class="value-display" id="workDurationValue">25</span>
+                        </label>
+                        <input type="range" id="workDuration" min="5" max="60" value="25" step="5">
+                    </div>
+
+                    <div class="control-group">
+                        <label>
+                            Break Duration
+                            <span class="value-display" id="breakDurationValue">5</span>
+                        </label>
+                        <input type="range" id="breakDuration" min="1" max="15" value="5" step="1">
+                    </div>
+
+                    <button class="music-btn" id="pomodoroStartBtn" style="background: linear-gradient(135deg, rgba(255, 107, 107, 0.3), rgba(255, 200, 100, 0.3)); border-color: #ff6b6b;">▶ START</button>
+                    <button class="music-btn" id="pomodoroResetBtn" style="display: none; background: linear-gradient(135deg, rgba(100, 100, 100, 0.3), rgba(150, 150, 150, 0.3)); border-color: #888;">↻ RESET</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('network');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Configuration
+        const config = {
+            nodeCount: 100,
+            nodeSpeed: 1.0,
+            nodeSize: 3,
+            connectivityRadius: 120,
+            edgeThickness: 1.5,
+            edgeOpacity: 0.5,
+            pulseSpeed: 1.0,
+            depthEffect: 1.5,
+            mouseInteraction: false,
+            attractionMode: false,
+            beatReactive: false
+        };
+
+        // Color theme configuration
+        const colorConfig = {
+            background: '#0a0015',
+            nodeColor1: '#00ffff',
+            nodeColor2: '#ff00ff',
+            edgeColor1: '#00ffff',
+            edgeColor2: '#8000ff'
+        };
+
+        // Preset themes
+        const themes = {
+            cyber: {
+                background: '#0a0015',
+                nodeColor1: '#00ffff',
+                nodeColor2: '#ff00ff',
+                edgeColor1: '#00ffff',
+                edgeColor2: '#8000ff'
+            },
+            sunset: {
+                background: '#1a0a1e',
+                nodeColor1: '#ff6b35',
+                nodeColor2: '#f7c59f',
+                edgeColor1: '#ff6b35',
+                edgeColor2: '#ffcc00'
+            },
+            ocean: {
+                background: '#001219',
+                nodeColor1: '#0077b6',
+                nodeColor2: '#00b4d8',
+                edgeColor1: '#48cae4',
+                edgeColor2: '#90e0ef'
+            },
+            forest: {
+                background: '#0d1f0d',
+                nodeColor1: '#2d6a4f',
+                nodeColor2: '#95d5b2',
+                edgeColor1: '#40916c',
+                edgeColor2: '#74c69d'
+            },
+            neonPink: {
+                background: '#0f0014',
+                nodeColor1: '#ff00ff',
+                nodeColor2: '#ff69b4',
+                edgeColor1: '#ff1493',
+                edgeColor2: '#ff69b4'
+            },
+            galaxy: {
+                background: '#0b0014',
+                nodeColor1: '#9d4edd',
+                nodeColor2: '#e0aaff',
+                edgeColor1: '#7b2cbf',
+                edgeColor2: '#c77dff'
+            },
+            fire: {
+                background: '#1a0500',
+                nodeColor1: '#ff4500',
+                nodeColor2: '#ffd700',
+                edgeColor1: '#ff6347',
+                edgeColor2: '#ff8c00'
+            },
+            ice: {
+                background: '#001020',
+                nodeColor1: '#a5f3fc',
+                nodeColor2: '#ffffff',
+                edgeColor1: '#67e8f9',
+                edgeColor2: '#e0f2fe'
+            }
+        };
+
+        // Mouse tracking
+        let mouse = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 200
+        };
+
+        // Audio context for beat detection
+        let audioContext = null;
+        let analyser = null;
+        let audioSource = null;
+        let audioData = null;
+        let beatIntensity = 0;
+
+        // Music generator state
+        let musicPlaying = false;
+        let musicBPM = 128;
+        let musicVolume = 0.5;
+        let musicGenre = 'house';
+        let nextNoteTime = 0;
+        let currentStep = 0;
+        let currentBar = 0;
+        let schedulerTimer = null;
+        let masterGain = null;
+
+        // Explosion particles
+        let explosionParticles = [];
+
+        // FPS tracking
+        let fps = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        // Snake mode state
+        let snakeMode = false;
+        let snake = [];
+        let snakeDirection = { x: 1, y: 0 };
+        let snakeNextDirection = { x: 1, y: 0 };
+        let snakeSpeed = 8; // Moves per second
+        let snakeLastMove = 0;
+        let snakeFood = null;
+        let snakeScore = 0;
+        let snakeGameOver = false;
+        let snakeHighScore = 0;
+        const snakeSegmentSize = 15;
+        const snakeGridSize = 20;
+
+        // Pomodoro timer state
+        let pomodoroEnabled = false;
+        let pomodoroRunning = false;
+        let pomodoroWorkDuration = 25 * 60; // 25 minutes in seconds
+        let pomodoroBreakDuration = 5 * 60; // 5 minutes in seconds
+        let pomodoroTimeLeft = pomodoroWorkDuration;
+        let pomodoroIsBreak = false;
+        let pomodoroInterval = null;
+        let pomodoroSessionCount = 1;
+        const pomodoroCircumference = 2 * Math.PI * 70; // 439.82
+
+        // Constellation mode state
+        let constellationMode = false;
+        let constellationPattern = 'star';
+        let constellationTargets = [];
+
+        // Shooting stars state
+        let shootingStars = [];
+        let shootingStarsEnabled = true;
+
+        // Text mode state
+        let textMode = false;
+        let textModeTargets = [];
+        let textModeText = '';
+
+        // Background image state
+        let bgImage = null;
+        let bgImageOpacity = 0.3;
+
+        // Constellation patterns (normalized 0-1 coordinates)
+        const constellationPatterns = {
+            star: [
+                {x: 0.5, y: 0.1},   // Top
+                {x: 0.35, y: 0.4},  // Upper left
+                {x: 0.1, y: 0.4},   // Far left
+                {x: 0.3, y: 0.55},  // Lower left inner
+                {x: 0.2, y: 0.9},   // Bottom left
+                {x: 0.5, y: 0.7},   // Bottom center
+                {x: 0.8, y: 0.9},   // Bottom right
+                {x: 0.7, y: 0.55},  // Lower right inner
+                {x: 0.9, y: 0.4},   // Far right
+                {x: 0.65, y: 0.4},  // Upper right
+            ],
+            heart: [],
+            spiral: [],
+            infinity: [],
+            wave: []
+        };
+
+        // Generate heart pattern
+        for (let i = 0; i < 30; i++) {
+            const t = (i / 30) * Math.PI * 2;
+            const x = 0.5 + 0.35 * Math.pow(Math.sin(t), 3);
+            const y = 0.45 - 0.3 * (0.8125 * Math.cos(t) - 0.3125 * Math.cos(2*t) - 0.125 * Math.cos(3*t) - 0.0625 * Math.cos(4*t));
+            constellationPatterns.heart.push({x, y});
+        }
+
+        // Generate spiral pattern
+        for (let i = 0; i < 40; i++) {
+            const t = (i / 40) * Math.PI * 4;
+            const r = 0.05 + (i / 40) * 0.4;
+            const x = 0.5 + r * Math.cos(t);
+            const y = 0.5 + r * Math.sin(t);
+            constellationPatterns.spiral.push({x, y});
+        }
+
+        // Generate infinity pattern
+        for (let i = 0; i < 40; i++) {
+            const t = (i / 40) * Math.PI * 2;
+            const x = 0.5 + 0.35 * Math.cos(t) / (1 + Math.sin(t) * Math.sin(t));
+            const y = 0.5 + 0.35 * Math.sin(t) * Math.cos(t) / (1 + Math.sin(t) * Math.sin(t));
+            constellationPatterns.infinity.push({x, y});
+        }
+
+        // Generate wave pattern
+        for (let i = 0; i < 30; i++) {
+            const x = 0.1 + (i / 30) * 0.8;
+            const y = 0.5 + 0.25 * Math.sin((i / 30) * Math.PI * 3);
+            constellationPatterns.wave.push({x, y});
+        }
+
+        function generateConstellationTargets() {
+            const pattern = constellationPatterns[constellationPattern];
+            constellationTargets = [];
+            const nodesPerPoint = Math.floor(config.nodeCount / pattern.length);
+
+            for (let i = 0; i < config.nodeCount; i++) {
+                const pointIndex = Math.floor(i / nodesPerPoint) % pattern.length;
+                const point = pattern[pointIndex];
+                // Add some randomness around each target point
+                constellationTargets.push({
+                    x: (point.x + (Math.random() - 0.5) * 0.05) * canvas.width - canvas.width / 2,
+                    y: (point.y + (Math.random() - 0.5) * 0.05) * canvas.height - canvas.height / 2,
+                    z: (Math.random() - 0.5) * 200
+                });
+            }
+        }
+
+        // Shooting Star class
+        class ShootingStar {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                // Start from a random edge
+                this.x = Math.random() * canvas.width;
+                this.y = -10;
+                // Angle between 20-60 degrees downward
+                const angle = (20 + Math.random() * 40) * Math.PI / 180;
+                const speed = 8 + Math.random() * 12;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1.0;
+                this.decay = 0.008 + Math.random() * 0.012;
+                this.length = 30 + Math.random() * 50;
+                this.brightness = 0.6 + Math.random() * 0.4;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                if (this.life <= 0) return;
+                const alpha = this.life * this.brightness;
+                const tailX = this.x - this.vx * (this.length / 10);
+                const tailY = this.y - this.vy * (this.length / 10);
+
+                const gradient = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
+                gradient.addColorStop(0, `rgba(255, 255, 255, 0)`);
+                gradient.addColorStop(1, `rgba(255, 255, 255, ${alpha})`);
+
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(tailX, tailY);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+
+                // Bright head
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            isDead() {
+                return this.life <= 0 || this.x > canvas.width + 50 || this.y > canvas.height + 50;
+            }
+        }
+
+        // Spawn shooting stars randomly
+        function maybeSpawnShootingStar() {
+            if (!shootingStarsEnabled) return;
+            // ~1 shooting star every 3 seconds on average
+            if (Math.random() < 0.005) {
+                shootingStars.push(new ShootingStar());
+            }
+        }
+
+        // Generate text mode targets from a string
+        function generateTextTargets(text) {
+            textModeTargets = [];
+            if (!text) return;
+
+            // Use an offscreen canvas to render text and sample pixel positions
+            const offscreen = document.createElement('canvas');
+            const offCtx = offscreen.getContext('2d');
+            offscreen.width = canvas.width;
+            offscreen.height = canvas.height;
+
+            const fontSize = Math.min(canvas.width / (text.length * 0.7), canvas.height * 0.4);
+            offCtx.font = `bold ${fontSize}px 'Courier New', monospace`;
+            offCtx.textAlign = 'center';
+            offCtx.textBaseline = 'middle';
+            offCtx.fillStyle = '#fff';
+            offCtx.fillText(text, offscreen.width / 2, offscreen.height / 2);
+
+            // Sample pixels to find text positions
+            const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+            const pixels = imageData.data;
+            const points = [];
+
+            // Sample every few pixels for performance
+            const step = Math.max(4, Math.floor(Math.sqrt((offscreen.width * offscreen.height) / (config.nodeCount * 3))));
+
+            for (let y = 0; y < offscreen.height; y += step) {
+                for (let x = 0; x < offscreen.width; x += step) {
+                    const i = (y * offscreen.width + x) * 4;
+                    if (pixels[i + 3] > 128) {
+                        points.push({ x: x - offscreen.width / 2, y: y - offscreen.height / 2 });
+                    }
+                }
+            }
+
+            // Assign nodes to sampled points
+            for (let i = 0; i < config.nodeCount; i++) {
+                if (points.length === 0) break;
+                const point = points[i % points.length];
+                textModeTargets.push({
+                    x: point.x + (Math.random() - 0.5) * 3,
+                    y: point.y + (Math.random() - 0.5) * 3,
+                    z: (Math.random() - 0.5) * 100
+                });
+            }
+        }
+
+        // Helper function to convert hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 255, b: 255 };
+        }
+
+        // Interpolate between two colors
+        function lerpColor(color1, color2, t) {
+            const c1 = hexToRgb(color1);
+            const c2 = hexToRgb(color2);
+            return {
+                r: Math.round(c1.r + (c2.r - c1.r) * t),
+                g: Math.round(c1.g + (c2.g - c1.g) * t),
+                b: Math.round(c1.b + (c2.b - c1.b) * t)
+            };
+        }
+
+        // Node class
+        class Node {
+            constructor() {
+                this.reset();
+                this.pulsePhase = Math.random() * Math.PI * 2;
+            }
+
+            reset() {
+                // 3D position
+                this.x = Math.random() * canvas.width - canvas.width / 2;
+                this.y = Math.random() * canvas.height - canvas.height / 2;
+                this.z = Math.random() * 1000 - 500;
+
+                // Velocity
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.vz = (Math.random() - 0.5) * 2;
+
+                // Color blend factor (0 = color1, 1 = color2)
+                this.colorBlend = Math.random();
+            }
+
+            update() {
+                // Apply velocity with speed multiplier
+                this.x += this.vx * config.nodeSpeed;
+                this.y += this.vy * config.nodeSpeed;
+                this.z += this.vz * config.nodeSpeed;
+
+                // Mouse interaction
+                if (config.mouseInteraction) {
+                    const screenPos = this.getScreenPosition();
+                    const dx = screenPos.x - mouse.x;
+                    const dy = screenPos.y - mouse.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < mouse.radius) {
+                        const force = (1 - distance / mouse.radius) * 0.5;
+                        const angle = Math.atan2(dy, dx);
+                        const direction = config.attractionMode ? -1 : 1;
+
+                        this.vx += Math.cos(angle) * force * direction;
+                        this.vy += Math.sin(angle) * force * direction;
+                    }
+                }
+
+                // Constellation mode - attract to target positions
+                if (constellationMode && constellationTargets.length > 0) {
+                    const nodeIndex = nodes.indexOf(this);
+                    if (nodeIndex >= 0 && nodeIndex < constellationTargets.length) {
+                        const target = constellationTargets[nodeIndex];
+                        const dx = target.x - this.x;
+                        const dy = target.y - this.y;
+                        const dz = target.z - this.z;
+
+                        // Gentle attraction force
+                        this.vx += dx * 0.02;
+                        this.vy += dy * 0.02;
+                        this.vz += dz * 0.01;
+                    }
+                }
+
+                // Text mode - attract to text positions
+                if (textMode && textModeTargets.length > 0) {
+                    const nodeIndex = nodes.indexOf(this);
+                    if (nodeIndex >= 0 && nodeIndex < textModeTargets.length) {
+                        const target = textModeTargets[nodeIndex];
+                        const dx = target.x - this.x;
+                        const dy = target.y - this.y;
+                        const dz = target.z - this.z;
+
+                        this.vx += dx * 0.03;
+                        this.vy += dy * 0.03;
+                        this.vz += dz * 0.01;
+                    }
+                }
+
+                // Damping
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.vz *= 0.98;
+
+                // Keep minimum velocity (only when not in constellation or text mode)
+                const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy + this.vz * this.vz);
+                if (speed < 0.5 && !constellationMode && !textMode) {
+                    this.vx += (Math.random() - 0.5) * 0.1;
+                    this.vy += (Math.random() - 0.5) * 0.1;
+                    this.vz += (Math.random() - 0.5) * 0.1;
+                }
+
+                // Wrap around boundaries
+                const halfWidth = canvas.width / 2;
+                const halfHeight = canvas.height / 2;
+
+                if (this.x < -halfWidth) this.x = halfWidth;
+                if (this.x > halfWidth) this.x = -halfWidth;
+                if (this.y < -halfHeight) this.y = halfHeight;
+                if (this.y > halfHeight) this.y = -halfHeight;
+                if (this.z < -500) this.z = 500;
+                if (this.z > 500) this.z = -500;
+
+                // Update pulse phase
+                this.pulsePhase += 0.05 * config.pulseSpeed;
+            }
+
+            getScreenPosition() {
+                // 3D to 2D perspective projection
+                const perspective = 500;
+                const scale = perspective / (perspective + this.z);
+                const screenX = (this.x * scale) + canvas.width / 2;
+                const screenY = (this.y * scale) + canvas.height / 2;
+
+                return { x: screenX, y: screenY, scale: scale };
+            }
+
+            getDepthFactor() {
+                // Calculate depth factor (0 = far, 1 = close)
+                return (this.z + 500) / 1000;
+            }
+
+            draw() {
+                const pos = this.getScreenPosition();
+                const depthFactor = this.getDepthFactor();
+
+                // Calculate size based on depth
+                const baseSize = config.nodeSize * pos.scale;
+                const depthSize = baseSize * (0.5 + depthFactor * 0.5 * config.depthEffect);
+
+                // Pulsing effect
+                const pulse = Math.sin(this.pulsePhase) * 0.3 + 1;
+                const size = depthSize * pulse;
+
+                // Opacity based on depth
+                const opacity = 0.3 + depthFactor * 0.7;
+
+                // Get interpolated color from theme
+                const color = lerpColor(colorConfig.nodeColor1, colorConfig.nodeColor2, this.colorBlend);
+
+                // Draw node (removed expensive glow for performance)
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Optional: Simple glow for larger nodes only
+                if (size > 2) {
+                    ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity * 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, size * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Explosion Particle class
+        class ExplosionParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 15;
+                this.vy = (Math.random() - 0.5) * 15;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.01;
+                this.size = Math.random() * 4 + 2;
+                this.colorBlend = Math.random();
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                const alpha = this.life;
+                const color = lerpColor(colorConfig.nodeColor1, colorConfig.nodeColor2, this.colorBlend);
+
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glow
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * this.life * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            isDead() {
+                return this.life <= 0;
+            }
+        }
+
+        // Initialize nodes
+        let nodes = [];
+
+        function initNodes() {
+            nodes = [];
+            for (let i = 0; i < config.nodeCount; i++) {
+                nodes.push(new Node());
+            }
+        }
+
+        // Create explosion at position
+        function createExplosion(x, y, count = 30) {
+            for (let i = 0; i < count; i++) {
+                explosionParticles.push(new ExplosionParticle(x, y));
+            }
+        }
+
+        // Initialize audio for beat detection
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                audioData = new Uint8Array(analyser.frequencyBinCount);
+
+                // Create master gain for volume control
+                masterGain = audioContext.createGain();
+                masterGain.gain.value = musicVolume;
+                masterGain.connect(analyser);
+                analyser.connect(audioContext.destination);
+            }
+        }
+
+        // House Music Generator
+        // =====================
+
+        // Create a kick drum sound
+        function playKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
+
+            gain.gain.setValueAtTime(1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.3);
+        }
+
+        // Create a hi-hat sound using noise
+        function playHiHat(time, open = false) {
+            const bufferSize = audioContext.sampleRate * 0.05;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // Fill with noise
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            // High-pass filter for hi-hat character
+            const highpass = audioContext.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.value = 7000;
+
+            const gain = audioContext.createGain();
+            const duration = open ? 0.15 : 0.05;
+            gain.gain.setValueAtTime(0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+            noise.connect(highpass);
+            highpass.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + duration);
+        }
+
+        // Create a snare/clap sound
+        function playSnare(time) {
+            // Noise component
+            const bufferSize = audioContext.sampleRate * 0.15;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseFilter = audioContext.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.value = 3000;
+
+            const noiseGain = audioContext.createGain();
+            noiseGain.gain.setValueAtTime(0.5, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.15);
+
+            // Tonal component
+            const osc = audioContext.createOscillator();
+            const oscGain = audioContext.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(200, time);
+            osc.frequency.exponentialRampToValueAtTime(100, time + 0.05);
+
+            oscGain.gain.setValueAtTime(0.3, time);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+            osc.connect(oscGain);
+            oscGain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+
+        // Create bass note
+        function playBass(time, note) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.value = note;
+
+            // Low-pass filter for warmer bass
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(400, time);
+            filter.frequency.exponentialRampToValueAtTime(200, time + 0.1);
+
+            gain.gain.setValueAtTime(0.4, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.2);
+        }
+
+        // Create synth chord stab
+        function playSynth(time, notes) {
+            notes.forEach((note, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'square';
+                osc.frequency.value = note;
+
+                // Filter for smoother sound
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 2000;
+                filter.Q.value = 5;
+
+                gain.gain.setValueAtTime(0.08, time);
+                gain.gain.setValueAtTime(0.08, time + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+
+                osc.start(time);
+                osc.stop(time + 0.4);
+            });
+        }
+
+        // Bass notes for the pattern (E minor pentatonic low octave)
+        const bassNotes = [82.41, 98, 110, 123.47, 82.41, 98, 110, 82.41]; // E2, G2, A2, B2
+
+        // Chord progression (E minor house)
+        const chords = [
+            [164.81, 196, 246.94],  // Em (E3, G3, B3)
+            [146.83, 174.61, 220],  // D (D3, F#3, A3)
+            [130.81, 164.81, 196],  // C (C3, E3, G3)
+            [146.83, 174.61, 220]   // D (D3, F#3, A3)
+        ];
+
+        // ==================
+        // Wii Lounge Music
+        // ==================
+
+        // Wii-style muted piano note
+        function playWiiPiano(time, note, duration = 0.3) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            // Main tone (slightly detuned for warmth)
+            osc.type = 'triangle';
+            osc.frequency.value = note;
+
+            // Second oscillator for richness
+            osc2.type = 'sine';
+            osc2.frequency.value = note * 2; // Octave up
+
+            // Muted piano filter
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+            filter.Q.value = 1;
+
+            // Soft attack, quick decay (piano-like)
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.15, time + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.08, time + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+            osc.connect(filter);
+            osc2.connect(gain);
+            gain.gain.value = 0.05; // Octave quieter
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc.stop(time + duration);
+            osc2.stop(time + duration);
+        }
+
+        // Wii-style soft bass (mellow, round)
+        function playWiiBass(time, note) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 300;
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.35, time + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.2, time + 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.4);
+        }
+
+        // Soft brush/shaker sound for Wii groove
+        function playWiiShaker(time) {
+            const bufferSize = audioContext.sampleRate * 0.08;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 5000;
+            filter.Q.value = 0.5;
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.12, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.08);
+        }
+
+        // Soft rim click for Wii beat
+        function playWiiRim(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, time);
+            osc.frequency.exponentialRampToValueAtTime(400, time + 0.02);
+
+            gain.gain.setValueAtTime(0.2, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.05);
+        }
+
+        // Wii chord voicings (jazzy maj7 and min7 chords)
+        const wiiChordProgression = [
+            // Cmaj7 - Dm7 - Em7 - Fmaj7 (I - ii - iii - IV)
+            { bass: 65.41, chord: [261.63, 329.63, 392, 493.88] },     // Cmaj7
+            { bass: 73.42, chord: [293.66, 349.23, 440, 523.25] },     // Dm7
+            { bass: 82.41, chord: [329.63, 392, 493.88, 587.33] },     // Em7
+            { bass: 87.31, chord: [349.23, 440, 523.25, 659.25] },     // Fmaj7
+        ];
+
+        // Wii melody notes (pentatonic, playful)
+        const wiiMelodyNotes = [523.25, 587.33, 659.25, 783.99, 880, 1046.50]; // C5 to C6 pentatonic-ish
+
+        // Schedule Wii-style music
+        function scheduleWiiNote(stepTime, step) {
+            const eighthNote = (60 / musicBPM) / 2;
+            const chordIndex = currentBar % wiiChordProgression.length;
+            const currentChord = wiiChordProgression[chordIndex];
+
+            // Bass on beats 1 and 3 (steps 0, 8)
+            if (step === 0 || step === 8) {
+                playWiiBass(stepTime, currentChord.bass);
+            }
+
+            // Shaker on every 8th note for groove
+            if (step % 2 === 0) {
+                playWiiShaker(stepTime);
+            }
+
+            // Rim click on beats 2 and 4 (steps 4, 12)
+            if (step === 4 || step === 12) {
+                playWiiRim(stepTime);
+            }
+
+            // Piano chord stabs - syncopated jazzy rhythm
+            if (step === 0 || step === 3 || step === 6 || step === 10 || step === 14) {
+                // Play chord tones with slight timing spread
+                currentChord.chord.forEach((note, i) => {
+                    playWiiPiano(stepTime + i * 0.01, note, 0.25);
+                });
+            }
+
+            // Occasional melody notes (randomly, for that playful Wii feel)
+            if ((step === 2 || step === 7 || step === 11) && Math.random() > 0.4) {
+                const melodyNote = wiiMelodyNotes[Math.floor(Math.random() * wiiMelodyNotes.length)];
+                playWiiPiano(stepTime, melodyNote, 0.15);
+            }
+        }
+
+        // =====================
+        // Lo-fi Hip Hop Music
+        // =====================
+
+        // Lo-fi dusty kick - soft, muted thump
+        function playLofiKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(80, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 200;
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.25);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.25);
+        }
+
+        // Lo-fi snare - soft, brushy with vinyl texture
+        function playLofiSnare(time) {
+            // Noise component
+            const bufferSize = audioContext.sampleRate * 0.15;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 3000;
+            filter.Q.value = 0.8;
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.15, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.15);
+        }
+
+        // Lo-fi hi-hat - soft, closed
+        function playLofiHat(time) {
+            const bufferSize = audioContext.sampleRate * 0.05;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 7000;
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.08, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.05);
+        }
+
+        // Lo-fi Rhodes/EP piano - warm, muted keys
+        function playLofiKeys(time, note, duration = 0.5) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            // Warm electric piano tone
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            // Add slight detune for warmth
+            osc2.type = 'triangle';
+            osc2.frequency.value = note * 2.01; // Slight detune
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 600; // Muted, lo-fi sound
+            filter.Q.value = 0.5;
+
+            // Soft attack, gentle decay
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.12, time + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.06, time + 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+            osc.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc.stop(time + duration);
+            osc2.stop(time + duration);
+        }
+
+        // Lo-fi bass - deep, round, slightly wobbly
+        function playLofiBass(time, note) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 250;
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.3, time + 0.02);
+            gain.gain.setValueAtTime(0.25, time + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.5);
+        }
+
+        // Vinyl crackle texture
+        function playVinylCrackle(time) {
+            if (Math.random() > 0.3) return; // Only play sometimes
+
+            const bufferSize = audioContext.sampleRate * 0.02;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() > 0.97 ? (Math.random() - 0.5) * 0.3 : 0);
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const gain = audioContext.createGain();
+            gain.gain.value = 0.1;
+
+            noise.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.02);
+        }
+
+        // Lo-fi chord progressions (jazzy, melancholic)
+        const lofiChordProgression = [
+            // Dm7 - G7 - Cmaj7 - Am7 (ii - V - I - vi)
+            { bass: 36.71, chord: [293.66, 349.23, 440, 523.25] },      // Dm7
+            { bass: 49.00, chord: [392.00, 493.88, 587.33, 698.46] },   // G7
+            { bass: 32.70, chord: [261.63, 329.63, 392.00, 493.88] },   // Cmaj7
+            { bass: 55.00, chord: [220.00, 261.63, 329.63, 392.00] },   // Am7
+        ];
+
+        // Schedule Lo-fi music
+        function scheduleLofiNote(stepTime, step) {
+            const chordIndex = currentBar % lofiChordProgression.length;
+            const currentChord = lofiChordProgression[chordIndex];
+
+            // Dusty kick - classic boom bap pattern
+            if (step === 0 || step === 5 || step === 10) {
+                playLofiKick(stepTime);
+            }
+
+            // Snare on 4 and 12 (beats 2 and 4 but slightly lazy)
+            if (step === 4 || step === 12) {
+                playLofiSnare(stepTime + 0.02); // Slight delay for laid-back feel
+            }
+
+            // Hi-hats - sparse, not every beat
+            if (step % 4 === 2) {
+                playLofiHat(stepTime);
+            }
+
+            // Bass follows the chord root
+            if (step === 0 || step === 8) {
+                playLofiBass(stepTime, currentChord.bass);
+            }
+
+            // Rhodes chord stabs - jazzy rhythm
+            if (step === 0 || step === 6 || step === 11) {
+                // Play chord with slight humanization
+                currentChord.chord.forEach((note, i) => {
+                    playLofiKeys(stepTime + i * 0.015, note, 0.6);
+                });
+            }
+
+            // Occasional melodic embellishment
+            if (step === 3 && Math.random() > 0.6) {
+                const melodyNote = currentChord.chord[Math.floor(Math.random() * currentChord.chord.length)] * 2;
+                playLofiKeys(stepTime, melodyNote, 0.3);
+            }
+
+            // Vinyl crackle throughout
+            playVinylCrackle(stepTime);
+        }
+
+        // =====================
+        // Ambient Music
+        // =====================
+
+        // Ambient pad - long evolving drone
+        function playAmbientPad(time, note, duration = 4.0) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const osc3 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            // Warm pad with detuned oscillators
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            osc2.type = 'sine';
+            osc2.frequency.value = note * 1.002; // Slight detune for width
+
+            osc3.type = 'triangle';
+            osc3.frequency.value = note * 0.998;
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+            filter.Q.value = 0.3;
+
+            // Very slow attack and release
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.08, time + 1.5);
+            gain.gain.setValueAtTime(0.08, time + duration - 2.0);
+            gain.gain.linearRampToValueAtTime(0, time + duration);
+
+            osc.connect(filter);
+            osc2.connect(filter);
+            osc3.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc3.start(time);
+            osc.stop(time + duration);
+            osc2.stop(time + duration);
+            osc3.stop(time + duration);
+        }
+
+        // Ambient shimmer - high ethereal tone
+        function playAmbientShimmer(time, note) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            filter.type = 'bandpass';
+            filter.frequency.value = note;
+            filter.Q.value = 2;
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.04, time + 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 3.0);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 3.0);
+        }
+
+        // Ambient texture - gentle noise wash
+        function playAmbientTexture(time) {
+            const bufferSize = audioContext.sampleRate * 2;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.5;
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 800;
+            filter.Q.value = 0.3;
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.02, time + 0.8);
+            gain.gain.linearRampToValueAtTime(0, time + 2.0);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 2.0);
+        }
+
+        // Ambient bell - crystalline ping
+        function playAmbientBell(time, note) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = note;
+
+            // Harmonic overtone
+            osc2.type = 'sine';
+            osc2.frequency.value = note * 2.76; // Inharmonic for bell-like tone
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.06, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
+
+            osc.connect(gain);
+            osc2.connect(gain);
+            // Reduce overtone volume
+            const gain2 = audioContext.createGain();
+            gain2.gain.value = 0.3;
+            osc2.disconnect();
+            osc2.connect(gain2);
+            gain2.connect(gain);
+
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc.stop(time + 2.5);
+            osc2.stop(time + 2.5);
+        }
+
+        // Ambient chord voicings (ethereal, open)
+        const ambientChordProgression = [
+            { pad: [130.81, 196.00, 329.63], shimmer: 659.25 },   // C5 open
+            { pad: [146.83, 220.00, 369.99], shimmer: 739.99 },   // D minor open
+            { pad: [164.81, 246.94, 392.00], shimmer: 783.99 },   // E minor open
+            { pad: [174.61, 261.63, 440.00], shimmer: 880.00 },   // F major open
+        ];
+
+        const ambientBellNotes = [523.25, 659.25, 783.99, 987.77, 1174.66, 1318.51];
+
+        // Schedule Ambient music
+        function scheduleAmbientNote(stepTime, step) {
+            const chordIndex = Math.floor(currentBar / 2) % ambientChordProgression.length;
+            const currentChord = ambientChordProgression[chordIndex];
+
+            // Pad drone - trigger on the first step of every 2 bars
+            if (step === 0 && currentBar % 2 === 0) {
+                currentChord.pad.forEach(note => {
+                    playAmbientPad(stepTime, note, (60 / musicBPM) * 8);
+                });
+            }
+
+            // Shimmer on beat 1 of each bar
+            if (step === 0) {
+                playAmbientShimmer(stepTime, currentChord.shimmer);
+            }
+
+            // Random bell tones - sparse and meditative
+            if (step === 4 && Math.random() > 0.5) {
+                const bellNote = ambientBellNotes[Math.floor(Math.random() * ambientBellNotes.length)];
+                playAmbientBell(stepTime, bellNote);
+            }
+
+            if (step === 12 && Math.random() > 0.6) {
+                const bellNote = ambientBellNotes[Math.floor(Math.random() * ambientBellNotes.length)];
+                playAmbientBell(stepTime, bellNote);
+            }
+
+            // Noise texture wash - once per 2 bars
+            if (step === 8 && currentBar % 2 === 0) {
+                playAmbientTexture(stepTime);
+            }
+        }
+
+        // =====================
+        // Jazz Music
+        // =====================
+
+        // Jazz upright bass - warm plucked tone
+        function playJazzBass(time, note, duration = 0.4) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'triangle';
+            osc.frequency.value = note;
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+            filter.Q.value = 0.8;
+
+            // Plucked envelope
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.35, time + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.15, time + 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + duration);
+        }
+
+        // Jazz brush snare - soft swish
+        function playJazzBrush(time) {
+            const bufferSize = audioContext.sampleRate * 0.12;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.5));
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.frequency.value = 4000;
+            filter.Q.value = 0.4;
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0.1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 0.12);
+        }
+
+        // Jazz ride cymbal - shimmery ping
+        function playJazzRide(time) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.value = 400;
+            osc.frequency.exponentialRampToValueAtTime(300, time + 0.1);
+
+            osc2.type = 'square';
+            osc2.frequency.value = 800;
+
+            gain.gain.setValueAtTime(0.12, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+
+            const gain2 = audioContext.createGain();
+            gain2.gain.value = 0.03;
+
+            osc.connect(gain);
+            osc2.connect(gain2);
+            gain2.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc.stop(time + 0.15);
+            osc2.stop(time + 0.15);
+        }
+
+        // Jazz piano - warm mellow voicing
+        function playJazzPiano(time, notes, duration = 0.4) {
+            notes.forEach((note, i) => {
+                const osc = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                osc.type = 'triangle';
+                osc.frequency.value = note;
+
+                osc2.type = 'sine';
+                osc2.frequency.value = note * 2.005;
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+                filter.Q.value = 0.5;
+
+                // Piano-like envelope with slight humanization
+                const offset = i * 0.008;
+                gain.gain.setValueAtTime(0, time + offset);
+                gain.gain.linearRampToValueAtTime(0.1, time + offset + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.04, time + offset + 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + offset + duration);
+
+                osc.connect(filter);
+                osc2.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+
+                osc.start(time + offset);
+                osc2.start(time + offset);
+                osc.stop(time + offset + duration);
+                osc2.stop(time + offset + duration);
+            });
+        }
+
+        // Jazz kick - soft, round
+        function playJazzKick(time) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(70, time);
+            osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.25, time + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 0.15);
+        }
+
+        // Jazz chord progressions (ii-V-I with extensions)
+        const jazzChordProgression = [
+            // Dm9 - G13 - Cmaj9 - A7alt
+            { bass: [73.42, 82.41, 73.42, 65.41], chord: [293.66, 329.63, 415.30, 523.25] },   // Dm9
+            { bass: [98.00, 87.31, 98.00, 110.00], chord: [349.23, 392.00, 493.88, 659.25] },   // G13
+            { bass: [65.41, 73.42, 65.41, 55.00], chord: [329.63, 392.00, 493.88, 587.33] },    // Cmaj9
+            { bass: [110.00, 98.00, 110.00, 123.47], chord: [277.18, 349.23, 415.30, 523.25] }, // A7alt
+        ];
+
+        // Schedule Jazz music
+        function scheduleJazzNote(stepTime, step) {
+            const chordIndex = currentBar % jazzChordProgression.length;
+            const currentChord = jazzChordProgression[chordIndex];
+
+            // Ride cymbal pattern - classic jazz swing
+            // Steps: 0, 3, 4, 6, 8, 11, 12, 14 (swing feel on 16th grid)
+            if (step === 0 || step === 3 || step === 4 || step === 6 ||
+                step === 8 || step === 11 || step === 12 || step === 14) {
+                playJazzRide(stepTime);
+            }
+
+            // Brush on 2 and 4 (steps 4, 12)
+            if (step === 4 || step === 12) {
+                playJazzBrush(stepTime);
+            }
+
+            // Soft kick on 1 and 3 (steps 0, 8)
+            if (step === 0 || step === 8) {
+                playJazzKick(stepTime);
+            }
+
+            // Walking bass - quarter notes with passing tones
+            if (step % 4 === 0) {
+                const bassIndex = Math.floor(step / 4) % currentChord.bass.length;
+                playJazzBass(stepTime, currentChord.bass[bassIndex], 0.35);
+            }
+
+            // Piano comping - syncopated, sparse
+            if (step === 0 && Math.random() > 0.3) {
+                playJazzPiano(stepTime, currentChord.chord, 0.5);
+            }
+            if (step === 6 && Math.random() > 0.4) {
+                playJazzPiano(stepTime, currentChord.chord, 0.3);
+            }
+            if (step === 10 && Math.random() > 0.5) {
+                playJazzPiano(stepTime, currentChord.chord, 0.35);
+            }
+            if (step === 14 && Math.random() > 0.6) {
+                // Ghost chord anticipation
+                const nextChord = jazzChordProgression[(currentBar + 1) % jazzChordProgression.length];
+                playJazzPiano(stepTime, nextChord.chord, 0.25);
+            }
+        }
+
+        // =====================
+        // Space Music
+        // =====================
+
+        // Space deep sub drone - rumbling low frequency
+        function playSpaceDrone(time, note, duration = 6.0) {
+            const osc = audioContext.createOscillator();
+            const osc2 = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+
+            osc.type = 'sawtooth';
+            osc.frequency.value = note;
+
+            osc2.type = 'sine';
+            osc2.frequency.value = note * 0.5; // Sub octave
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 150;
+            filter.Q.value = 2;
+            // Slow filter sweep for movement
+            filter.frequency.setValueAtTime(100, time);
+            filter.frequency.linearRampToValueAtTime(250, time + duration * 0.6);
+            filter.frequency.linearRampToValueAtTime(100, time + duration);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.12, time + 2.0);
+            gain.gain.setValueAtTime(0.12, time + duration - 2.5);
+            gain.gain.linearRampToValueAtTime(0, time + duration);
+
+            osc.connect(filter);
+            osc2.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc2.start(time);
+            osc.stop(time + duration);
+            osc2.stop(time + duration);
+        }
+
+        // Space synth pad - wide, eerie chord
+        function playSpacePad(time, notes, duration = 4.0) {
+            notes.forEach((note, i) => {
+                const osc = audioContext.createOscillator();
+                const osc2 = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                osc.type = 'sawtooth';
+                osc.frequency.value = note;
+
+                osc2.type = 'sawtooth';
+                osc2.frequency.value = note * 1.005; // Detune for width
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 500 + i * 100;
+                filter.Q.value = 0.7;
+
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(0.05, time + 1.0);
+                gain.gain.setValueAtTime(0.05, time + duration - 1.5);
+                gain.gain.linearRampToValueAtTime(0, time + duration);
+
+                osc.connect(filter);
+                osc2.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+
+                osc.start(time);
+                osc2.start(time);
+                osc.stop(time + duration);
+                osc2.stop(time + duration);
+            });
+        }
+
+        // Space blip - radar/sonar ping
+        function playSpaceBlip(time, note) {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(note, time);
+            osc.frequency.exponentialRampToValueAtTime(note * 0.5, time + 1.5);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.08, time + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 1.5);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+
+            osc.start(time);
+            osc.stop(time + 1.5);
+        }
+
+        // Space whoosh - filtered noise sweep
+        function playSpaceWhoosh(time) {
+            const bufferSize = audioContext.sampleRate * 3;
+            const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1);
+            }
+
+            const noise = audioContext.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioContext.createBiquadFilter();
+            filter.type = 'bandpass';
+            filter.Q.value = 5;
+            // Sweep from low to high
+            filter.frequency.setValueAtTime(200, time);
+            filter.frequency.exponentialRampToValueAtTime(4000, time + 1.5);
+            filter.frequency.exponentialRampToValueAtTime(200, time + 3.0);
+
+            const gain = audioContext.createGain();
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.04, time + 0.5);
+            gain.gain.setValueAtTime(0.04, time + 1.5);
+            gain.gain.linearRampToValueAtTime(0, time + 3.0);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGain);
+
+            noise.start(time);
+            noise.stop(time + 3.0);
+        }
+
+        // Space arpeggio - rising synth sequence
+        function playSpaceArp(time, notes) {
+            notes.forEach((note, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+
+                osc.type = 'square';
+                osc.frequency.value = note;
+
+                filter.type = 'lowpass';
+                filter.frequency.value = 800;
+
+                const noteTime = time + i * 0.15;
+                gain.gain.setValueAtTime(0, noteTime);
+                gain.gain.linearRampToValueAtTime(0.06, noteTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.6);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+
+                osc.start(noteTime);
+                osc.stop(noteTime + 0.6);
+            });
+        }
+
+        // Space chord progressions (dark, cinematic)
+        const spaceChordProgression = [
+            { drone: 32.70, pad: [130.81, 196.00, 311.13], arp: [523.25, 622.25, 783.99, 932.33] },  // Cm
+            { drone: 29.14, pad: [116.54, 174.61, 277.18], arp: [466.16, 554.37, 698.46, 830.61] },  // Bbm
+            { drone: 34.65, pad: [138.59, 207.65, 329.63], arp: [554.37, 659.25, 830.61, 987.77] },  // Db
+            { drone: 24.50, pad: [97.99, 146.83, 233.08], arp: [392.00, 466.16, 587.33, 698.46] },   // Gm
+        ];
+
+        const spaceBlipNotes = [1318.51, 1567.98, 1760.00, 2093.00, 2349.32, 2637.02];
+
+        // Schedule Space music
+        function scheduleSpaceNote(stepTime, step) {
+            const chordIndex = Math.floor(currentBar / 2) % spaceChordProgression.length;
+            const currentChord = spaceChordProgression[chordIndex];
+
+            // Deep drone - every 4 bars
+            if (step === 0 && currentBar % 4 === 0) {
+                playSpaceDrone(stepTime, currentChord.drone, (60 / musicBPM) * 16);
+            }
+
+            // Pad chord - every 2 bars
+            if (step === 0 && currentBar % 2 === 0) {
+                playSpacePad(stepTime, currentChord.pad, (60 / musicBPM) * 8);
+            }
+
+            // Sonar blips - sparse, random
+            if (step === 0 && Math.random() > 0.6) {
+                const blipNote = spaceBlipNotes[Math.floor(Math.random() * spaceBlipNotes.length)];
+                playSpaceBlip(stepTime, blipNote);
+            }
+
+            if (step === 8 && Math.random() > 0.7) {
+                const blipNote = spaceBlipNotes[Math.floor(Math.random() * spaceBlipNotes.length)];
+                playSpaceBlip(stepTime, blipNote);
+            }
+
+            // Arpeggio sequence - once per bar, randomly
+            if (step === 4 && Math.random() > 0.5) {
+                playSpaceArp(stepTime, currentChord.arp);
+            }
+
+            // Whoosh sweep - rare, every 4 bars
+            if (step === 12 && currentBar % 4 === 2 && Math.random() > 0.4) {
+                playSpaceWhoosh(stepTime);
+            }
+        }
+
+        // Schedule the next notes (house)
+        function scheduleHouseNote(stepTime, step) {
+            const sixteenthNote = (60 / musicBPM) / 4;
+
+            // Kick on 1, 5, 9, 13 (4-on-the-floor)
+            if (step % 4 === 0) {
+                playKick(stepTime);
+            }
+
+            // Hi-hat on every 8th note, open on off-beats
+            if (step % 2 === 0) {
+                playHiHat(stepTime, step % 4 === 2);
+            }
+
+            // Snare/clap on 5 and 13 (beats 2 and 4)
+            if (step === 4 || step === 12) {
+                playSnare(stepTime);
+            }
+
+            // Bass on 1, 3, 7, 9, 11, 15
+            if (step === 0 || step === 2 || step === 6 || step === 8 || step === 10 || step === 14) {
+                const bassIndex = Math.floor(step / 2) % bassNotes.length;
+                playBass(stepTime, bassNotes[bassIndex]);
+            }
+
+            // Chord stabs on beat 1 of every 2 bars (step 0 every 32 steps, but we use 16)
+            if (step === 0) {
+                const chordIndex = Math.floor(Math.random() * chords.length);
+                playSynth(stepTime, chords[chordIndex]);
+            }
+        }
+
+        // Main scheduler loop
+        function scheduler() {
+            const sixteenthNote = (60 / musicBPM) / 4;
+
+            // Schedule notes ahead of time for accuracy
+            while (nextNoteTime < audioContext.currentTime + 0.1) {
+                if (musicGenre === 'wii') {
+                    scheduleWiiNote(nextNoteTime, currentStep);
+                } else if (musicGenre === 'lofi') {
+                    scheduleLofiNote(nextNoteTime, currentStep);
+                } else if (musicGenre === 'ambient') {
+                    scheduleAmbientNote(nextNoteTime, currentStep);
+                } else if (musicGenre === 'jazz') {
+                    scheduleJazzNote(nextNoteTime, currentStep);
+                } else if (musicGenre === 'space') {
+                    scheduleSpaceNote(nextNoteTime, currentStep);
+                } else {
+                    scheduleHouseNote(nextNoteTime, currentStep);
+                }
+                nextNoteTime += sixteenthNote;
+                currentStep = (currentStep + 1) % 16;
+                // Track bars for chord progression
+                if (currentStep === 0) {
+                    currentBar++;
+                }
+            }
+        }
+
+        // Start the music
+        function startMusic() {
+            initAudio();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // Enable beat reactive when music starts
+            config.beatReactive = true;
+            document.getElementById('beatToggle').classList.add('active');
+
+            musicPlaying = true;
+            currentStep = 0;
+            nextNoteTime = audioContext.currentTime;
+
+            // Schedule notes using setInterval
+            schedulerTimer = setInterval(scheduler, 25);
+
+            // Update button
+            document.getElementById('musicBtn').textContent = '⏸ PAUSE';
+            document.getElementById('musicBtn').classList.add('playing');
+        }
+
+        // Stop the music
+        function stopMusic() {
+            musicPlaying = false;
+
+            if (schedulerTimer) {
+                clearInterval(schedulerTimer);
+                schedulerTimer = null;
+            }
+
+            // Update button
+            document.getElementById('musicBtn').textContent = '▶ PLAY';
+            document.getElementById('musicBtn').classList.remove('playing');
+        }
+
+        // Toggle music
+        function toggleMusic() {
+            if (musicPlaying) {
+                stopMusic();
+            } else {
+                startMusic();
+            }
+        }
+
+        // Start listening to microphone
+        async function startMicrophone() {
+            try {
+                initAudio();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioSource = audioContext.createMediaStreamSource(stream);
+                audioSource.connect(analyser);
+                config.beatReactive = true;
+            } catch (err) {
+                console.log('Microphone access denied');
+            }
+        }
+
+        // Analyze audio for beat
+        function analyzeBeat() {
+            if (!analyser || !config.beatReactive) {
+                beatIntensity *= 0.95;
+                return;
+            }
+
+            analyser.getByteFrequencyData(audioData);
+
+            // Get bass frequencies (lower range)
+            let bassSum = 0;
+            for (let i = 0; i < 10; i++) {
+                bassSum += audioData[i];
+            }
+            const bassAvg = bassSum / 10 / 255;
+
+            // Smooth the beat intensity
+            beatIntensity = beatIntensity * 0.7 + bassAvg * 0.3;
+        }
+
+        // Draw edge between two nodes
+        function drawEdge(nodeA, nodeB, distance) {
+            const posA = nodeA.getScreenPosition();
+            const posB = nodeB.getScreenPosition();
+
+            // Calculate opacity based on distance
+            const distanceFactor = 1 - (distance / config.connectivityRadius);
+            let opacity = config.edgeOpacity * distanceFactor;
+
+            // Calculate thickness based on distance
+            let thickness = config.edgeThickness * distanceFactor;
+
+            // Beat reactive edge boost
+            if (config.beatReactive && beatIntensity > 0.6) {
+                opacity *= (1 + beatIntensity);
+                thickness *= (1 + beatIntensity * 0.5);
+            }
+
+            // Color gradient based on distance using theme colors
+            const t = distance / config.connectivityRadius;
+            const color = lerpColor(colorConfig.edgeColor1, colorConfig.edgeColor2, t);
+
+            // Draw line
+            ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
+            ctx.lineWidth = thickness;
+            ctx.beginPath();
+            ctx.moveTo(posA.x, posA.y);
+            ctx.lineTo(posB.x, posB.y);
+            ctx.stroke();
+        }
+
+        // Calculate and draw all connections (optimized)
+        function drawConnections() {
+            let edgeCount = 0;
+            const maxConnections = 5; // Limit connections per node for performance
+
+            for (let i = 0; i < nodes.length; i++) {
+                let connections = 0;
+
+                for (let j = i + 1; j < nodes.length && connections < maxConnections; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const dz = nodes[i].z - nodes[j].z;
+
+                    // Quick distance check without sqrt first
+                    const distSquared = dx * dx + dy * dy + dz * dz;
+                    const radiusSquared = config.connectivityRadius * config.connectivityRadius;
+
+                    if (distSquared < radiusSquared) {
+                        const distance = Math.sqrt(distSquared);
+                        drawEdge(nodes[i], nodes[j], distance);
+                        edgeCount++;
+                        connections++;
+                    }
+                }
+            }
+
+            return edgeCount;
+        }
+
+        // Animation loop
+        function animate() {
+            // Analyze audio for beat
+            analyzeBeat();
+
+            // Clear canvas with theme background color
+            ctx.fillStyle = colorConfig.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background image if set
+            if (bgImage) {
+                ctx.globalAlpha = bgImageOpacity;
+                // Cover the canvas while maintaining aspect ratio
+                const imgRatio = bgImage.width / bgImage.height;
+                const canvasRatio = canvas.width / canvas.height;
+                let drawW, drawH, drawX, drawY;
+                if (canvasRatio > imgRatio) {
+                    drawW = canvas.width;
+                    drawH = canvas.width / imgRatio;
+                    drawX = 0;
+                    drawY = (canvas.height - drawH) / 2;
+                } else {
+                    drawH = canvas.height;
+                    drawW = canvas.height * imgRatio;
+                    drawX = (canvas.width - drawW) / 2;
+                    drawY = 0;
+                }
+                ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
+                ctx.globalAlpha = 1.0;
+            }
+
+            // Beat reactive background flash using theme node color
+            if (beatIntensity > 0.5) {
+                const flashColor = hexToRgb(colorConfig.nodeColor1);
+                ctx.fillStyle = `rgba(${flashColor.r}, ${flashColor.g}, ${flashColor.b}, ${(beatIntensity - 0.5) * 0.1})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Shooting stars
+            maybeSpawnShootingStar();
+            shootingStars.forEach(star => { star.update(); star.draw(); });
+            shootingStars = shootingStars.filter(s => !s.isDead());
+
+            // Update all nodes
+            nodes.forEach(node => {
+                node.update();
+
+                // Beat reactive pulse
+                if (config.beatReactive && beatIntensity > 0.6) {
+                    node.pulsePhase += beatIntensity * 0.5;
+                }
+            });
+
+            // Draw connections (edges)
+            const edgeCount = drawConnections();
+
+            // Draw nodes (with beat reactive size boost)
+            nodes.forEach(node => node.draw());
+
+            // Snake mode update and draw
+            if (snakeMode) {
+                updateSnake();
+                drawSnake();
+            }
+
+            // Update and draw explosion particles
+            explosionParticles.forEach(particle => particle.update());
+            explosionParticles = explosionParticles.filter(p => !p.isDead());
+            explosionParticles.forEach(particle => particle.draw());
+
+            // Update statistics
+            updateStats(edgeCount);
+
+            // Calculate FPS
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Update statistics panel
+        function updateStats(edgeCount) {
+            document.getElementById('stat-nodes').textContent = config.nodeCount;
+            document.getElementById('stat-edges').textContent = edgeCount;
+
+            const avgConnections = config.nodeCount > 0 ? (edgeCount * 2 / config.nodeCount).toFixed(1) : 0;
+            document.getElementById('stat-avg').textContent = avgConnections;
+
+            const maxPossibleEdges = (config.nodeCount * (config.nodeCount - 1)) / 2;
+            const density = maxPossibleEdges > 0 ? ((edgeCount / maxPossibleEdges) * 100).toFixed(1) : 0;
+            document.getElementById('stat-density').textContent = density + '%';
+
+            document.getElementById('stat-fps').textContent = fps;
+        }
+
+        // Snake Mode Functions
+        // ====================
+
+        function initSnake() {
+            // Start snake in center of canvas
+            const startX = Math.floor(canvas.width / 2 / snakeGridSize) * snakeGridSize;
+            const startY = Math.floor(canvas.height / 2 / snakeGridSize) * snakeGridSize;
+
+            snake = [
+                { x: startX, y: startY },
+                { x: startX - snakeGridSize, y: startY },
+                { x: startX - snakeGridSize * 2, y: startY }
+            ];
+
+            snakeDirection = { x: 1, y: 0 };
+            snakeNextDirection = { x: 1, y: 0 };
+            snakeScore = 0;
+            snakeGameOver = false;
+            snakeLastMove = performance.now();
+
+            spawnFood();
+            updateSnakeScore();
+        }
+
+        function spawnFood() {
+            // Spawn food at random grid position, avoiding snake body
+            let validPosition = false;
+            let attempts = 0;
+
+            while (!validPosition && attempts < 100) {
+                const gridCols = Math.floor(canvas.width / snakeGridSize);
+                const gridRows = Math.floor(canvas.height / snakeGridSize);
+
+                snakeFood = {
+                    x: Math.floor(Math.random() * (gridCols - 2) + 1) * snakeGridSize,
+                    y: Math.floor(Math.random() * (gridRows - 2) + 1) * snakeGridSize,
+                    pulse: 0
+                };
+
+                // Check if food overlaps with snake
+                validPosition = !snake.some(segment =>
+                    segment.x === snakeFood.x && segment.y === snakeFood.y
+                );
+
+                attempts++;
+            }
+        }
+
+        function updateSnake() {
+            if (snakeGameOver || !snakeMode) return;
+
+            const now = performance.now();
+            const moveInterval = 1000 / snakeSpeed;
+
+            if (now - snakeLastMove >= moveInterval) {
+                snakeLastMove = now;
+
+                // Apply direction change
+                snakeDirection = { ...snakeNextDirection };
+
+                // Calculate new head position
+                const head = snake[0];
+                const newHead = {
+                    x: head.x + snakeDirection.x * snakeGridSize,
+                    y: head.y + snakeDirection.y * snakeGridSize
+                };
+
+                // Check wall collision
+                if (newHead.x < 0 || newHead.x >= canvas.width ||
+                    newHead.y < 0 || newHead.y >= canvas.height) {
+                    gameOver();
+                    return;
+                }
+
+                // Check self collision
+                if (snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+                    gameOver();
+                    return;
+                }
+
+                // Add new head
+                snake.unshift(newHead);
+
+                // Check food collision
+                if (snakeFood && newHead.x === snakeFood.x && newHead.y === snakeFood.y) {
+                    // Eat food - don't remove tail, snake grows
+                    snakeScore += 10;
+                    updateSnakeScore();
+                    spawnFood();
+
+                    // Create explosion effect at food location
+                    createExplosion(snakeFood.x + snakeGridSize / 2, snakeFood.y + snakeGridSize / 2, 20);
+
+                    // Speed up slightly as score increases
+                    if (snakeScore % 50 === 0 && snakeSpeed < 20) {
+                        snakeSpeed += 0.5;
+                        document.getElementById('snakeSpeedSlider').value = snakeSpeed;
+                        document.getElementById('snakeSpeedValue').textContent = Math.round(snakeSpeed);
+                    }
+                } else {
+                    // Remove tail (snake moves, doesn't grow)
+                    snake.pop();
+                }
+            }
+        }
+
+        function gameOver() {
+            snakeGameOver = true;
+
+            // Update high score
+            if (snakeScore > snakeHighScore) {
+                snakeHighScore = snakeScore;
+                document.getElementById('stat-snake-highscore').textContent = snakeHighScore;
+            }
+
+            // Show restart button
+            document.getElementById('snakeRestartBtn').style.display = 'block';
+        }
+
+        function updateSnakeScore() {
+            document.getElementById('stat-snake-score').textContent = snakeScore;
+        }
+
+        function drawSnake() {
+            if (!snakeMode || snake.length === 0) return;
+
+            // Draw snake body segments (optimized - no shadows)
+            const snakeLen = snake.length;
+            for (let index = snakeLen - 1; index >= 0; index--) {
+                const segment = snake[index];
+                const isHead = index === 0;
+                const t = index / snakeLen;
+
+                // Color gradient from head to tail
+                const color = lerpColor(colorConfig.nodeColor1, colorConfig.nodeColor2, t);
+                const opacity = 1 - (t * 0.4);
+                const size = isHead ? snakeSegmentSize : snakeSegmentSize - (t * 4);
+
+                const x = segment.x + (snakeGridSize - size) / 2;
+                const y = segment.y + (snakeGridSize - size) / 2;
+
+                // Simple glow for head (no shadowBlur - just draw larger transparent circle)
+                if (isHead) {
+                    ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.2)`;
+                    ctx.beginPath();
+                    ctx.arc(segment.x + snakeGridSize / 2, segment.y + snakeGridSize / 2, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw segment as circle (faster than roundRect)
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(segment.x + snakeGridSize / 2, segment.y + snakeGridSize / 2, size / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw eyes on head
+                if (isHead) {
+                    const eyeOffset = snakeGridSize * 0.2;
+                    const eyeSize = 2.5;
+                    const centerX = segment.x + snakeGridSize / 2;
+                    const centerY = segment.y + snakeGridSize / 2;
+
+                    let eye1x, eye1y, eye2x, eye2y;
+                    if (snakeDirection.x === 1) {
+                        eye1x = centerX + 2; eye1y = centerY - eyeOffset;
+                        eye2x = centerX + 2; eye2y = centerY + eyeOffset;
+                    } else if (snakeDirection.x === -1) {
+                        eye1x = centerX - 2; eye1y = centerY - eyeOffset;
+                        eye2x = centerX - 2; eye2y = centerY + eyeOffset;
+                    } else if (snakeDirection.y === -1) {
+                        eye1x = centerX - eyeOffset; eye1y = centerY - 2;
+                        eye2x = centerX + eyeOffset; eye2y = centerY - 2;
+                    } else {
+                        eye1x = centerX - eyeOffset; eye1y = centerY + 2;
+                        eye2x = centerX + eyeOffset; eye2y = centerY + 2;
+                    }
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(eye1x, eye1y, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(eye2x, eye2y, eyeSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Draw food (optimized - fake glow without shadowBlur)
+            if (snakeFood) {
+                snakeFood.pulse += 0.1;
+                const pulseScale = 1 + Math.sin(snakeFood.pulse) * 0.2;
+                const foodSize = snakeSegmentSize * pulseScale;
+                const foodX = snakeFood.x + snakeGridSize / 2;
+                const foodY = snakeFood.y + snakeGridSize / 2;
+
+                const foodColor = hexToRgb(colorConfig.nodeColor1);
+
+                // Fake glow - outer ring
+                ctx.fillStyle = `rgba(${foodColor.r}, ${foodColor.g}, ${foodColor.b}, 0.15)`;
+                ctx.beginPath();
+                ctx.arc(foodX, foodY, foodSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Main food
+                ctx.fillStyle = `rgba(${foodColor.r}, ${foodColor.g}, ${foodColor.b}, 0.9)`;
+                ctx.beginPath();
+                ctx.arc(foodX, foodY, foodSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner bright core
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(foodX, foodY, foodSize / 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw game over overlay
+            if (snakeGameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const textColor = hexToRgb(colorConfig.nodeColor1);
+
+                ctx.font = 'bold 48px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = `rgb(${textColor.r}, ${textColor.g}, ${textColor.b})`;
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 40);
+
+                ctx.font = '24px Courier New';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`Score: ${snakeScore}`, canvas.width / 2, canvas.height / 2 + 20);
+
+                if (snakeScore === snakeHighScore && snakeScore > 0) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillText('NEW HIGH SCORE!', canvas.width / 2, canvas.height / 2 + 60);
+                }
+
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // Control handlers
+        document.getElementById('nodeCount').addEventListener('input', (e) => {
+            config.nodeCount = parseInt(e.target.value);
+            document.getElementById('nodeCountValue').textContent = config.nodeCount;
+            initNodes();
+        });
+
+        document.getElementById('nodeSpeed').addEventListener('input', (e) => {
+            config.nodeSpeed = parseFloat(e.target.value);
+            document.getElementById('nodeSpeedValue').textContent = config.nodeSpeed.toFixed(1);
+        });
+
+        document.getElementById('nodeSize').addEventListener('input', (e) => {
+            config.nodeSize = parseFloat(e.target.value);
+            document.getElementById('nodeSizeValue').textContent = config.nodeSize;
+        });
+
+        document.getElementById('connectivity').addEventListener('input', (e) => {
+            config.connectivityRadius = parseInt(e.target.value);
+            document.getElementById('connectivityValue').textContent = config.connectivityRadius;
+        });
+
+        document.getElementById('edgeThickness').addEventListener('input', (e) => {
+            config.edgeThickness = parseFloat(e.target.value);
+            document.getElementById('edgeThicknessValue').textContent = config.edgeThickness.toFixed(1);
+        });
+
+        document.getElementById('edgeOpacity').addEventListener('input', (e) => {
+            config.edgeOpacity = parseFloat(e.target.value);
+            document.getElementById('edgeOpacityValue').textContent = config.edgeOpacity.toFixed(2);
+        });
+
+        document.getElementById('pulseSpeed').addEventListener('input', (e) => {
+            config.pulseSpeed = parseFloat(e.target.value);
+            document.getElementById('pulseSpeedValue').textContent = config.pulseSpeed.toFixed(1);
+        });
+
+        document.getElementById('depthEffect').addEventListener('input', (e) => {
+            config.depthEffect = parseFloat(e.target.value);
+            document.getElementById('depthEffectValue').textContent = config.depthEffect.toFixed(1);
+        });
+
+        // Toggle handlers
+        document.getElementById('mouseToggle').addEventListener('click', (e) => {
+            config.mouseInteraction = !config.mouseInteraction;
+            e.currentTarget.classList.toggle('active');
+        });
+
+        document.getElementById('attractionToggle').addEventListener('click', (e) => {
+            config.attractionMode = !config.attractionMode;
+            e.currentTarget.classList.toggle('active');
+        });
+
+        // Collapse button handler
+        document.getElementById('collapseBtn').addEventListener('click', () => {
+            const panel = document.getElementById('controlPanel');
+            const btn = document.getElementById('collapseBtn');
+            panel.classList.toggle('collapsed');
+            btn.textContent = panel.classList.contains('collapsed') ? 'Show Controls' : 'Hide Controls';
+        });
+
+        // Beat reactive toggle
+        document.getElementById('beatToggle').addEventListener('click', async (e) => {
+            if (!config.beatReactive) {
+                await startMicrophone();
+                e.currentTarget.classList.add('active');
+            } else {
+                config.beatReactive = false;
+                e.currentTarget.classList.remove('active');
+            }
+        });
+
+        // Music controls
+        document.getElementById('musicBtn').addEventListener('click', toggleMusic);
+
+        document.getElementById('musicGenre').addEventListener('change', (e) => {
+            musicGenre = e.target.value;
+            // Set recommended BPM for each genre
+            const bpmMap = { house: 128, wii: 95, lofi: 85, ambient: 70, jazz: 110, space: 60 };
+            musicBPM = bpmMap[musicGenre] || 128;
+            document.getElementById('bpm').value = musicBPM;
+            document.getElementById('bpmValue').textContent = musicBPM;
+            // Reset bar counter for chord progressions
+            currentBar = 0;
+        });
+
+        document.getElementById('bpm').addEventListener('input', (e) => {
+            musicBPM = parseInt(e.target.value);
+            document.getElementById('bpmValue').textContent = musicBPM;
+        });
+
+        document.getElementById('volume').addEventListener('input', (e) => {
+            musicVolume = parseFloat(e.target.value);
+            document.getElementById('volumeValue').textContent = musicVolume.toFixed(2);
+            if (masterGain) {
+                masterGain.gain.value = musicVolume;
+            }
+        });
+
+        // Theme controls
+        function updateStatsPanel() {
+            const statsPanel = document.querySelector('.stats-panel');
+            const statsTitle = document.querySelector('.stats-title');
+            const statValues = document.querySelectorAll('.stat-value');
+
+            // Update border and shadow to match nodeColor1
+            statsPanel.style.borderColor = colorConfig.nodeColor1;
+            statsPanel.style.boxShadow = `0 0 20px ${colorConfig.nodeColor1}40`;
+
+            // Update title color
+            statsTitle.style.color = colorConfig.nodeColor1;
+            statsTitle.style.textShadow = `0 0 8px ${colorConfig.nodeColor1}cc`;
+
+            // Update stat values to match nodeColor2
+            statValues.forEach(val => {
+                val.style.color = colorConfig.nodeColor2;
+                val.style.textShadow = `0 0 5px ${colorConfig.nodeColor2}99`;
+            });
+        }
+
+        function applyTheme(themeName) {
+            if (themes[themeName]) {
+                const theme = themes[themeName];
+                colorConfig.background = theme.background;
+                colorConfig.nodeColor1 = theme.nodeColor1;
+                colorConfig.nodeColor2 = theme.nodeColor2;
+                colorConfig.edgeColor1 = theme.edgeColor1;
+                colorConfig.edgeColor2 = theme.edgeColor2;
+
+                // Update color pickers to reflect theme
+                document.getElementById('bgColor').value = theme.background;
+                document.getElementById('nodeColor1').value = theme.nodeColor1;
+                document.getElementById('nodeColor2').value = theme.nodeColor2;
+                document.getElementById('edgeColor1').value = theme.edgeColor1;
+                document.getElementById('edgeColor2').value = theme.edgeColor2;
+
+                // Update canvas and body background
+                canvas.style.background = theme.background;
+                document.body.style.background = theme.background;
+
+                // Update stats panel to match theme
+                updateStatsPanel();
+
+                // Update pomodoro timer to match theme
+                if (pomodoroEnabled) {
+                    updatePomodoroTheme();
+                }
+            }
+        }
+
+        document.getElementById('themeSelect').addEventListener('change', (e) => {
+            const themeName = e.target.value;
+            if (themeName !== 'custom') {
+                applyTheme(themeName);
+            }
+        });
+
+        // Color picker handlers
+        document.getElementById('bgColor').addEventListener('input', (e) => {
+            colorConfig.background = e.target.value;
+            canvas.style.background = e.target.value;
+            document.body.style.background = e.target.value;
+            document.getElementById('themeSelect').value = 'custom';
+        });
+
+        document.getElementById('nodeColor1').addEventListener('input', (e) => {
+            colorConfig.nodeColor1 = e.target.value;
+            document.getElementById('themeSelect').value = 'custom';
+            updateStatsPanel();
+            if (pomodoroEnabled) updatePomodoroTheme();
+        });
+
+        document.getElementById('nodeColor2').addEventListener('input', (e) => {
+            colorConfig.nodeColor2 = e.target.value;
+            document.getElementById('themeSelect').value = 'custom';
+            updateStatsPanel();
+            if (pomodoroEnabled) updatePomodoroTheme();
+        });
+
+        document.getElementById('edgeColor1').addEventListener('input', (e) => {
+            colorConfig.edgeColor1 = e.target.value;
+            document.getElementById('themeSelect').value = 'custom';
+        });
+
+        document.getElementById('edgeColor2').addEventListener('input', (e) => {
+            colorConfig.edgeColor2 = e.target.value;
+            document.getElementById('themeSelect').value = 'custom';
+        });
+
+        // Snake mode controls
+        document.getElementById('snakeToggle').addEventListener('click', (e) => {
+            snakeMode = !snakeMode;
+            e.currentTarget.classList.toggle('active');
+
+            // Show/hide snake-specific controls
+            document.getElementById('snakeInstructions').style.display = snakeMode ? 'block' : 'none';
+            document.getElementById('snakeSpeedControl').style.display = snakeMode ? 'block' : 'none';
+            document.getElementById('snakeScoreRow').style.display = snakeMode ? 'flex' : 'none';
+            document.getElementById('snakeHighScoreRow').style.display = snakeMode ? 'flex' : 'none';
+
+            if (snakeMode) {
+                initSnake();
+            } else {
+                document.getElementById('snakeRestartBtn').style.display = 'none';
+            }
+        });
+
+        document.getElementById('snakeSpeedSlider').addEventListener('input', (e) => {
+            snakeSpeed = parseInt(e.target.value);
+            document.getElementById('snakeSpeedValue').textContent = snakeSpeed;
+        });
+
+        document.getElementById('snakeRestartBtn').addEventListener('click', () => {
+            snakeSpeed = 8;
+            document.getElementById('snakeSpeedSlider').value = 8;
+            document.getElementById('snakeSpeedValue').textContent = '8';
+            document.getElementById('snakeRestartBtn').style.display = 'none';
+            initSnake();
+        });
+
+        // Keyboard controls for snake
+        document.addEventListener('keydown', (e) => {
+            if (!snakeMode || snakeGameOver) return;
+
+            // Prevent arrow keys from scrolling
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(e.key)) {
+                e.preventDefault();
+            }
+
+            // Get new direction (can't reverse)
+            let newDir = null;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (snakeDirection.y !== 1) newDir = { x: 0, y: -1 };
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (snakeDirection.y !== -1) newDir = { x: 0, y: 1 };
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (snakeDirection.x !== 1) newDir = { x: -1, y: 0 };
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (snakeDirection.x !== -1) newDir = { x: 1, y: 0 };
+                    break;
+            }
+
+            if (newDir) {
+                snakeNextDirection = newDir;
+            }
+        });
+
+        // Constellation mode controls
+        document.getElementById('constellationToggle').addEventListener('click', (e) => {
+            constellationMode = !constellationMode;
+            e.currentTarget.classList.toggle('active');
+
+            // Show/hide pattern selector
+            document.getElementById('constellationSelect').style.display = constellationMode ? 'block' : 'none';
+
+            if (constellationMode) {
+                generateConstellationTargets();
+            }
+        });
+
+        document.getElementById('constellationSelect').addEventListener('change', (e) => {
+            constellationPattern = e.target.value;
+            if (constellationMode) {
+                generateConstellationTargets();
+            }
+        });
+
+        // Fullscreen button
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Fullscreen request failed:', err);
+                });
+                document.getElementById('fullscreenBtn').textContent = '⛶ Exit';
+            } else {
+                document.exitFullscreen();
+                document.getElementById('fullscreenBtn').textContent = '⛶ Fullscreen';
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.getElementById('fullscreenBtn').textContent = '⛶ Fullscreen';
+            }
+        });
+
+        // Shooting stars toggle
+        document.getElementById('shootingStarsToggle').addEventListener('click', (e) => {
+            shootingStarsEnabled = !shootingStarsEnabled;
+            e.currentTarget.classList.toggle('active');
+        });
+
+        // Text mode controls
+        document.getElementById('textModeToggle').addEventListener('click', (e) => {
+            textMode = !textMode;
+            e.currentTarget.classList.toggle('active');
+
+            document.getElementById('textModeInput').style.display = textMode ? 'block' : 'none';
+
+            if (textMode) {
+                const text = document.getElementById('textModeInput').value;
+                if (text) generateTextTargets(text);
+            } else {
+                textModeTargets = [];
+            }
+        });
+
+        document.getElementById('textModeInput').addEventListener('input', (e) => {
+            textModeText = e.target.value;
+            if (textMode && textModeText) {
+                generateTextTargets(textModeText);
+            } else {
+                textModeTargets = [];
+            }
+        });
+
+        // Background image upload
+        document.getElementById('bgImageBtn').addEventListener('click', () => {
+            document.getElementById('bgImageUpload').click();
+        });
+
+        document.getElementById('bgImageUpload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    bgImage = img;
+                    document.getElementById('bgImageClearBtn').style.display = 'block';
+                    document.getElementById('bgImageOpacityControl').style.display = 'block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('bgImageClearBtn').addEventListener('click', () => {
+            bgImage = null;
+            document.getElementById('bgImageUpload').value = '';
+            document.getElementById('bgImageClearBtn').style.display = 'none';
+            document.getElementById('bgImageOpacityControl').style.display = 'none';
+        });
+
+        document.getElementById('bgImageOpacity').addEventListener('input', (e) => {
+            bgImageOpacity = parseFloat(e.target.value);
+            document.getElementById('bgImageOpacityValue').textContent = bgImageOpacity.toFixed(2);
+        });
+
+        // Click handler for explosions
+        canvas.addEventListener('click', (e) => {
+            createExplosion(e.clientX, e.clientY, 40);
+        });
+
+        // Mouse tracking
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            createExplosion(touch.clientX, touch.clientY, 40);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            mouse.x = touch.clientX;
+            mouse.y = touch.clientY;
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Pomodoro Timer Functions
+        // ========================
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updatePomodoroTheme() {
+            const display = document.getElementById('pomodoroDisplay');
+            const timeEl = document.getElementById('pomodoroTime');
+            const progressEl = document.getElementById('pomodoroProgress');
+            const labelEl = document.getElementById('pomodoroLabel');
+
+            // Use theme colors - nodeColor1 for work, nodeColor2 for break
+            const activeColor = pomodoroIsBreak ? colorConfig.nodeColor2 : colorConfig.nodeColor1;
+
+            display.style.borderColor = activeColor;
+            display.style.boxShadow = `0 0 25px ${activeColor}40`;
+            timeEl.style.color = activeColor;
+            timeEl.style.textShadow = `0 0 15px ${activeColor}99`;
+            progressEl.style.stroke = activeColor;
+            labelEl.style.color = activeColor;
+        }
+
+        function updatePomodoroProgress() {
+            const totalTime = pomodoroIsBreak ? pomodoroBreakDuration : pomodoroWorkDuration;
+            const progress = pomodoroTimeLeft / totalTime;
+            const offset = pomodoroCircumference * (1 - progress);
+            document.getElementById('pomodoroProgress').style.strokeDashoffset = offset;
+        }
+
+        function updatePomodoroDisplay() {
+            document.getElementById('pomodoroTime').textContent = formatTime(pomodoroTimeLeft);
+            document.getElementById('pomodoroLabel').textContent = pomodoroIsBreak ? 'Break Time' : 'Focus Time';
+            document.getElementById('pomodoroSession').textContent = `Session ${pomodoroSessionCount}`;
+
+            updatePomodoroProgress();
+            updatePomodoroTheme();
+        }
+
+        function pomodoroTick() {
+            if (pomodoroTimeLeft > 0) {
+                pomodoroTimeLeft--;
+                updatePomodoroDisplay();
+            } else {
+                // Timer finished - switch modes
+                playPomodoroChime();
+
+                if (pomodoroIsBreak) {
+                    // Break finished, start new work session
+                    pomodoroIsBreak = false;
+                    pomodoroTimeLeft = pomodoroWorkDuration;
+                    pomodoroSessionCount++;
+                } else {
+                    // Work finished, start break
+                    pomodoroIsBreak = true;
+                    pomodoroTimeLeft = pomodoroBreakDuration;
+                }
+                updatePomodoroDisplay();
+            }
+        }
+
+        function playPomodoroChime() {
+            if (!audioContext) {
+                initAudio();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // Play a pleasant chime sound
+            const now = audioContext.currentTime;
+
+            // Three ascending notes for work done, descending for break done
+            const notes = pomodoroIsBreak ? [523.25, 659.25, 783.99] : [783.99, 659.25, 523.25];
+
+            notes.forEach((freq, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+
+                gain.gain.setValueAtTime(0, now + i * 0.15);
+                gain.gain.linearRampToValueAtTime(0.3, now + i * 0.15 + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.4);
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                osc.start(now + i * 0.15);
+                osc.stop(now + i * 0.15 + 0.5);
+            });
+        }
+
+        function enterFocusMode() {
+            document.getElementById('pomodoroDisplay').classList.add('focus-mode');
+            document.getElementById('controlPanel').classList.add('hidden-for-focus');
+            document.querySelector('.stats-panel').classList.add('hidden-for-focus');
+            document.getElementById('collapseBtn').classList.add('hidden-for-focus');
+            document.getElementById('fullscreenBtn').classList.add('hidden-for-focus');
+        }
+
+        function exitFocusMode() {
+            document.getElementById('pomodoroDisplay').classList.remove('focus-mode');
+            document.getElementById('controlPanel').classList.remove('hidden-for-focus');
+            document.querySelector('.stats-panel').classList.remove('hidden-for-focus');
+            document.getElementById('collapseBtn').classList.remove('hidden-for-focus');
+            document.getElementById('fullscreenBtn').classList.remove('hidden-for-focus');
+        }
+
+        function startPomodoro() {
+            pomodoroRunning = true;
+            pomodoroInterval = setInterval(pomodoroTick, 1000);
+            document.getElementById('pomodoroStartBtn').textContent = '⏸ PAUSE';
+            document.getElementById('pomodoroResetBtn').style.display = 'block';
+            enterFocusMode();
+        }
+
+        function pausePomodoro() {
+            pomodoroRunning = false;
+            clearInterval(pomodoroInterval);
+            pomodoroInterval = null;
+            document.getElementById('pomodoroStartBtn').textContent = '▶ RESUME';
+            exitFocusMode();
+        }
+
+        function resetPomodoro() {
+            pausePomodoro();
+            pomodoroIsBreak = false;
+            pomodoroTimeLeft = pomodoroWorkDuration;
+            pomodoroSessionCount = 1;
+            updatePomodoroDisplay();
+            document.getElementById('pomodoroStartBtn').textContent = '▶ START';
+            document.getElementById('pomodoroResetBtn').style.display = 'none';
+            exitFocusMode();
+        }
+
+        // Pomodoro event handlers
+        document.getElementById('pomodoroToggle').addEventListener('click', (e) => {
+            pomodoroEnabled = !pomodoroEnabled;
+            e.currentTarget.classList.toggle('active');
+
+            document.getElementById('pomodoroControls').style.display = pomodoroEnabled ? 'block' : 'none';
+            document.getElementById('pomodoroDisplay').classList.toggle('active', pomodoroEnabled);
+
+            if (!pomodoroEnabled) {
+                resetPomodoro();
+            } else {
+                updatePomodoroDisplay();
+            }
+        });
+
+        document.getElementById('workDuration').addEventListener('input', (e) => {
+            const mins = parseInt(e.target.value);
+            document.getElementById('workDurationValue').textContent = mins;
+            pomodoroWorkDuration = mins * 60;
+            if (!pomodoroRunning && !pomodoroIsBreak) {
+                pomodoroTimeLeft = pomodoroWorkDuration;
+                updatePomodoroDisplay();
+            }
+        });
+
+        document.getElementById('breakDuration').addEventListener('input', (e) => {
+            const mins = parseInt(e.target.value);
+            document.getElementById('breakDurationValue').textContent = mins;
+            pomodoroBreakDuration = mins * 60;
+            if (!pomodoroRunning && pomodoroIsBreak) {
+                pomodoroTimeLeft = pomodoroBreakDuration;
+                updatePomodoroDisplay();
+            }
+        });
+
+        document.getElementById('pomodoroStartBtn').addEventListener('click', () => {
+            if (pomodoroRunning) {
+                pausePomodoro();
+            } else {
+                startPomodoro();
+            }
+        });
+
+        document.getElementById('pomodoroResetBtn').addEventListener('click', resetPomodoro);
+
+        // Click on timer display to pause when in focus mode
+        document.getElementById('pomodoroDisplay').addEventListener('click', (e) => {
+            if (pomodoroRunning && document.getElementById('pomodoroDisplay').classList.contains('focus-mode')) {
+                pausePomodoro();
+            }
+        });
+
+        // Accordion section toggle
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                header.parentElement.classList.toggle('open');
+            });
+        });
+
+        // Initialize and start
+        initNodes();
+
+        // Dismiss loading screen after a short delay
+        setTimeout(() => {
+            document.getElementById('loadingScreen').classList.add('hidden');
+        }, 1500);
+
+        animate();
+    </script>
+</body>
+</html>
