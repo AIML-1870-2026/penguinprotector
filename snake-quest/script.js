@@ -68,6 +68,8 @@ const ACHIEVEMENTS = [
 const DASH_COOLDOWN = 10000;
 const DASH_DISTANCE = 3;
 const POWER_UP_SPAWN_INTERVAL = 15000;
+const AI_RESPAWN_DELAY = 3000;
+const AI_COLORS = { primary: '#ff4400', secondary: '#ffaa00' };
 const LEADERBOARD_KEY = 'snakeQuestLeaderboard';
 const ACHIEVEMENTS_KEY = 'snakeQuestAchievements';
 
@@ -101,7 +103,13 @@ let state = {
     startTime: 0,
     powerUpsCollected: 0,
     noPowerUpsUsed: true,
-    hueShift: 0
+    hueShift: 0,
+    aiSnake: [],
+    aiPrevSnake: [],
+    aiDirection: { x: 1, y: 0 },
+    aiAlive: false,
+    aiRespawnTimer: 0,
+    aiScore: 0
 };
 
 let leaderboard = [];
@@ -124,7 +132,7 @@ function cacheDom() {
         'volume-slider', 'mute-btn', 'game-over', 'final-score', 'final-stage',
         'final-length', 'highscore-entry', 'new-score', 'player-name', 'submit-score',
         'leaderboard-view', 'leaderboard-list', 'close-leaderboard',
-        'stage-transition', 'stage-text', 'achievement-container'
+        'stage-transition', 'stage-text', 'achievement-container', 'ai-score-display'
     ];
     ids.forEach(id => els[id] = $(id));
 }
@@ -138,6 +146,9 @@ function randomInt(min, max) {
 
 function isOccupied(x, y) {
     for (const seg of state.snake) {
+        if (seg.x === x && seg.y === y) return true;
+    }
+    for (const seg of state.aiSnake) {
         if (seg.x === x && seg.y === y) return true;
     }
     if (state.food && state.food.x === x && state.food.y === y) return true;
@@ -239,6 +250,53 @@ function initSnake() {
     state.nextDirection = { x: 1, y: 0 };
 }
 
+function initAISnake() {
+    state.aiSnake = [
+        { x: 5, y: GRID_SIZE - 5 },
+        { x: 4, y: GRID_SIZE - 5 },
+        { x: 3, y: GRID_SIZE - 5 }
+    ];
+    state.aiPrevSnake = state.aiSnake.map(s => ({ x: s.x, y: s.y }));
+    state.aiDirection = { x: 1, y: 0 };
+    state.aiAlive = true;
+    state.aiRespawnTimer = 0;
+    state.aiScore = 0;
+}
+
+function respawnAI() {
+    const playerHead = state.snake.length > 0 ? state.snake[0] : { x: -1, y: -1 };
+    let bestPos = null;
+    let bestDist = 0;
+
+    for (let attempt = 0; attempt < 100; attempt++) {
+        const x = randomInt(2, GRID_SIZE - 3);
+        const y = randomInt(2, GRID_SIZE - 3);
+        if (isOccupied(x, y) || isOccupied(x - 1, y) || isOccupied(x - 2, y)) continue;
+        const dist = Math.abs(x - playerHead.x) + Math.abs(y - playerHead.y);
+        if (dist > bestDist) {
+            bestDist = dist;
+            bestPos = { x, y };
+        }
+    }
+
+    if (bestPos) {
+        state.aiSnake = [
+            { x: bestPos.x, y: bestPos.y },
+            { x: bestPos.x - 1, y: bestPos.y },
+            { x: bestPos.x - 2, y: bestPos.y }
+        ];
+    } else {
+        state.aiSnake = [
+            { x: 3, y: 3 },
+            { x: 2, y: 3 },
+            { x: 1, y: 3 }
+        ];
+    }
+    state.aiPrevSnake = state.aiSnake.map(s => ({ x: s.x, y: s.y }));
+    state.aiDirection = { x: 1, y: 0 };
+    state.aiAlive = true;
+}
+
 function moveSnake() {
     state.direction = { ...state.nextDirection };
     const head = state.snake[0];
@@ -273,6 +331,16 @@ function moveSnake() {
         if (state.snake[i].x === newX && state.snake[i].y === newY) {
             endGame();
             return;
+        }
+    }
+
+    // AI snake collision (player dies if hitting AI body)
+    if (!isGhost) {
+        for (const seg of state.aiSnake) {
+            if (seg.x === newX && seg.y === newY) {
+                endGame();
+                return;
+            }
         }
     }
 
@@ -322,6 +390,133 @@ function performDash() {
 
     state.dashReady = false;
     state.dashCooldownLeft = DASH_COOLDOWN;
+}
+
+// ==========================================
+// AI LOGIC
+// ==========================================
+function isCellBlockedForAI(x, y) {
+    for (const obs of state.obstacles) {
+        if (obs.x === x && obs.y === y) return true;
+    }
+    for (const seg of state.snake) {
+        if (seg.x === x && seg.y === y) return true;
+    }
+    for (let i = 1; i < state.aiSnake.length; i++) {
+        if (state.aiSnake[i].x === x && state.aiSnake[i].y === y) return true;
+    }
+    return false;
+}
+
+const AI_DIRS = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+
+function aiDecideDirection() {
+    if (!state.aiAlive || !state.food || state.aiSnake.length === 0) return;
+
+    const head = state.aiSnake[0];
+    const target = state.food;
+    const visited = new Set();
+    const queue = [];
+    visited.add(`${head.x},${head.y}`);
+
+    // Seed BFS with valid first steps (no reversing)
+    for (const dir of AI_DIRS) {
+        if (dir.x === -state.aiDirection.x && dir.y === -state.aiDirection.y) continue;
+        const nx = head.x + dir.x;
+        const ny = head.y + dir.y;
+        if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+        const key = `${nx},${ny}`;
+        if (visited.has(key)) continue;
+        if (isCellBlockedForAI(nx, ny)) continue;
+        visited.add(key);
+        if (nx === target.x && ny === target.y) {
+            state.aiDirection = dir;
+            return;
+        }
+        queue.push({ x: nx, y: ny, firstDir: dir });
+    }
+
+    // Continue BFS
+    while (queue.length > 0) {
+        const current = queue.shift();
+        for (const dir of AI_DIRS) {
+            const nx = current.x + dir.x;
+            const ny = current.y + dir.y;
+            if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+            const key = `${nx},${ny}`;
+            if (visited.has(key)) continue;
+            if (isCellBlockedForAI(nx, ny)) continue;
+            visited.add(key);
+            if (nx === target.x && ny === target.y) {
+                state.aiDirection = current.firstDir;
+                return;
+            }
+            queue.push({ x: nx, y: ny, firstDir: current.firstDir });
+        }
+    }
+
+    // No path to food - pick any safe direction
+    for (const dir of AI_DIRS) {
+        if (dir.x === -state.aiDirection.x && dir.y === -state.aiDirection.y) continue;
+        const nx = head.x + dir.x;
+        const ny = head.y + dir.y;
+        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && !isCellBlockedForAI(nx, ny)) {
+            state.aiDirection = dir;
+            return;
+        }
+    }
+    // No safe direction - keep current (will die)
+}
+
+function moveAISnake() {
+    if (!state.aiAlive || state.aiSnake.length === 0) return;
+
+    const head = state.aiSnake[0];
+    const newX = head.x + state.aiDirection.x;
+    const newY = head.y + state.aiDirection.y;
+
+    // Wall collision
+    if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) {
+        killAI();
+        return;
+    }
+
+    // Obstacle collision
+    for (const obs of state.obstacles) {
+        if (obs.x === newX && obs.y === newY) { killAI(); return; }
+    }
+
+    // Player snake collision
+    for (const seg of state.snake) {
+        if (seg.x === newX && seg.y === newY) { killAI(); return; }
+    }
+
+    // Self collision
+    for (let i = 0; i < state.aiSnake.length - 1; i++) {
+        if (state.aiSnake[i].x === newX && state.aiSnake[i].y === newY) { killAI(); return; }
+    }
+
+    state.aiSnake.unshift({ x: newX, y: newY });
+
+    // Check food
+    if (state.food && newX === state.food.x && newY === state.food.y) {
+        state.aiScore += BASE_SCORE_PER_FOOD;
+        createParticleBurst(state.food.x, state.food.y, AI_COLORS.primary, 25);
+        spawnFood();
+        updateHUD();
+    } else {
+        state.aiSnake.pop();
+    }
+}
+
+function killAI() {
+    state.aiAlive = false;
+    state.aiRespawnTimer = AI_RESPAWN_DELAY;
+    if (state.aiSnake.length > 0) {
+        createParticleBurst(state.aiSnake[0].x, state.aiSnake[0].y, AI_COLORS.primary, 20);
+    }
+    state.aiSnake = [];
+    state.aiPrevSnake = [];
 }
 
 // ==========================================
@@ -434,10 +629,15 @@ function spawnObstacles() {
     while (state.obstacles.length < target) {
         const pos = findEmptyCell();
         if (!pos) break;
-        // Don't spawn too close to snake head
+        // Don't spawn too close to either snake head
         const head = state.snake[0];
         const dist = Math.abs(pos.x - head.x) + Math.abs(pos.y - head.y);
         if (dist < 4) continue;
+        if (state.aiSnake.length > 0) {
+            const aiHead = state.aiSnake[0];
+            const aiDist = Math.abs(pos.x - aiHead.x) + Math.abs(pos.y - aiHead.y);
+            if (aiDist < 4) continue;
+        }
         state.obstacles.push(pos);
     }
 }
@@ -503,19 +703,16 @@ function drawGrid(timestamp) {
     ctx.stroke();
 }
 
-function drawSnake() {
-    const stageData = STAGES[state.stage];
-    const isGhost = !!state.activePowerUps.invincible;
-    const hasSpeedBoost = !!state.activePowerUps.speed;
-    const len = state.snake.length;
+function drawSnakeGeneric(snake, prevSnake, direction, colors, options = {}) {
+    const { isGhost = false, hasSpeedBoost = false, useRainbow = false } = options;
+    const len = snake.length;
+    if (len === 0) return;
 
-    // Interpolation factor: 0 = just ticked (at prev pos), 1 = about to tick (at curr pos)
     const speed = getCurrentSpeed();
     const lerpT = Math.min(state.tickAccumulator / speed, 1);
 
-    // Cache stage color RGB once (not per segment)
-    const rgb1 = hexToRgb(stageData.primary);
-    const rgb2 = hexToRgb(stageData.secondary);
+    const rgb1 = hexToRgb(colors.primary);
+    const rgb2 = hexToRgb(colors.secondary);
     const ghostAlpha = isGhost ? 0.4 + Math.sin(Date.now() * 0.01) * 0.2 : 1;
 
     const padding = 1;
@@ -525,13 +722,11 @@ function drawSnake() {
     ctx.globalAlpha = ghostAlpha;
 
     for (let i = len - 1; i >= 0; i--) {
-        const seg = state.snake[i];
-        const prev = state.prevSnake[i] || seg;
+        const seg = snake[i];
+        const prev = prevSnake[i] || seg;
 
-        // Interpolated pixel position
         let dx = seg.x - prev.x;
         let dy = seg.y - prev.y;
-        // If distance > 1 cell (wrapping), snap instead of interpolating across grid
         if (Math.abs(dx) > 1) dx = 0;
         if (Math.abs(dy) > 1) dy = 0;
         const x = (prev.x + dx * lerpT) * cellSize;
@@ -539,7 +734,7 @@ function drawSnake() {
 
         const t = i / len;
         let color;
-        if (state.stage === 3) {
+        if (useRainbow) {
             const hue = (state.hueShift + i * 12) % 360;
             color = `hsl(${hue}, 100%, 60%)`;
         } else {
@@ -551,7 +746,6 @@ function drawSnake() {
 
         ctx.fillStyle = color;
 
-        // Only apply expensive shadowBlur on the head
         if (i === 0) {
             ctx.shadowColor = color;
             ctx.shadowBlur = 12;
@@ -562,22 +756,19 @@ function drawSnake() {
         ctx.roundRect(x + padding, y + padding, size, size, radius);
         ctx.fill();
 
-        // Turn off shadow after head so body draws without it
         if (i === 0) {
             ctx.shadowBlur = 0;
-
-            // Head eyes
             ctx.fillStyle = '#000';
             const eyeSize = cellSize * 0.12;
             let ex1, ey1, ex2, ey2;
 
-            if (state.direction.x === 1) {
+            if (direction.x === 1) {
                 ex1 = x + cellSize * 0.65; ey1 = y + cellSize * 0.3;
                 ex2 = x + cellSize * 0.65; ey2 = y + cellSize * 0.7;
-            } else if (state.direction.x === -1) {
+            } else if (direction.x === -1) {
                 ex1 = x + cellSize * 0.35; ey1 = y + cellSize * 0.3;
                 ex2 = x + cellSize * 0.35; ey2 = y + cellSize * 0.7;
-            } else if (state.direction.y === -1) {
+            } else if (direction.y === -1) {
                 ex1 = x + cellSize * 0.3; ey1 = y + cellSize * 0.35;
                 ex2 = x + cellSize * 0.7; ey2 = y + cellSize * 0.35;
             } else {
@@ -596,11 +787,27 @@ function drawSnake() {
 
     ctx.restore();
 
-    // Speed boost trail
     if (hasSpeedBoost && len > 1) {
-        const tail = state.snake[len - 1];
-        createParticleBurst(tail.x, tail.y, stageData.primary, 1);
+        const tail = snake[len - 1];
+        createParticleBurst(tail.x, tail.y, colors.primary, 1);
     }
+}
+
+function drawSnake() {
+    const stageData = STAGES[state.stage];
+    drawSnakeGeneric(state.snake, state.prevSnake, state.direction,
+        { primary: stageData.primary, secondary: stageData.secondary },
+        {
+            isGhost: !!state.activePowerUps.invincible,
+            hasSpeedBoost: !!state.activePowerUps.speed,
+            useRainbow: state.stage === 3
+        }
+    );
+}
+
+function drawAISnake() {
+    if (!state.aiAlive || state.aiSnake.length === 0) return;
+    drawSnakeGeneric(state.aiSnake, state.aiPrevSnake, state.aiDirection, AI_COLORS);
 }
 
 function drawFood() {
@@ -714,8 +921,24 @@ function render(timestamp) {
     drawObstacles();
     drawFood();
     drawPowerUp();
+    drawAISnake();
     drawSnake();
     drawParticles();
+
+    // Stage-themed border
+    const stageData = STAGES[state.stage];
+    const borderWidth = 2;
+    ctx.save();
+    ctx.strokeStyle = stageData.primary;
+    ctx.lineWidth = borderWidth;
+    ctx.shadowColor = stageData.primary;
+    ctx.shadowBlur = 12;
+    ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvasW - borderWidth, canvasH - borderWidth);
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = stageData.secondary;
+    ctx.globalAlpha = 0.4;
+    ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvasW - borderWidth, canvasH - borderWidth);
+    ctx.restore();
 }
 
 // ==========================================
@@ -725,6 +948,9 @@ function updateHUD() {
     els['score-display'].textContent = `SCORE: ${state.score}`;
     const best = leaderboard.length > 0 ? leaderboard[0].score : 0;
     els['highscore-display'].textContent = `BEST: ${best}`;
+    if (els['ai-score-display']) {
+        els['ai-score-display'].textContent = `AI: ${state.aiScore}`;
+    }
 }
 
 function updateDashBar() {
@@ -1190,11 +1416,18 @@ function resetGame() {
     state.powerUpsCollected = 0;
     state.noPowerUpsUsed = true;
     state.hueShift = 0;
+    state.aiSnake = [];
+    state.aiPrevSnake = [];
+    state.aiDirection = { x: 1, y: 0 };
+    state.aiAlive = false;
+    state.aiRespawnTimer = 0;
+    state.aiScore = 0;
 }
 
 function startGame() {
     resetGame();
     initSnake();
+    initAISnake();
     spawnFood();
     spawnObstacles();
 
@@ -1294,6 +1527,17 @@ function gameTick() {
         state.prevSnake.unshift({ x: state.prevSnake[0].x, y: state.prevSnake[0].y });
     }
     applyMagnet();
+
+    // AI movement
+    if (state.aiAlive) {
+        state.aiPrevSnake = state.aiSnake.map(s => ({ x: s.x, y: s.y }));
+        aiDecideDirection();
+        moveAISnake();
+        // If AI snake grew, align prevSnake
+        while (state.aiPrevSnake.length < state.aiSnake.length) {
+            state.aiPrevSnake.unshift({ x: state.aiPrevSnake[0].x, y: state.aiPrevSnake[0].y });
+        }
+    }
 }
 
 function gameLoop(timestamp) {
@@ -1334,6 +1578,14 @@ function gameLoop(timestamp) {
         // Stage 4 hue cycling
         if (state.stage === 3) {
             state.hueShift = (state.hueShift + 2) % 360;
+        }
+
+        // AI respawn timer
+        if (!state.aiAlive) {
+            state.aiRespawnTimer -= dt;
+            if (state.aiRespawnTimer <= 0) {
+                respawnAI();
+            }
         }
 
         // Periodic achievement check

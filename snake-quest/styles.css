@@ -95,6 +95,15 @@ body {
     letter-spacing: 3px;
 }
 
+#ai-score-display {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ff4400;
+    text-shadow: 0 0 8px rgba(255, 68, 0, 0.5), 0 0 16px rgba(255, 68, 0, 0.3);
+    letter-spacing: 2px;
+    margin-top: 2px;
+}
+
 #power-up-indicators {
     display: flex;
     gap: 8px;
