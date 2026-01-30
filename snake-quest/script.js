@@ -80,6 +80,7 @@ let canvasOffset = { x: 0, y: 0 };
 
 let state = {
     snake: [],
+    prevSnake: [],
     direction: { x: 1, y: 0 },
     nextDirection: { x: 1, y: 0 },
     food: null,
@@ -208,8 +209,6 @@ class Particle {
         ctx.save();
         ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fill();
@@ -235,6 +234,7 @@ function initSnake() {
         { x: mid - 1, y: mid },
         { x: mid - 2, y: mid }
     ];
+    state.prevSnake = state.snake.map(s => ({ x: s.x, y: s.y }));
     state.direction = { x: 1, y: 0 };
     state.nextDirection = { x: 1, y: 0 };
 }
@@ -315,6 +315,10 @@ function performDash() {
     const head = state.snake[0];
     createParticleBurst(head.x, head.y, STAGES[state.stage].primary, 10);
     playSfx('dash');
+
+    // Snap interpolation after dash (instant teleport, no lerp)
+    state.prevSnake = state.snake.map(s => ({ x: s.x, y: s.y }));
+    state.tickAccumulator = 0;
 
     state.dashReady = false;
     state.dashCooldownLeft = DASH_COOLDOWN;
@@ -482,70 +486,89 @@ function drawGrid(timestamp) {
     const pulse = Math.sin(timestamp * 0.003) * 0.03;
     const alpha = stageData.gridAlpha + pulse;
     const rgb = hexToRgb(stageData.primary);
+    const edge = GRID_SIZE * cellSize;
 
     ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
     ctx.lineWidth = 0.5;
 
+    // Batch all grid lines into a single path for performance
+    ctx.beginPath();
     for (let i = 0; i <= GRID_SIZE; i++) {
         const pos = i * cellSize;
-        ctx.beginPath();
         ctx.moveTo(pos, 0);
-        ctx.lineTo(pos, GRID_SIZE * cellSize);
-        ctx.stroke();
-        ctx.beginPath();
+        ctx.lineTo(pos, edge);
         ctx.moveTo(0, pos);
-        ctx.lineTo(GRID_SIZE * cellSize, pos);
-        ctx.stroke();
+        ctx.lineTo(edge, pos);
     }
+    ctx.stroke();
 }
 
 function drawSnake() {
     const stageData = STAGES[state.stage];
     const isGhost = !!state.activePowerUps.invincible;
     const hasSpeedBoost = !!state.activePowerUps.speed;
+    const len = state.snake.length;
 
-    for (let i = state.snake.length - 1; i >= 0; i--) {
+    // Interpolation factor: 0 = just ticked (at prev pos), 1 = about to tick (at curr pos)
+    const speed = getCurrentSpeed();
+    const lerpT = Math.min(state.tickAccumulator / speed, 1);
+
+    // Cache stage color RGB once (not per segment)
+    const rgb1 = hexToRgb(stageData.primary);
+    const rgb2 = hexToRgb(stageData.secondary);
+    const ghostAlpha = isGhost ? 0.4 + Math.sin(Date.now() * 0.01) * 0.2 : 1;
+
+    const padding = 1;
+    const size = cellSize - padding * 2;
+
+    ctx.save();
+    ctx.globalAlpha = ghostAlpha;
+
+    for (let i = len - 1; i >= 0; i--) {
         const seg = state.snake[i];
-        const x = seg.x * cellSize;
-        const y = seg.y * cellSize;
-        const t = i / state.snake.length;
+        const prev = state.prevSnake[i] || seg;
 
+        // Interpolated pixel position
+        let dx = seg.x - prev.x;
+        let dy = seg.y - prev.y;
+        // If distance > 1 cell (wrapping), snap instead of interpolating across grid
+        if (Math.abs(dx) > 1) dx = 0;
+        if (Math.abs(dy) > 1) dy = 0;
+        const x = (prev.x + dx * lerpT) * cellSize;
+        const y = (prev.y + dy * lerpT) * cellSize;
+
+        const t = i / len;
         let color;
         if (state.stage === 3) {
-            // Stage 4: rainbow cycling
             const hue = (state.hueShift + i * 12) % 360;
             color = `hsl(${hue}, 100%, 60%)`;
         } else {
-            const rgb1 = hexToRgb(stageData.primary);
-            const rgb2 = hexToRgb(stageData.secondary);
             const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * t);
             const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * t);
             const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * t);
             color = `rgb(${r}, ${g}, ${b})`;
         }
 
-        ctx.save();
-        ctx.globalAlpha = isGhost ? 0.4 + Math.sin(Date.now() * 0.01) * 0.2 : 1;
-
-        // Glow
-        ctx.shadowColor = color;
-        ctx.shadowBlur = i === 0 ? 15 : 8;
         ctx.fillStyle = color;
 
-        const padding = 1;
-        const size = cellSize - padding * 2;
-        const radius = i === 0 ? size * 0.35 : size * 0.25;
+        // Only apply expensive shadowBlur on the head
+        if (i === 0) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+        }
 
+        const radius = i === 0 ? size * 0.35 : size * 0.25;
         ctx.beginPath();
         ctx.roundRect(x + padding, y + padding, size, size, radius);
         ctx.fill();
 
-        // Head eyes
+        // Turn off shadow after head so body draws without it
         if (i === 0) {
             ctx.shadowBlur = 0;
+
+            // Head eyes
             ctx.fillStyle = '#000';
             const eyeSize = cellSize * 0.12;
-            const eyeOffset = cellSize * 0.22;
             let ex1, ey1, ex2, ey2;
 
             if (state.direction.x === 1) {
@@ -569,13 +592,13 @@ function drawSnake() {
             ctx.arc(ex2, ey2, eyeSize, 0, Math.PI * 2);
             ctx.fill();
         }
-
-        ctx.restore();
     }
 
+    ctx.restore();
+
     // Speed boost trail
-    if (hasSpeedBoost && state.snake.length > 1) {
-        const tail = state.snake[state.snake.length - 1];
+    if (hasSpeedBoost && len > 1) {
+        const tail = state.snake[len - 1];
         createParticleBurst(tail.x, tail.y, stageData.primary, 1);
     }
 }
@@ -1109,6 +1132,8 @@ function hideAllOverlays() {
 }
 
 function showStartScreen() {
+    state.gameOver = false;
+    state.running = false;
     renderLeaderboard('start-leaderboard-list');
     showOverlay('start-screen');
     els['hud'].classList.add('hidden');
@@ -1143,6 +1168,7 @@ function showLeaderboardView() {
 // ==========================================
 function resetGame() {
     state.snake = [];
+    state.prevSnake = [];
     state.direction = { x: 1, y: 0 };
     state.nextDirection = { x: 1, y: 0 };
     state.food = null;
@@ -1258,7 +1284,15 @@ function handleKeyDown(e) {
 // GAME LOOP
 // ==========================================
 function gameTick() {
+    // Save previous positions for smooth interpolation
+    state.prevSnake = state.snake.map(s => ({ x: s.x, y: s.y }));
+    const prevLen = state.snake.length;
     moveSnake();
+    if (state.gameOver) return;
+    // If snake grew (ate food), align prevSnake by duplicating old head position
+    while (state.prevSnake.length < state.snake.length) {
+        state.prevSnake.unshift({ x: state.prevSnake[0].x, y: state.prevSnake[0].y });
+    }
     applyMagnet();
 }
 
