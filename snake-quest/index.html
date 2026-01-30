@@ -38,6 +38,10 @@
             <span>SPACE: Pause</span>
             <span>E / SHIFT: Dash</span>
         </div>
+        <div class="start-menu-buttons">
+            <button id="level-editor-btn" class="neon-btn">LEVEL EDITOR</button>
+            <button id="my-levels-btn" class="neon-btn">MY LEVELS</button>
+        </div>
         <div id="start-leaderboard">
             <h3>TOP SCORES</h3>
             <div id="start-leaderboard-list"></div>
@@ -83,6 +87,58 @@
         <h2 class="title-glow">LEADERBOARD</h2>
         <div id="leaderboard-list"></div>
         <button id="close-leaderboard" class="neon-btn">CLOSE</button>
+    </div>
+
+    <!-- Level Editor -->
+    <div id="editor-screen" class="overlay hidden">
+        <div id="editor-header">
+            <h2 class="title-glow">LEVEL EDITOR</h2>
+            <input type="text" id="level-name-input" placeholder="LEVEL NAME" maxlength="20" autocomplete="off" spellcheck="false">
+        </div>
+        <div id="editor-tools">
+            <button class="neon-btn small tool-btn active" data-tool="obstacle">OBSTACLE</button>
+            <button class="neon-btn small tool-btn" data-tool="wall">WALL</button>
+            <button class="neon-btn small tool-btn" data-tool="snake">SNAKE START</button>
+            <button class="neon-btn small tool-btn" data-tool="eraser">ERASER</button>
+        </div>
+        <div id="editor-body">
+            <canvas id="editorCanvas"></canvas>
+            <div id="editor-settings">
+                <div class="setting-row">
+                    <label>SPEED</label>
+                    <input type="range" id="editor-speed" min="60" max="200" value="150">
+                    <span id="editor-speed-val">150ms</span>
+                </div>
+                <div class="setting-row">
+                    <label>PRIMARY</label>
+                    <input type="color" id="editor-primary" value="#00f3ff">
+                </div>
+                <div class="setting-row">
+                    <label>SECONDARY</label>
+                    <input type="color" id="editor-secondary" value="#b300ff">
+                </div>
+                <div class="setting-row">
+                    <label>AI SNAKE</label>
+                    <label class="neon-toggle">
+                        <input type="checkbox" id="editor-ai-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div id="editor-actions">
+            <button id="editor-save-btn" class="neon-btn">SAVE</button>
+            <button id="editor-test-btn" class="neon-btn">TEST PLAY</button>
+            <button id="editor-clear-btn" class="neon-btn small">CLEAR</button>
+            <button id="editor-back-btn" class="neon-btn small">BACK</button>
+        </div>
+    </div>
+
+    <!-- My Levels -->
+    <div id="my-levels-view" class="overlay hidden">
+        <h2 class="title-glow">MY LEVELS</h2>
+        <div id="my-levels-list"></div>
+        <button id="close-my-levels" class="neon-btn">BACK</button>
     </div>
 
     <!-- Stage Transition -->

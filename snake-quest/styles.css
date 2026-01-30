@@ -536,6 +536,259 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ==========================================
+   START MENU BUTTONS
+   ========================================== */
+.start-menu-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+/* ==========================================
+   LEVEL EDITOR
+   ========================================== */
+#editor-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#level-name-input {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    text-align: center;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    outline: none;
+    width: 240px;
+    box-shadow: 0 0 8px rgba(0, 243, 255, 0.15), inset 0 0 8px rgba(0, 243, 255, 0.08);
+}
+
+#level-name-input::placeholder {
+    color: rgba(0, 243, 255, 0.3);
+    font-size: 12px;
+}
+
+#level-name-input:focus {
+    box-shadow: 0 0 12px rgba(0, 243, 255, 0.3), inset 0 0 12px rgba(0, 243, 255, 0.15);
+}
+
+#editor-tools {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.tool-btn.active {
+    background: rgba(0, 243, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.5), inset 0 0 15px rgba(0, 243, 255, 0.3);
+}
+
+#editor-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+#editorCanvas {
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 12px var(--primary), inset 0 0 8px var(--primary);
+    cursor: crosshair;
+}
+
+#editor-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px;
+    border: 1px solid rgba(0, 243, 255, 0.15);
+    border-radius: 4px;
+    min-width: 180px;
+}
+
+#editor-settings .setting-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+}
+
+#editor-settings label {
+    min-width: 70px;
+}
+
+#editor-speed-val {
+    color: var(--primary);
+    font-size: 11px;
+    min-width: 40px;
+}
+
+input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 36px;
+    height: 24px;
+    border: 1px solid rgba(0, 243, 255, 0.3);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    padding: 1px;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+/* Neon toggle switch */
+.neon-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    min-width: 40px;
+}
+
+.neon-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background: #555;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.neon-toggle input:checked + .toggle-slider {
+    background: rgba(0, 243, 255, 0.2);
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
+}
+
+.neon-toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+    background: var(--primary);
+    box-shadow: 0 0 6px var(--primary);
+}
+
+#editor-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Editor notification */
+.editor-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 10, 30, 0.95);
+    border: 1px solid var(--primary);
+    padding: 14px 32px;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+    border-radius: 4px;
+    z-index: 300;
+    animation: editor-notify 1.5s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes editor-notify {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ==========================================
+   MY LEVELS
+   ========================================== */
+#my-levels-list {
+    max-height: 400px;
+    overflow-y: auto;
+    width: 400px;
+    max-width: 90vw;
+}
+
+.level-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border: 1px solid rgba(0, 243, 255, 0.15);
+    margin-bottom: 8px;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+}
+
+.level-entry:hover {
+    border-color: rgba(0, 243, 255, 0.4);
+}
+
+.level-entry-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.level-entry-name {
+    color: var(--primary);
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 2px;
+}
+
+.level-entry-meta {
+    color: var(--text-dim);
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.level-entry-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ==========================================
    RESPONSIVE
    ========================================== */
 @media (max-width: 600px) {
@@ -569,5 +822,34 @@ input[type="range"]::-moz-range-thumb {
 
     #score-display {
         font-size: 16px;
+    }
+
+    .start-menu-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #editor-body {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #editor-settings {
+        min-width: unset;
+        width: 90vw;
+        max-width: 320px;
+    }
+
+    #editor-tools {
+        gap: 4px;
+    }
+
+    .tool-btn {
+        font-size: 10px !important;
+        padding: 4px 10px !important;
+    }
+
+    #my-levels-list {
+        width: 90vw;
     }
 }

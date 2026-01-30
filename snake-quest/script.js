@@ -72,6 +72,8 @@ const AI_RESPAWN_DELAY = 3000;
 const AI_COLORS = { primary: '#ff4400', secondary: '#ffaa00' };
 const LEADERBOARD_KEY = 'snakeQuestLeaderboard';
 const ACHIEVEMENTS_KEY = 'snakeQuestAchievements';
+const CUSTOM_LEVELS_KEY = 'snakeQuestCustomLevels';
+const WALL_COLOR = '#00ccaa';
 
 // ==========================================
 // GAME STATE
@@ -87,6 +89,7 @@ let state = {
     nextDirection: { x: 1, y: 0 },
     food: null,
     obstacles: [],
+    walls: [],
     powerUpOnField: null,
     activePowerUps: {},
     particles: [],
@@ -118,6 +121,25 @@ let musicEngine = null;
 let volume = 0.5;
 let muted = false;
 
+let customLevels = [];
+let playingCustomLevel = null;
+let editorCanvas, editorCtx, editorCellSize;
+let editorState = {
+    tool: 'obstacle',
+    obstacles: [],
+    walls: [],
+    snakeStart: null,
+    isDrawing: false,
+    settings: {
+        speed: 150,
+        primary: '#00f3ff',
+        secondary: '#b300ff',
+        aiEnabled: true,
+        name: ''
+    },
+    editingLevelId: null
+};
+
 // ==========================================
 // DOM ELEMENTS
 // ==========================================
@@ -132,7 +154,12 @@ function cacheDom() {
         'volume-slider', 'mute-btn', 'game-over', 'final-score', 'final-stage',
         'final-length', 'highscore-entry', 'new-score', 'player-name', 'submit-score',
         'leaderboard-view', 'leaderboard-list', 'close-leaderboard',
-        'stage-transition', 'stage-text', 'achievement-container', 'ai-score-display'
+        'stage-transition', 'stage-text', 'achievement-container', 'ai-score-display',
+        'editor-screen', 'editorCanvas', 'editor-speed', 'editor-speed-val',
+        'editor-primary', 'editor-secondary', 'editor-ai-toggle',
+        'level-name-input', 'editor-save-btn', 'editor-test-btn',
+        'editor-clear-btn', 'editor-back-btn', 'level-editor-btn',
+        'my-levels-btn', 'my-levels-view', 'my-levels-list', 'close-my-levels'
     ];
     ids.forEach(id => els[id] = $(id));
 }
@@ -154,6 +181,9 @@ function isOccupied(x, y) {
     if (state.food && state.food.x === x && state.food.y === y) return true;
     for (const obs of state.obstacles) {
         if (obs.x === x && obs.y === y) return true;
+    }
+    for (const w of state.walls) {
+        if (w.x === x && w.y === y) return true;
     }
     if (state.powerUpOnField && state.powerUpOnField.x === x && state.powerUpOnField.y === y) return true;
     return false;
@@ -178,7 +208,7 @@ function getCurrentStage() {
 }
 
 function getCurrentSpeed() {
-    const stageData = STAGES[state.stage];
+    const stageData = getActiveStageData();
     let speed = stageData.baseSpeed;
     if (state.activePowerUps.speed) speed *= 0.6;
     if (state.activePowerUps.slowmo) speed *= 1.5;
@@ -324,6 +354,12 @@ function moveSnake() {
                 return;
             }
         }
+        for (const w of state.walls) {
+            if (w.x === newX && w.y === newY) {
+                endGame();
+                return;
+            }
+        }
     }
 
     // Self collision
@@ -381,7 +417,7 @@ function performDash() {
 
     // Dash creates trail particles
     const head = state.snake[0];
-    createParticleBurst(head.x, head.y, STAGES[state.stage].primary, 10);
+    createParticleBurst(head.x, head.y, getActiveStageData().primary, 10);
     playSfx('dash');
 
     // Snap interpolation after dash (instant teleport, no lerp)
@@ -398,6 +434,9 @@ function performDash() {
 function isCellBlockedForAI(x, y) {
     for (const obs of state.obstacles) {
         if (obs.x === x && obs.y === y) return true;
+    }
+    for (const w of state.walls) {
+        if (w.x === x && w.y === y) return true;
     }
     for (const seg of state.snake) {
         if (seg.x === x && seg.y === y) return true;
@@ -485,6 +524,9 @@ function moveAISnake() {
     for (const obs of state.obstacles) {
         if (obs.x === newX && obs.y === newY) { killAI(); return; }
     }
+    for (const w of state.walls) {
+        if (w.x === newX && w.y === newY) { killAI(); return; }
+    }
 
     // Player snake collision
     for (const seg of state.snake) {
@@ -530,12 +572,14 @@ function spawnFood() {
 function eatFood() {
     const multiplier = state.activePowerUps.multiplier ? 2 : 1;
     state.score += BASE_SCORE_PER_FOOD * multiplier;
-    createParticleBurst(state.food.x, state.food.y, STAGES[state.stage].primary, 25);
+    createParticleBurst(state.food.x, state.food.y, getActiveStageData().primary, 25);
     playSfx('eat');
 
-    const newStage = getCurrentStage();
-    if (newStage !== state.stage) {
-        transitionStage(newStage);
+    if (!playingCustomLevel) {
+        const newStage = getCurrentStage();
+        if (newStage !== state.stage) {
+            transitionStage(newStage);
+        }
     }
 
     spawnFood();
@@ -563,6 +607,11 @@ function applyMagnet() {
         let blocked = false;
         for (const obs of state.obstacles) {
             if (obs.x === newX && obs.y === newY) { blocked = true; break; }
+        }
+        if (!blocked) {
+            for (const w of state.walls) {
+                if (w.x === newX && w.y === newY) { blocked = true; break; }
+            }
         }
         if (!blocked) {
             state.food.x = newX;
@@ -625,7 +674,7 @@ function updatePowerUpDisplay() {
 // OBSTACLE LOGIC
 // ==========================================
 function spawnObstacles() {
-    const target = STAGES[state.stage].maxObstacles;
+    const target = getActiveStageData().maxObstacles;
     while (state.obstacles.length < target) {
         const pos = findEmptyCell();
         if (!pos) break;
@@ -682,7 +731,7 @@ function transitionStage(newStage) {
 // RENDERING
 // ==========================================
 function drawGrid(timestamp) {
-    const stageData = STAGES[state.stage];
+    const stageData = getActiveStageData();
     const pulse = Math.sin(timestamp * 0.003) * 0.03;
     const alpha = stageData.gridAlpha + pulse;
     const rgb = hexToRgb(stageData.primary);
@@ -794,13 +843,13 @@ function drawSnakeGeneric(snake, prevSnake, direction, colors, options = {}) {
 }
 
 function drawSnake() {
-    const stageData = STAGES[state.stage];
+    const stageData = getActiveStageData();
     drawSnakeGeneric(state.snake, state.prevSnake, state.direction,
         { primary: stageData.primary, secondary: stageData.secondary },
         {
             isGhost: !!state.activePowerUps.invincible,
             hasSpeedBoost: !!state.activePowerUps.speed,
-            useRainbow: state.stage === 3
+            useRainbow: !playingCustomLevel && state.stage === 3
         }
     );
 }
@@ -814,7 +863,7 @@ function drawFood() {
     if (!state.food) return;
     const x = state.food.x * cellSize + cellSize / 2;
     const y = state.food.y * cellSize + cellSize / 2;
-    const stageData = STAGES[state.stage];
+    const stageData = getActiveStageData();
 
     const pulse = 0.7 + Math.sin(Date.now() * 0.005) * 0.3;
     const radius = (cellSize / 2 - 2) * pulse;
@@ -855,6 +904,41 @@ function drawObstacles() {
         ctx.lineTo(x + cellSize - 4, y + cellSize - 4);
         ctx.moveTo(x + cellSize - 4, y + 4);
         ctx.lineTo(x + 4, y + cellSize - 4);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawWalls() {
+    if (state.walls.length === 0) return;
+    ctx.save();
+    for (const w of state.walls) {
+        const x = w.x * cellSize;
+        const y = w.y * cellSize;
+
+        ctx.fillStyle = WALL_COLOR;
+        ctx.shadowColor = WALL_COLOR;
+        ctx.shadowBlur = 6;
+        ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+
+        // Brick pattern
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const third = cellSize / 3;
+        ctx.moveTo(x + 2, y + third);
+        ctx.lineTo(x + cellSize - 2, y + third);
+        ctx.moveTo(x + 2, y + 2 * third);
+        ctx.lineTo(x + cellSize - 2, y + 2 * third);
+        ctx.moveTo(x + cellSize / 2, y + 1);
+        ctx.lineTo(x + cellSize / 2, y + third);
+        ctx.moveTo(x + cellSize / 4, y + third);
+        ctx.lineTo(x + cellSize / 4, y + 2 * third);
+        ctx.moveTo(x + 3 * cellSize / 4, y + third);
+        ctx.lineTo(x + 3 * cellSize / 4, y + 2 * third);
+        ctx.moveTo(x + cellSize / 2, y + 2 * third);
+        ctx.lineTo(x + cellSize / 2, y + cellSize - 1);
         ctx.stroke();
     }
     ctx.restore();
@@ -909,6 +993,20 @@ function drawParticles() {
     }
 }
 
+function getActiveStageData() {
+    if (playingCustomLevel) {
+        return {
+            ...STAGES[0],
+            baseSpeed: playingCustomLevel.settings.speed,
+            primary: playingCustomLevel.settings.primary,
+            secondary: playingCustomLevel.settings.secondary,
+            name: playingCustomLevel.name || 'CUSTOM',
+            gridAlpha: 0.10
+        };
+    }
+    return STAGES[state.stage];
+}
+
 function render(timestamp) {
     const canvasW = GRID_SIZE * cellSize;
     const canvasH = GRID_SIZE * cellSize;
@@ -919,6 +1017,7 @@ function render(timestamp) {
 
     drawGrid(timestamp);
     drawObstacles();
+    drawWalls();
     drawFood();
     drawPowerUp();
     drawAISnake();
@@ -926,7 +1025,7 @@ function render(timestamp) {
     drawParticles();
 
     // Stage-themed border (CSS-based so glow extends outside canvas)
-    const stageData = STAGES[state.stage];
+    const stageData = getActiveStageData();
     canvas.style.border = `2px solid ${stageData.primary}`;
     canvas.style.boxShadow = `0 0 12px ${stageData.primary}, 0 0 24px ${stageData.secondary}, inset 0 0 8px ${stageData.primary}`;
 }
@@ -1342,7 +1441,7 @@ function showOverlay(id) {
 }
 
 function hideAllOverlays() {
-    ['start-screen', 'pause-menu', 'game-over', 'highscore-entry', 'leaderboard-view'].forEach(id => {
+    ['start-screen', 'pause-menu', 'game-over', 'highscore-entry', 'leaderboard-view', 'editor-screen', 'my-levels-view'].forEach(id => {
         els[id].classList.add('hidden');
     });
 }
@@ -1350,6 +1449,7 @@ function hideAllOverlays() {
 function showStartScreen() {
     state.gameOver = false;
     state.running = false;
+    playingCustomLevel = null;
     renderLeaderboard('start-leaderboard-list');
     showOverlay('start-screen');
     els['hud'].classList.add('hidden');
@@ -1389,6 +1489,7 @@ function resetGame() {
     state.nextDirection = { x: 1, y: 0 };
     state.food = null;
     state.obstacles = [];
+    state.walls = [];
     state.powerUpOnField = null;
     state.activePowerUps = {};
     state.particles = [];
@@ -1464,6 +1565,10 @@ function togglePause() {
 // INPUT HANDLING
 // ==========================================
 function handleKeyDown(e) {
+    // Ignore game inputs when editor or levels view is open
+    if (!els['editor-screen'].classList.contains('hidden') ||
+        !els['my-levels-view'].classList.contains('hidden')) return;
+
     const key = e.key.toLowerCase();
 
     // Start/restart
@@ -1629,6 +1734,96 @@ function bindEvents() {
     els['player-name'].addEventListener('keydown', e => {
         if (e.key === 'Enter') submitHighScore();
     });
+
+    // Level editor buttons
+    els['level-editor-btn'].addEventListener('click', () => openEditor());
+    els['my-levels-btn'].addEventListener('click', () => showMyLevels());
+
+    els['editor-save-btn'].addEventListener('click', () => saveEditorLevel());
+    els['editor-test-btn'].addEventListener('click', () => testPlayLevel());
+    els['editor-clear-btn'].addEventListener('click', () => {
+        editorState.obstacles = [];
+        editorState.walls = [];
+        editorState.snakeStart = null;
+        renderEditorGrid();
+    });
+    els['editor-back-btn'].addEventListener('click', () => showStartScreen());
+
+    // Tool palette
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectEditorTool(btn.dataset.tool));
+    });
+
+    // Editor canvas mouse interactions
+    els['editorCanvas'].addEventListener('mousedown', e => {
+        e.preventDefault();
+        editorState.isDrawing = true;
+        const pos = getEditorGridPos(e);
+        if (pos) applyEditorTool(pos.x, pos.y);
+    });
+    els['editorCanvas'].addEventListener('mousemove', e => {
+        if (!editorState.isDrawing) return;
+        const pos = getEditorGridPos(e);
+        if (pos) applyEditorTool(pos.x, pos.y);
+    });
+    els['editorCanvas'].addEventListener('mouseup', () => {
+        editorState.isDrawing = false;
+    });
+    els['editorCanvas'].addEventListener('mouseleave', () => {
+        editorState.isDrawing = false;
+    });
+    els['editorCanvas'].addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const pos = getEditorGridPos(e);
+        if (pos) {
+            const prevTool = editorState.tool;
+            editorState.tool = 'eraser';
+            applyEditorTool(pos.x, pos.y);
+            editorState.tool = prevTool;
+        }
+    });
+
+    // Touch support for editor canvas
+    els['editorCanvas'].addEventListener('touchstart', e => {
+        e.preventDefault();
+        editorState.isDrawing = true;
+        const touch = e.touches[0];
+        const pos = getEditorGridPos(touch);
+        if (pos) applyEditorTool(pos.x, pos.y);
+    }, { passive: false });
+    els['editorCanvas'].addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (!editorState.isDrawing) return;
+        const touch = e.touches[0];
+        const pos = getEditorGridPos(touch);
+        if (pos) applyEditorTool(pos.x, pos.y);
+    }, { passive: false });
+    els['editorCanvas'].addEventListener('touchend', () => {
+        editorState.isDrawing = false;
+    });
+
+    // Editor settings inputs
+    els['editor-speed'].addEventListener('input', e => {
+        editorState.settings.speed = parseInt(e.target.value);
+        els['editor-speed-val'].textContent = e.target.value + 'ms';
+    });
+    els['editor-primary'].addEventListener('input', e => {
+        editorState.settings.primary = e.target.value;
+        renderEditorGrid();
+    });
+    els['editor-secondary'].addEventListener('input', e => {
+        editorState.settings.secondary = e.target.value;
+        renderEditorGrid();
+    });
+    els['editor-ai-toggle'].addEventListener('change', e => {
+        editorState.settings.aiEnabled = e.target.checked;
+    });
+    els['level-name-input'].addEventListener('input', e => {
+        editorState.settings.name = e.target.value.toUpperCase();
+    });
+
+    // My levels
+    els['close-my-levels'].addEventListener('click', () => showStartScreen());
 }
 
 function submitHighScore() {
@@ -1636,6 +1831,411 @@ function submitHighScore() {
     addScore(name || 'ANON', state.score);
     checkAchievements(); // re-check rave_legend
     showLeaderboardView();
+}
+
+// ==========================================
+// CUSTOM LEVELS PERSISTENCE
+// ==========================================
+function loadCustomLevels() {
+    try {
+        const data = localStorage.getItem(CUSTOM_LEVELS_KEY);
+        customLevels = data ? JSON.parse(data) : [];
+    } catch {
+        customLevels = [];
+    }
+}
+
+function saveCustomLevels() {
+    localStorage.setItem(CUSTOM_LEVELS_KEY, JSON.stringify(customLevels));
+}
+
+// ==========================================
+// LEVEL EDITOR
+// ==========================================
+function openEditor(levelToEdit) {
+    editorState.obstacles = [];
+    editorState.walls = [];
+    editorState.snakeStart = null;
+    editorState.tool = 'obstacle';
+    editorState.isDrawing = false;
+    editorState.settings = {
+        speed: 150,
+        primary: '#00f3ff',
+        secondary: '#b300ff',
+        aiEnabled: true,
+        name: ''
+    };
+    editorState.editingLevelId = null;
+
+    if (levelToEdit) {
+        editorState.obstacles = levelToEdit.grid.obstacles.map(o => ({...o}));
+        editorState.walls = levelToEdit.grid.walls.map(w => ({...w}));
+        editorState.snakeStart = levelToEdit.grid.snakeStart
+            ? {...levelToEdit.grid.snakeStart} : null;
+        editorState.settings = {
+            speed: levelToEdit.settings.speed,
+            primary: levelToEdit.settings.primary,
+            secondary: levelToEdit.settings.secondary,
+            aiEnabled: levelToEdit.settings.aiEnabled,
+            name: levelToEdit.name
+        };
+        editorState.editingLevelId = levelToEdit.id;
+    }
+
+    syncEditorUI();
+    showOverlay('editor-screen');
+    initEditorCanvas();
+    renderEditorGrid();
+}
+
+function syncEditorUI() {
+    els['level-name-input'].value = editorState.settings.name;
+    els['editor-speed'].value = editorState.settings.speed;
+    els['editor-speed-val'].textContent = editorState.settings.speed + 'ms';
+    els['editor-primary'].value = editorState.settings.primary;
+    els['editor-secondary'].value = editorState.settings.secondary;
+    els['editor-ai-toggle'].checked = editorState.settings.aiEnabled;
+
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === editorState.tool);
+    });
+}
+
+function initEditorCanvas() {
+    editorCanvas = els['editorCanvas'];
+    editorCtx = editorCanvas.getContext('2d');
+
+    const maxSize = Math.min(window.innerWidth * 0.5, window.innerHeight * 0.55);
+    editorCellSize = Math.floor(maxSize / GRID_SIZE);
+    const canvasSize = editorCellSize * GRID_SIZE;
+    editorCanvas.width = canvasSize;
+    editorCanvas.height = canvasSize;
+}
+
+function renderEditorGrid() {
+    if (!editorCtx) return;
+    const size = GRID_SIZE * editorCellSize;
+    const ectx = editorCtx;
+
+    ectx.fillStyle = '#0a0a0a';
+    ectx.fillRect(0, 0, size, size);
+
+    // Grid lines
+    ectx.strokeStyle = 'rgba(0, 243, 255, 0.08)';
+    ectx.lineWidth = 0.5;
+    ectx.beginPath();
+    for (let i = 0; i <= GRID_SIZE; i++) {
+        const pos = i * editorCellSize;
+        ectx.moveTo(pos, 0); ectx.lineTo(pos, size);
+        ectx.moveTo(0, pos); ectx.lineTo(size, pos);
+    }
+    ectx.stroke();
+
+    // Obstacles
+    ectx.save();
+    for (const obs of editorState.obstacles) {
+        const x = obs.x * editorCellSize;
+        const y = obs.y * editorCellSize;
+        ectx.fillStyle = '#ff2244';
+        ectx.shadowColor = '#ff2244';
+        ectx.shadowBlur = 6;
+        ectx.fillRect(x + 2, y + 2, editorCellSize - 4, editorCellSize - 4);
+        ectx.shadowBlur = 0;
+        ectx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ectx.lineWidth = 1.5;
+        ectx.beginPath();
+        ectx.moveTo(x + 4, y + 4);
+        ectx.lineTo(x + editorCellSize - 4, y + editorCellSize - 4);
+        ectx.moveTo(x + editorCellSize - 4, y + 4);
+        ectx.lineTo(x + 4, y + editorCellSize - 4);
+        ectx.stroke();
+    }
+    ectx.restore();
+
+    // Walls
+    ectx.save();
+    for (const w of editorState.walls) {
+        const x = w.x * editorCellSize;
+        const y = w.y * editorCellSize;
+        ectx.fillStyle = WALL_COLOR;
+        ectx.shadowColor = WALL_COLOR;
+        ectx.shadowBlur = 4;
+        ectx.fillRect(x + 1, y + 1, editorCellSize - 2, editorCellSize - 2);
+        ectx.shadowBlur = 0;
+        ectx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ectx.lineWidth = 1;
+        const third = editorCellSize / 3;
+        ectx.beginPath();
+        ectx.moveTo(x + 2, y + third);
+        ectx.lineTo(x + editorCellSize - 2, y + third);
+        ectx.moveTo(x + 2, y + 2 * third);
+        ectx.lineTo(x + editorCellSize - 2, y + 2 * third);
+        ectx.moveTo(x + editorCellSize / 2, y + 1);
+        ectx.lineTo(x + editorCellSize / 2, y + third);
+        ectx.moveTo(x + editorCellSize / 4, y + third);
+        ectx.lineTo(x + editorCellSize / 4, y + 2 * third);
+        ectx.moveTo(x + 3 * editorCellSize / 4, y + third);
+        ectx.lineTo(x + 3 * editorCellSize / 4, y + 2 * third);
+        ectx.moveTo(x + editorCellSize / 2, y + 2 * third);
+        ectx.lineTo(x + editorCellSize / 2, y + editorCellSize - 1);
+        ectx.stroke();
+    }
+    ectx.restore();
+
+    // Snake start
+    if (editorState.snakeStart) {
+        const s = editorState.snakeStart;
+        ectx.save();
+        // Head
+        ectx.fillStyle = editorState.settings.primary;
+        ectx.shadowColor = editorState.settings.primary;
+        ectx.shadowBlur = 8;
+        ectx.beginPath();
+        ectx.roundRect(
+            s.x * editorCellSize + 2, s.y * editorCellSize + 2,
+            editorCellSize - 4, editorCellSize - 4, editorCellSize * 0.3
+        );
+        ectx.fill();
+        ectx.shadowBlur = 0;
+        // Body segments
+        for (let i = 1; i <= 2; i++) {
+            const bx = s.x - i;
+            if (bx >= 0) {
+                ectx.fillStyle = editorState.settings.secondary;
+                ectx.beginPath();
+                ectx.roundRect(
+                    bx * editorCellSize + 2, s.y * editorCellSize + 2,
+                    editorCellSize - 4, editorCellSize - 4, editorCellSize * 0.2
+                );
+                ectx.fill();
+            }
+        }
+        ectx.restore();
+    }
+}
+
+function getEditorGridPos(e) {
+    const rect = editorCanvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / editorCellSize);
+    const y = Math.floor((e.clientY - rect.top) / editorCellSize);
+    if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return null;
+    return { x, y };
+}
+
+function isEditorCellOccupied(x, y) {
+    if (editorState.obstacles.some(o => o.x === x && o.y === y)) return true;
+    if (editorState.walls.some(w => w.x === x && w.y === y)) return true;
+    if (editorState.snakeStart) {
+        if (editorState.snakeStart.x === x && editorState.snakeStart.y === y) return true;
+        for (let i = 1; i <= 2; i++) {
+            if (editorState.snakeStart.x - i === x && editorState.snakeStart.y === y) return true;
+        }
+    }
+    return false;
+}
+
+function applyEditorTool(x, y) {
+    const tool = editorState.tool;
+
+    if (tool === 'eraser') {
+        editorState.obstacles = editorState.obstacles.filter(o => !(o.x === x && o.y === y));
+        editorState.walls = editorState.walls.filter(w => !(w.x === x && w.y === y));
+        if (editorState.snakeStart && editorState.snakeStart.x === x && editorState.snakeStart.y === y) {
+            editorState.snakeStart = null;
+        }
+    } else if (tool === 'obstacle') {
+        if (!isEditorCellOccupied(x, y)) {
+            editorState.obstacles.push({ x, y });
+        }
+    } else if (tool === 'wall') {
+        if (!isEditorCellOccupied(x, y)) {
+            editorState.walls.push({ x, y });
+        }
+    } else if (tool === 'snake') {
+        if (x < 2) return; // need room for 2 body segments
+        editorState.obstacles = editorState.obstacles.filter(o => !(o.x === x && o.y === y));
+        editorState.walls = editorState.walls.filter(w => !(w.x === x && w.y === y));
+        for (let i = 1; i <= 2; i++) {
+            const bx = x - i;
+            editorState.obstacles = editorState.obstacles.filter(o => !(o.x === bx && o.y === y));
+            editorState.walls = editorState.walls.filter(w => !(w.x === bx && w.y === y));
+        }
+        editorState.snakeStart = { x, y };
+    }
+
+    renderEditorGrid();
+}
+
+function selectEditorTool(tool) {
+    editorState.tool = tool;
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === tool);
+    });
+}
+
+function showEditorNotification(text) {
+    const popup = document.createElement('div');
+    popup.className = 'editor-notification';
+    popup.textContent = text;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 1500);
+}
+
+function saveEditorLevel() {
+    const level = {
+        id: editorState.editingLevelId || Date.now().toString(36),
+        name: (editorState.settings.name || 'CUSTOM LEVEL').toUpperCase(),
+        createdAt: new Date().toISOString(),
+        grid: {
+            obstacles: editorState.obstacles.map(o => ({...o})),
+            walls: editorState.walls.map(w => ({...w})),
+            snakeStart: editorState.snakeStart ? {...editorState.snakeStart} : null,
+        },
+        settings: {
+            speed: editorState.settings.speed,
+            primary: editorState.settings.primary,
+            secondary: editorState.settings.secondary,
+            aiEnabled: editorState.settings.aiEnabled
+        }
+    };
+
+    if (editorState.editingLevelId) {
+        const idx = customLevels.findIndex(l => l.id === editorState.editingLevelId);
+        if (idx !== -1) customLevels[idx] = level;
+        else customLevels.push(level);
+    } else {
+        customLevels.push(level);
+        editorState.editingLevelId = level.id;
+    }
+
+    saveCustomLevels();
+    showEditorNotification('LEVEL SAVED');
+}
+
+function deleteCustomLevel(id) {
+    customLevels = customLevels.filter(l => l.id !== id);
+    saveCustomLevels();
+    renderMyLevelsList();
+}
+
+// ==========================================
+// MY LEVELS
+// ==========================================
+function showMyLevels() {
+    renderMyLevelsList();
+    showOverlay('my-levels-view');
+}
+
+function renderMyLevelsList() {
+    const container = els['my-levels-list'];
+    if (customLevels.length === 0) {
+        container.innerHTML = '<div class="leaderboard-empty">No custom levels yet. Use the Level Editor to create one!</div>';
+        return;
+    }
+
+    let html = '';
+    customLevels.forEach(level => {
+        const itemCount = level.grid.obstacles.length + level.grid.walls.length;
+        html += `<div class="level-entry" data-id="${level.id}">
+            <div class="level-entry-info-col">
+                <span class="level-entry-name">${level.name}</span>
+                <span class="level-entry-meta">${itemCount} blocks | AI: ${level.settings.aiEnabled ? 'ON' : 'OFF'}</span>
+            </div>
+            <div class="level-entry-actions">
+                <button class="neon-btn small level-play-btn" data-id="${level.id}">PLAY</button>
+                <button class="neon-btn small level-edit-btn" data-id="${level.id}">EDIT</button>
+                <button class="neon-btn small level-delete-btn" data-id="${level.id}">DEL</button>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+
+    container.querySelectorAll('.level-play-btn').forEach(btn => {
+        btn.addEventListener('click', () => playCustomLevel(btn.dataset.id));
+    });
+    container.querySelectorAll('.level-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const level = customLevels.find(l => l.id === btn.dataset.id);
+            if (level) openEditor(level);
+        });
+    });
+    container.querySelectorAll('.level-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteCustomLevel(btn.dataset.id));
+    });
+}
+
+// ==========================================
+// CUSTOM LEVEL LAUNCH
+// ==========================================
+function playCustomLevel(levelId) {
+    const level = customLevels.find(l => l.id === levelId);
+    if (!level) return;
+    playingCustomLevel = level;
+    startCustomGame(level);
+}
+
+function startCustomGame(level) {
+    resetGame();
+
+    state.obstacles = level.grid.obstacles.map(o => ({...o}));
+    state.walls = level.grid.walls.map(w => ({...w}));
+
+    if (level.grid.snakeStart) {
+        const s = level.grid.snakeStart;
+        state.snake = [
+            { x: s.x, y: s.y },
+            { x: s.x - 1, y: s.y },
+            { x: s.x - 2, y: s.y }
+        ];
+    } else {
+        initSnake();
+    }
+    state.prevSnake = state.snake.map(s => ({ x: s.x, y: s.y }));
+    state.direction = { x: 1, y: 0 };
+    state.nextDirection = { x: 1, y: 0 };
+
+    if (level.settings.aiEnabled) {
+        initAISnake();
+    }
+
+    spawnFood();
+
+    state.running = true;
+    state.startTime = Date.now();
+
+    hideAllOverlays();
+    els['hud'].classList.remove('hidden');
+
+    const stageData = getActiveStageData();
+    els['stage-display'].textContent = stageData.name;
+    els['stage-display'].style.color = stageData.primary;
+    els['stage-display'].style.textShadow = `0 0 10px ${stageData.primary}, 0 0 20px ${stageData.primary}`;
+    updateHUD();
+    updateDashBar();
+    updatePowerUpDisplay();
+
+    if (!musicEngine) musicEngine = new MusicEngine();
+    musicEngine.start();
+}
+
+function testPlayLevel() {
+    const tempLevel = {
+        id: '__test__',
+        name: editorState.settings.name || 'TEST LEVEL',
+        grid: {
+            obstacles: editorState.obstacles.map(o => ({...o})),
+            walls: editorState.walls.map(w => ({...w})),
+            snakeStart: editorState.snakeStart ? {...editorState.snakeStart} : null,
+        },
+        settings: {
+            speed: editorState.settings.speed,
+            primary: editorState.settings.primary,
+            secondary: editorState.settings.secondary,
+            aiEnabled: editorState.settings.aiEnabled
+        }
+    };
+    playingCustomLevel = tempLevel;
+    startCustomGame(tempLevel);
 }
 
 // ==========================================
@@ -1648,6 +2248,7 @@ function init() {
 
     loadLeaderboard();
     loadAchievements();
+    loadCustomLevels();
     resizeCanvas();
     bindEvents();
     showStartScreen();
