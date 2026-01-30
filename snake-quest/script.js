@@ -925,20 +925,10 @@ function render(timestamp) {
     drawSnake();
     drawParticles();
 
-    // Stage-themed border
+    // Stage-themed border (CSS-based so glow extends outside canvas)
     const stageData = STAGES[state.stage];
-    const borderWidth = 2;
-    ctx.save();
-    ctx.strokeStyle = stageData.primary;
-    ctx.lineWidth = borderWidth;
-    ctx.shadowColor = stageData.primary;
-    ctx.shadowBlur = 12;
-    ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvasW - borderWidth, canvasH - borderWidth);
-    ctx.shadowBlur = 6;
-    ctx.strokeStyle = stageData.secondary;
-    ctx.globalAlpha = 0.4;
-    ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvasW - borderWidth, canvasH - borderWidth);
-    ctx.restore();
+    canvas.style.border = `2px solid ${stageData.primary}`;
+    canvas.style.boxShadow = `0 0 12px ${stageData.primary}, 0 0 24px ${stageData.secondary}, inset 0 0 8px ${stageData.primary}`;
 }
 
 // ==========================================
