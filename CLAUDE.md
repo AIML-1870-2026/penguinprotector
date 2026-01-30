@@ -12,6 +12,7 @@ Structure:
 - Root folder = Your Gamertag (this IS the git repo)
 - Each assignment = A subfolder (NOT a separate repo)
 - CLAUDE.md = Lives at the root, governs everything
+- Each subfolder MUST also contain its own CLAUDE.md with assignment-specific context
 
 ## Commands
 
@@ -38,7 +39,8 @@ When I say "Start [AssignmentName]":
 
 1. Create a folder called `[AssignmentName]` in the root
 2. Create a starter `index.html` inside it
-3. Tell me the folder is ready
+3. Create a `CLAUDE.md` inside it with assignment-specific context
+4. Tell me the folder is ready
 
 ### Show My URLs
 When I say "Show my URLs" or "Where's my stuff?":

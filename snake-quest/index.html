@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Quest - Neon Rave</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+        <div id="hud-left">
+            <div id="score-display">SCORE: 0</div>
+            <div id="highscore-display">BEST: 0</div>
+        </div>
+        <div id="hud-center">
+            <div id="stage-display">STAGE 1</div>
+        </div>
+        <div id="hud-right">
+            <div id="power-up-indicators"></div>
+            <div id="ability-cooldown">
+                <span id="dash-label">DASH</span>
+                <div id="dash-bar"><div id="dash-fill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay">
+        <h1 class="title-glow">SNAKE QUEST</h1>
+        <p class="subtitle">NEON RAVE EDITION</p>
+        <p class="prompt blink">PRESS SPACE TO START</p>
+        <div class="controls-info">
+            <span>WASD / ARROWS: Move</span>
+            <span>SPACE: Pause</span>
+            <span>E / SHIFT: Dash</span>
+        </div>
+        <div id="start-leaderboard">
+            <h3>TOP SCORES</h3>
+            <div id="start-leaderboard-list"></div>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="overlay hidden">
+        <h2 class="title-glow">PAUSED</h2>
+        <div class="menu-buttons">
+            <button id="resume-btn" class="neon-btn">RESUME</button>
+            <button id="restart-btn" class="neon-btn">RESTART</button>
+            <button id="pause-leaderboard-btn" class="neon-btn">LEADERBOARD</button>
+        </div>
+        <div class="settings">
+            <div class="setting-row">
+                <label>VOLUME</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="50">
+            </div>
+            <button id="mute-btn" class="neon-btn small">MUTE</button>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="overlay hidden">
+        <h2 class="title-glow game-over-title">GAME OVER</h2>
+        <div id="final-score" class="big-score"></div>
+        <div id="final-stage" class="final-info"></div>
+        <div id="final-length" class="final-info"></div>
+        <p class="prompt blink">PRESS SPACE TO RESTART</p>
+    </div>
+
+    <!-- High Score Entry -->
+    <div id="highscore-entry" class="overlay hidden">
+        <h2 class="title-glow">NEW HIGH SCORE!</h2>
+        <div id="new-score" class="big-score"></div>
+        <input type="text" id="player-name" placeholder="ENTER YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false">
+        <button id="submit-score" class="neon-btn">SUBMIT</button>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div id="leaderboard-view" class="overlay hidden">
+        <h2 class="title-glow">LEADERBOARD</h2>
+        <div id="leaderboard-list"></div>
+        <button id="close-leaderboard" class="neon-btn">CLOSE</button>
+    </div>
+
+    <!-- Stage Transition -->
+    <div id="stage-transition" class="hidden">
+        <span id="stage-text"></span>
+    </div>
+
+    <!-- Achievement Notifications -->
+    <div id="achievement-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
