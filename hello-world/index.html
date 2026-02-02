@@ -4,8 +4,381 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello World</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 60px 80px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 1s ease-in;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: #333;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .quote {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(30, 60, 114, 0.1) 0%, rgba(42, 82, 152, 0.1) 100%);
+            border-left: 4px solid #2a5298;
+            border-radius: 8px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .fish {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.5;
+            transform: scaleX(-1);
+        }
+
+        .fish:nth-child(1) {
+            top: 10%;
+            animation: swim1 18s linear infinite;
+            animation-delay: 0s;
+        }
+
+        .fish:nth-child(2) {
+            top: 15%;
+            font-size: 1.5rem;
+            animation: swim2 22s linear infinite;
+            animation-delay: 2s;
+        }
+
+        .fish:nth-child(3) {
+            top: 25%;
+            font-size: 1.8rem;
+            animation: swim1 20s linear infinite;
+            animation-delay: 5s;
+        }
+
+        .fish:nth-child(4) {
+            top: 40%;
+            animation: swim3 25s linear infinite;
+            animation-delay: 1s;
+        }
+
+        .fish:nth-child(5) {
+            top: 50%;
+            font-size: 1.6rem;
+            animation: swim2 19s linear infinite;
+            animation-delay: 7s;
+        }
+
+        .fish:nth-child(6) {
+            top: 60%;
+            font-size: 2.2rem;
+            animation: swim1 23s linear infinite;
+            animation-delay: 3s;
+        }
+
+        .fish:nth-child(7) {
+            top: 70%;
+            font-size: 1.7rem;
+            animation: swim3 21s linear infinite;
+            animation-delay: 6s;
+        }
+
+        .fish:nth-child(8) {
+            top: 75%;
+            animation: swim2 24s linear infinite;
+            animation-delay: 4s;
+        }
+
+        .fish:nth-child(9) {
+            top: 85%;
+            font-size: 1.9rem;
+            animation: swim1 26s linear infinite;
+            animation-delay: 8s;
+        }
+
+        @keyframes swim1 {
+            0% {
+                right: -10%;
+                transform: translateY(0px);
+            }
+            25% {
+                transform: translateY(-15px);
+            }
+            50% {
+                transform: translateY(0px);
+            }
+            75% {
+                transform: translateY(10px);
+            }
+            100% {
+                right: 110%;
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes swim2 {
+            0% {
+                right: -10%;
+                transform: translateY(0px);
+            }
+            20% {
+                transform: translateY(12px);
+            }
+            40% {
+                transform: translateY(-8px);
+            }
+            60% {
+                transform: translateY(5px);
+            }
+            80% {
+                transform: translateY(-10px);
+            }
+            100% {
+                right: 110%;
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes swim3 {
+            0% {
+                right: -10%;
+                transform: translateY(0px);
+            }
+            30% {
+                transform: translateY(-12px);
+            }
+            60% {
+                transform: translateY(8px);
+            }
+            90% {
+                transform: translateY(-5px);
+            }
+            100% {
+                right: 110%;
+                transform: translateY(0px);
+            }
+        }
+
+        .coral {
+            position: absolute;
+            bottom: 0;
+            font-size: 3rem;
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .coral:nth-child(10) {
+            left: 5%;
+            font-size: 4rem;
+        }
+
+        .coral:nth-child(11) {
+            left: 15%;
+            font-size: 3.5rem;
+        }
+
+        .coral:nth-child(12) {
+            left: 30%;
+            font-size: 3rem;
+        }
+
+        .coral:nth-child(13) {
+            right: 30%;
+            font-size: 3.8rem;
+        }
+
+        .coral:nth-child(14) {
+            right: 15%;
+            font-size: 3.2rem;
+        }
+
+        .coral:nth-child(15) {
+            right: 5%;
+            font-size: 4.5rem;
+        }
+
+        .bubble {
+            position: absolute;
+            bottom: -50px;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.3));
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: rise 8s ease-in infinite;
+        }
+
+        .bubble:nth-child(16) {
+            left: 10%;
+            width: 15px;
+            height: 15px;
+            animation-duration: 6s;
+            animation-delay: 0s;
+        }
+
+        .bubble:nth-child(17) {
+            left: 25%;
+            width: 25px;
+            height: 25px;
+            animation-duration: 9s;
+            animation-delay: 2s;
+        }
+
+        .bubble:nth-child(18) {
+            left: 40%;
+            width: 18px;
+            height: 18px;
+            animation-duration: 7s;
+            animation-delay: 4s;
+        }
+
+        .bubble:nth-child(19) {
+            left: 55%;
+            width: 22px;
+            height: 22px;
+            animation-duration: 8.5s;
+            animation-delay: 1s;
+        }
+
+        .bubble:nth-child(20) {
+            left: 70%;
+            width: 16px;
+            height: 16px;
+            animation-duration: 7.5s;
+            animation-delay: 3s;
+        }
+
+        .bubble:nth-child(21) {
+            left: 85%;
+            width: 20px;
+            height: 20px;
+            animation-duration: 8s;
+            animation-delay: 5s;
+        }
+
+        .bubble:nth-child(22) {
+            left: 15%;
+            width: 12px;
+            height: 12px;
+            animation-duration: 6.5s;
+            animation-delay: 2.5s;
+        }
+
+        .bubble:nth-child(23) {
+            left: 62%;
+            width: 19px;
+            height: 19px;
+            animation-duration: 7.8s;
+            animation-delay: 4.5s;
+        }
+
+        @keyframes rise {
+            0% {
+                bottom: -50px;
+                opacity: 0;
+                transform: translateX(0px);
+            }
+            10% {
+                opacity: 0.6;
+            }
+            50% {
+                transform: translateX(15px);
+            }
+            100% {
+                bottom: 110%;
+                opacity: 0;
+                transform: translateX(-15px);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 50px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            p {
+                font-size: 1rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello from penguinprotector!</h1>
+    <div class="fish">🐠</div>
+    <div class="fish">🐟</div>
+    <div class="fish">🐠</div>
+    <div class="fish">🐡</div>
+    <div class="fish">🐟</div>
+    <div class="fish">🐠</div>
+    <div class="fish">🐟</div>
+    <div class="fish">🐡</div>
+    <div class="fish">🐠</div>
+
+    <div class="coral">🪸</div>
+    <div class="coral">🪸</div>
+    <div class="coral">🌿</div>
+    <div class="coral">🪸</div>
+    <div class="coral">🌿</div>
+    <div class="coral">🪸</div>
+
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+    <div class="bubble"></div>
+
+    <div class="container">
+        <h1>Hello World!</h1>
+        <p>Welcome to your first styled HTML page.</p>
+        <p class="quote">"Be a giver, not a taker" - Walter Scott, Jr.</p>
+        <p style="margin-top: 20px; font-weight: 600; color: #2a5298;">- Reese Stowe</p>
+    </div>
 </body>
 </html>
