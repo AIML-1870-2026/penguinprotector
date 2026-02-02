@@ -1,4 +1,4 @@
-# Assignment-01
+# hello-world
 
 ## Overview
 Starter assignment for AIML 1870. A simple "Hello World" landing page.
@@ -7,7 +7,7 @@ Starter assignment for AIML 1870. A simple "Hello World" landing page.
 - `index.html` - Single-page starter with a greeting heading
 
 ## Live URL
-https://aiml-1870-2026.github.io/penguinprotector/Assignment-01/
+https://aiml-1870-2026.github.io/penguinprotector/hello-world/
 
 ## Notes
 - Single HTML file, no external dependencies

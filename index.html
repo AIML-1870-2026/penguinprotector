@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>penguinprotector - Portfolio</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a1a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+
+        h1 {
+            font-size: 42px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            color: #00f3ff;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.6), 0 0 40px rgba(0, 243, 255, 0.3);
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            font-size: 14px;
+            letter-spacing: 6px;
+            color: rgba(179, 0, 255, 0.7);
+            text-transform: uppercase;
+        }
+
+        .projects {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            width: 100%;
+            padding: 20px 24px 60px;
+        }
+
+        .project-card {
+            display: block;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 6px;
+            padding: 28px 24px;
+            text-decoration: none;
+            color: inherit;
+            background: rgba(0, 243, 255, 0.02);
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+        }
+
+        .project-card:hover {
+            border-color: rgba(0, 243, 255, 0.6);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            transform: translateY(-4px);
+        }
+
+        .project-card h2 {
+            font-size: 18px;
+            letter-spacing: 3px;
+            color: #00f3ff;
+            margin-bottom: 10px;
+        }
+
+        .project-card p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(224, 224, 224, 0.6);
+            letter-spacing: 1px;
+        }
+
+        .project-card .tag {
+            display: inline-block;
+            margin-top: 14px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            padding: 4px 10px;
+            border: 1px solid rgba(179, 0, 255, 0.3);
+            border-radius: 3px;
+            color: rgba(179, 0, 255, 0.7);
+        }
+
+        footer {
+            padding: 20px;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: rgba(224, 224, 224, 0.25);
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 28px; letter-spacing: 4px; }
+            .projects { padding: 20px 16px 40px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>penguinprotector</h1>
+        <p class="subtitle">AIML 1870 Portfolio</p>
+    </header>
+
+    <div class="projects">
+        <a href="snake-quest/" class="project-card">
+            <h2>Snake Quest</h2>
+            <p>Neon rave snake game with AI opponents, power-ups, stage progression, a level editor, and a built-in music engine.</p>
+            <span class="tag">GAME</span>
+        </a>
+
+        <a href="stellar-web/" class="project-card">
+            <h2>Stellar Web</h2>
+            <p>Interactive particle network visualization with dynamic connections and mouse-reactive physics.</p>
+            <span class="tag">VISUALIZATION</span>
+        </a>
+
+        <a href="Starfield-Project/" class="project-card">
+            <h2>Starfield</h2>
+            <p>Parallax starfield particle system with depth-based scaling and speed.</p>
+            <span class="tag">ANIMATION</span>
+        </a>
+
+        <a href="hello-world/" class="project-card">
+            <h2>Hello World</h2>
+            <p>Starter landing page for the portfolio.</p>
+            <span class="tag">INTRO</span>
+        </a>
+    </div>
+
+    <footer>AIML-1870-2026</footer>
+</body>
+</html>
