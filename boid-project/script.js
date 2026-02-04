@@ -754,18 +754,22 @@ class AudioEngine {
 
         try {
             await this.init();
+            console.log('Audio context created:', this.ctx.state);
 
             // Resume audio context (required after user interaction)
             if (this.ctx.state === 'suspended') {
                 await this.ctx.resume();
+                console.log('Audio context resumed:', this.ctx.state);
             }
 
             this.isPlaying = true;
-            this.beatTime = this.ctx.currentTime + 0.1; // Small delay to ensure scheduling works
+            this.beatTime = this.ctx.currentTime + 0.05;
             this.barCount = 0;
+            console.log('Starting music at time:', this.beatTime);
             this.scheduleLoop();
         } catch (e) {
             console.error('Audio failed to start:', e);
+            this.isPlaying = false;
         }
     }
 
@@ -788,13 +792,14 @@ class AudioEngine {
         this.isPlaying = false;
     }
 
-    toggle() {
+    async toggle() {
         if (this.isPlaying) {
             this.stop();
+            return false;
         } else {
-            this.start();
+            await this.start();
+            return this.isPlaying;
         }
-        return this.isPlaying;
     }
 
     // Call this every frame to decay reactivity values
@@ -1145,9 +1150,11 @@ class BoidsSimulation {
         }
     }
 
-    toggleMusic() {
-        const isPlaying = this.audio.toggle();
+    async toggleMusic() {
         const btn = document.getElementById('musicBtn');
+        btn.disabled = true;  // Prevent double clicks
+
+        const isPlaying = await this.audio.toggle();
 
         if (isPlaying) {
             btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop Music';
@@ -1156,6 +1163,8 @@ class BoidsSimulation {
             btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play Music';
             btn.classList.remove('playing');
         }
+
+        btn.disabled = false;
     }
 
     updateParamsTransition() {
