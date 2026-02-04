@@ -291,6 +291,14 @@ class Boid {
         }
     }
 
+    followFlowField(flowField, strength) {
+        if (!flowField) return;
+
+        const force = flowField.getForce(this.position.x, this.position.y);
+        force.mult(strength);
+        this.applyForce(force);
+    }
+
     update(params) {
         // Store trail
         if (params.trailLength > 0) {
@@ -608,6 +616,150 @@ class SpatialGrid {
     }
 }
 
+// ============== Perlin Noise ==============
+class PerlinNoise {
+    constructor() {
+        this.permutation = [];
+        for (let i = 0; i < 256; i++) {
+            this.permutation[i] = Math.floor(Math.random() * 256);
+        }
+        // Duplicate for overflow
+        this.p = [...this.permutation, ...this.permutation];
+    }
+
+    fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+
+    lerp(a, b, t) {
+        return a + t * (b - a);
+    }
+
+    grad(hash, x, y) {
+        const h = hash & 3;
+        const u = h < 2 ? x : y;
+        const v = h < 2 ? y : x;
+        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+    }
+
+    noise(x, y) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+
+        const u = this.fade(x);
+        const v = this.fade(y);
+
+        const A = this.p[X] + Y;
+        const B = this.p[X + 1] + Y;
+
+        return this.lerp(
+            this.lerp(this.grad(this.p[A], x, y), this.grad(this.p[B], x - 1, y), u),
+            this.lerp(this.grad(this.p[A + 1], x, y - 1), this.grad(this.p[B + 1], x - 1, y - 1), u),
+            v
+        );
+    }
+}
+
+// ============== Flow Field ==============
+class FlowField {
+    constructor(width, height, resolution = 20) {
+        this.resolution = resolution;
+        this.cols = Math.ceil(width / resolution);
+        this.rows = Math.ceil(height / resolution);
+        this.field = [];
+        this.noise = new PerlinNoise();
+        this.noiseScale = 0.03;
+        this.timeOffset = 0;
+
+        this.initField();
+    }
+
+    initField() {
+        this.field = [];
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                const angle = this.noise.noise(x * this.noiseScale, y * this.noiseScale) * Math.PI * 4;
+                this.field.push(new Vector(Math.cos(angle), Math.sin(angle)));
+            }
+        }
+    }
+
+    update(speed = 0.005) {
+        this.timeOffset += speed;
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                const angle = this.noise.noise(
+                    x * this.noiseScale + this.timeOffset,
+                    y * this.noiseScale + this.timeOffset
+                ) * Math.PI * 4;
+                const idx = y * this.cols + x;
+                this.field[idx].x = Math.cos(angle);
+                this.field[idx].y = Math.sin(angle);
+            }
+        }
+    }
+
+    resize(width, height) {
+        this.cols = Math.ceil(width / this.resolution);
+        this.rows = Math.ceil(height / this.resolution);
+        this.initField();
+    }
+
+    getForce(x, y) {
+        const col = Math.floor(x / this.resolution);
+        const row = Math.floor(y / this.resolution);
+
+        if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) {
+            return new Vector(0, 0);
+        }
+
+        const idx = row * this.cols + col;
+        return this.field[idx].copy();
+    }
+
+    draw(ctx, alpha = 0.3) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+        ctx.lineWidth = 1;
+
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                const idx = y * this.cols + x;
+                const vec = this.field[idx];
+
+                const px = x * this.resolution + this.resolution / 2;
+                const py = y * this.resolution + this.resolution / 2;
+                const len = this.resolution * 0.4;
+
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px + vec.x * len, py + vec.y * len);
+                ctx.stroke();
+
+                // Arrow head
+                const headLen = 3;
+                const angle = Math.atan2(vec.y, vec.x);
+                ctx.beginPath();
+                ctx.moveTo(px + vec.x * len, py + vec.y * len);
+                ctx.lineTo(
+                    px + vec.x * len - headLen * Math.cos(angle - Math.PI / 6),
+                    py + vec.y * len - headLen * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.moveTo(px + vec.x * len, py + vec.y * len);
+                ctx.lineTo(
+                    px + vec.x * len - headLen * Math.cos(angle + Math.PI / 6),
+                    py + vec.y * len - headLen * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+}
+
 // ============== Audio Engine (Procedural House Music) ==============
 class AudioEngine {
     constructor() {
@@ -918,6 +1070,12 @@ class BoidsSimulation {
         this.useSpatialGrid = true;
         this.neighborChecks = 0;
 
+        // Flow field
+        this.flowField = null;
+        this.params.flowFieldEnabled = false;
+        this.params.flowFieldStrength = 0.3;
+        this.params.showFlowField = false;
+
         // Audio engine
         this.audio = new AudioEngine();
 
@@ -936,6 +1094,14 @@ class BoidsSimulation {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.grid = new SpatialGrid(this.canvas.width, this.canvas.height, 50);
+
+        // Initialize or resize flow field
+        if (!this.flowField) {
+            this.flowField = new FlowField(this.canvas.width, this.canvas.height, 30);
+        } else {
+            this.flowField.resize(this.canvas.width, this.canvas.height);
+        }
+
         this.backgroundStars = null; // Reinitialize on next draw
     }
 
@@ -1001,6 +1167,10 @@ class BoidsSimulation {
                 e.preventDefault();
                 this.togglePause();
             }
+            if (e.code === 'KeyF') {
+                e.preventDefault();
+                this.toggleFullscreen();
+            }
         });
 
         // Mouse events
@@ -1047,6 +1217,18 @@ class BoidsSimulation {
 
         // Prevent context menu on right click
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Handle fullscreen change (e.g., user presses Escape)
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('fullscreenBtn');
+            if (btn) {
+                if (document.fullscreenElement) {
+                    btn.innerHTML = '<span id="fullscreenIcon">&#x2716;</span> Exit';
+                } else {
+                    btn.innerHTML = '<span id="fullscreenIcon">&#x26F6;</span> Fullscreen';
+                }
+            }
+        });
     }
 
     updateMouseIndicator() {
@@ -1159,6 +1341,36 @@ class BoidsSimulation {
         const clearObstaclesBtn = document.getElementById('clearObstaclesBtn');
         if (clearObstaclesBtn) {
             clearObstaclesBtn.addEventListener('click', () => this.clearObstacles());
+        }
+
+        // Fullscreen button
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+        }
+
+        // Flow field controls
+        const flowFieldCheckbox = document.getElementById('flowFieldEnabled');
+        if (flowFieldCheckbox) {
+            flowFieldCheckbox.addEventListener('change', (e) => {
+                this.params.flowFieldEnabled = e.target.checked;
+            });
+        }
+
+        const flowFieldStrength = document.getElementById('flowFieldStrength');
+        if (flowFieldStrength) {
+            flowFieldStrength.addEventListener('input', () => {
+                const value = parseFloat(flowFieldStrength.value);
+                this.params.flowFieldStrength = value;
+                document.getElementById('flowFieldStrengthValue').textContent = value.toFixed(1);
+            });
+        }
+
+        const showFlowField = document.getElementById('showFlowField');
+        if (showFlowField) {
+            showFlowField.addEventListener('change', (e) => {
+                this.params.showFlowField = e.target.checked;
+            });
         }
 
         // Music controls
@@ -1297,6 +1509,22 @@ class BoidsSimulation {
         } else {
             text.textContent = 'Wrap';
             icon.innerHTML = '&#8644;';
+        }
+    }
+
+    toggleFullscreen() {
+        const btn = document.getElementById('fullscreenBtn');
+
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => {
+                if (btn) btn.innerHTML = '<span id="fullscreenIcon">&#x2716;</span> Exit';
+            }).catch(err => {
+                console.log('Fullscreen error:', err);
+            });
+        } else {
+            document.exitFullscreen().then(() => {
+                if (btn) btn.innerHTML = '<span id="fullscreenIcon">&#x26F6;</span> Fullscreen';
+            });
         }
     }
 
@@ -1513,6 +1741,16 @@ class BoidsSimulation {
                 this.params.mouseForce
             );
             boid.avoidObstacles(this.obstacles, this.obstacleRadius);
+
+            // Apply flow field force
+            if (this.params.flowFieldEnabled && this.flowField) {
+                boid.followFlowField(this.flowField, this.params.flowFieldStrength);
+            }
+        }
+
+        // Update flow field animation
+        if (this.params.flowFieldEnabled && this.flowField) {
+            this.flowField.update(0.003);
         }
 
         for (const boid of this.boids) {
@@ -1531,6 +1769,11 @@ class BoidsSimulation {
             this.initBackgroundStars();
         }
         this.drawBackgroundStars();
+
+        // Draw flow field if enabled
+        if (this.params.showFlowField && this.flowField) {
+            this.flowField.draw(this.ctx, 0.15);
+        }
 
         // Draw obstacles
         this.drawObstacles();

@@ -146,6 +146,29 @@
                 </div>
             </div>
 
+            <!-- Flow Field -->
+            <div class="control-group">
+                <h3>Flow Field</h3>
+                <div class="control checkbox-control">
+                    <label>
+                        <input type="checkbox" id="flowFieldEnabled"> Enable Flow Field
+                    </label>
+                </div>
+                <div class="control">
+                    <label for="flowFieldStrength">
+                        Flow Strength
+                        <span class="tooltip" data-tip="How strongly boids follow the flow field">?</span>
+                    </label>
+                    <input type="range" id="flowFieldStrength" min="0.1" max="1" step="0.1" value="0.3">
+                    <span id="flowFieldStrengthValue" class="value-display">0.3</span>
+                </div>
+                <div class="control checkbox-control">
+                    <label>
+                        <input type="checkbox" id="showFlowField"> Show Flow Vectors
+                    </label>
+                </div>
+            </div>
+
             <!-- Presets -->
             <div class="control-group">
                 <h3>Presets</h3>
@@ -171,6 +194,9 @@
                     </button>
                     <button id="resetBtn" class="action-btn" data-tip="Randomize positions?">
                         &#8634; Reset
+                    </button>
+                    <button id="fullscreenBtn" class="action-btn">
+                        <span id="fullscreenIcon">&#x26F6;</span> Fullscreen
                     </button>
                     <button id="boundaryBtn" class="action-btn">
                         <span id="boundaryIcon">&#8644;</span> <span id="boundaryText">Wrap</span>
@@ -241,6 +267,7 @@
                     <p><strong>Ctrl/Cmd + Drag:</strong> Paint obstacles</p>
                     <p><strong>Shift + Click:</strong> Spawn 10 boids</p>
                     <p><strong>Spacebar:</strong> Pause/Resume</p>
+                    <p><strong>F:</strong> Toggle Fullscreen</p>
                 </div>
                 <div class="control">
                     <label for="mouseForceSlider">
