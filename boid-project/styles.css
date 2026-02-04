@@ -8,7 +8,7 @@
 
 body {
     overflow: hidden;
-    background: linear-gradient(135deg, #0a0014 0%, #1a0033 50%, #0a0014 100%);
+    background: linear-gradient(135deg, #000a1e 0%, #001030 50%, #000a1e 100%);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #fff;
 }
@@ -296,6 +296,23 @@ input[type="range"]::-moz-range-thumb {
     background: rgba(255, 0, 255, 0.3);
     border-color: #ff00ff;
     box-shadow: 0 0 25px rgba(255, 0, 255, 0.5);
+}
+
+/* Music Button */
+.music-btn.playing {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
+    border-color: #00ffff;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.5);
+    animation: pulse-glow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+    from {
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), 0 0 40px rgba(255, 0, 255, 0.2);
+    }
+    to {
+        box-shadow: 0 0 30px rgba(0, 255, 255, 0.6), 0 0 60px rgba(255, 0, 255, 0.4);
+    }
 }
 
 .preset-btn:disabled {

@@ -384,7 +384,7 @@ class Boid {
             ctx.shadowColor = this.color;
         }
 
-        this.drawJellyfish(ctx, baseSize, speed, params.maxSpeed);
+        this.drawJellyfish(ctx, baseSize, speed, params.maxSpeed, params);
 
         ctx.restore();
 
@@ -394,38 +394,58 @@ class Boid {
         }
     }
 
-    drawJellyfish(ctx, size, speed, maxSpeed) {
-        // Pulsing animation for the bell
-        const pulse = 0.85 + Math.sin(this.wingPhase) * 0.15;
-        const bellRadius = size * 0.55 * pulse;
+    drawJellyfish(ctx, size, speed, maxSpeed, params = {}) {
+        // Audio reactivity
+        const kick = params.audioKick || 0;
+        const bass = params.audioBass || 0;
+        const energy = params.audioEnergy || 0;
 
-        // Draw bell/dome (rounded semi-circle)
+        // Pulsing animation - reacts to kick drum
+        const basePulse = 0.85 + Math.sin(this.wingPhase) * 0.15;
+        const kickPulse = 1 + kick * 0.4;  // Expand on kick
+
+        const bellWidth = size * 0.6 * basePulse * kickPulse;  // Width (vertical when facing right)
+        const bellLength = size * 0.45 * basePulse * kickPulse; // Length (horizontal depth)
+
+        // Brightness boost on beats
+        const brightness = 0.7 + energy * 0.3;
+
+        // Draw bell/dome - proper rounded jellyfish shape
         ctx.beginPath();
-        ctx.arc(0, 0, bellRadius, -Math.PI / 2, Math.PI / 2);
+        // Start at the back-top of the bell
+        ctx.moveTo(-bellLength * 0.3, -bellWidth);
+        // Curve to the front (right side) - top curve
+        ctx.quadraticCurveTo(bellLength * 1.2, -bellWidth * 0.6, bellLength, 0);
+        // Curve from front to back - bottom curve
+        ctx.quadraticCurveTo(bellLength * 1.2, bellWidth * 0.6, -bellLength * 0.3, bellWidth);
+        // Close the back with a slight inward curve (like real jellyfish)
+        ctx.quadraticCurveTo(-bellLength * 0.1, 0, -bellLength * 0.3, -bellWidth);
+        ctx.closePath();
+
         ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = brightness;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Inner glow on bell
+        // Inner glow on bell - pulses with bass
+        const glowSize = 0.4 + bass * 0.15;
         ctx.beginPath();
-        ctx.arc(bellRadius * 0.15, 0, bellRadius * 0.5, -Math.PI / 2, Math.PI / 2);
+        ctx.ellipse(bellLength * 0.2, 0, bellLength * glowSize, bellWidth * glowSize * 0.6, 0, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.25 + energy * 0.35;
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        const bellWidth = bellRadius;
-        const bellHeight = bellRadius;
+        const bellHeight = bellLength;
 
         // Draw tentacles (wavy lines trailing behind)
         const tentacleCount = 5;
-        const tentacleLength = size * 1.5;
-        const waveAmount = 0.3 + (speed / maxSpeed) * 0.2;
+        const tentacleLength = size * (1.5 + bass * 0.5);  // Longer on bass
+        const waveAmount = 0.3 + (speed / maxSpeed) * 0.2 + energy * 0.3;  // More wave on energy
 
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 1.5 + kick * 1.5;  // Thicker on kick
+        ctx.globalAlpha = 0.6 + energy * 0.3;
 
         for (let t = 0; t < tentacleCount; t++) {
             const yOffset = (t - (tentacleCount - 1) / 2) * (bellWidth * 0.35);
@@ -434,7 +454,7 @@ class Boid {
             ctx.beginPath();
             ctx.moveTo(-bellHeight * 0.3, yOffset);
 
-            // Draw wavy tentacle
+            // Draw wavy tentacle - wave faster with energy
             for (let i = 1; i <= 8; i++) {
                 const x = -bellHeight * 0.3 - (i / 8) * tentacleLength;
                 const wave = Math.sin(this.wingPhase + phaseOffset + i * 0.5) * size * waveAmount;
@@ -537,6 +557,265 @@ class SpatialGrid {
     }
 }
 
+// ============== Audio Engine (House/EDM Beat Generator) ==============
+class AudioEngine {
+    constructor() {
+        this.ctx = null;
+        this.isPlaying = false;
+        this.bpm = 128;
+        this.volume = 0.5;
+        this.beatTime = 0;
+        this.lastBeatTime = 0;
+
+        // Audio reactivity values (0-1)
+        this.kick = 0;
+        this.hihat = 0;
+        this.bass = 0;
+        this.energy = 0;
+
+        // Beat pattern state
+        this.beatCount = 0;
+        this.barCount = 0;
+
+        // Nodes
+        this.masterGain = null;
+        this.compressor = null;
+    }
+
+    async init() {
+        if (this.ctx) return;
+
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Master chain
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.value = -10;
+        this.compressor.knee.value = 10;
+        this.compressor.ratio.value = 4;
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this.volume;
+
+        this.compressor.connect(this.masterGain);
+        this.masterGain.connect(this.ctx.destination);
+    }
+
+    setVolume(vol) {
+        this.volume = vol;
+        if (this.masterGain) {
+            this.masterGain.gain.value = vol;
+        }
+    }
+
+    setBPM(bpm) {
+        this.bpm = Math.max(60, Math.min(180, bpm));
+    }
+
+    playKick(time) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
+
+        gain.gain.setValueAtTime(0.8, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.compressor);
+
+        osc.start(time);
+        osc.stop(time + 0.3);
+
+        // Trigger reactivity
+        this.kick = 1;
+    }
+
+    playHihat(time, accent = false) {
+        const bufferSize = this.ctx.sampleRate * 0.05;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 7000;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = accent ? 0.3 : 0.15;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.compressor);
+
+        source.start(time);
+
+        this.hihat = accent ? 0.8 : 0.4;
+    }
+
+    playBass(time, note) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        const freq = 55 * Math.pow(2, note / 12); // A1 base
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, time);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(400, time);
+        filter.frequency.linearRampToValueAtTime(150, time + 0.15);
+        filter.Q.value = 5;
+
+        gain.gain.setValueAtTime(0.4, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.compressor);
+
+        osc.start(time);
+        osc.stop(time + 0.25);
+
+        this.bass = 1;
+    }
+
+    playSynth(time, notes, duration = 0.5) {
+        notes.forEach((note, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            const freq = 220 * Math.pow(2, note / 12);
+
+            osc.type = 'square';
+            osc.frequency.value = freq;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2000, time);
+            filter.frequency.linearRampToValueAtTime(500, time + duration);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.1, time + 0.02);
+            gain.gain.linearRampToValueAtTime(0.05, time + duration * 0.5);
+            gain.gain.linearRampToValueAtTime(0, time + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.compressor);
+
+            osc.start(time);
+            osc.stop(time + duration + 0.1);
+        });
+    }
+
+    scheduleBar(barStartTime) {
+        const beatDuration = 60 / this.bpm;
+        const sixteenth = beatDuration / 4;
+
+        // House pattern with variations
+        const pattern = this.barCount % 4;
+
+        // Bass notes (minor key progression)
+        const bassNotes = [0, 0, 3, 5][pattern];
+
+        for (let beat = 0; beat < 4; beat++) {
+            const beatTime = barStartTime + beat * beatDuration;
+
+            // Four-on-the-floor kick
+            this.playKick(beatTime);
+
+            // Offbeat hi-hats
+            this.playHihat(beatTime + sixteenth * 2, beat === 0);
+
+            // Extra hi-hats for energy
+            if (pattern >= 2) {
+                this.playHihat(beatTime + sixteenth, false);
+                this.playHihat(beatTime + sixteenth * 3, false);
+            }
+
+            // Bass on beat 1 and 3
+            if (beat === 0 || beat === 2) {
+                this.playBass(beatTime, bassNotes);
+            }
+        }
+
+        // Synth stabs on some bars
+        if (pattern === 1 || pattern === 3) {
+            this.playSynth(barStartTime, [0, 3, 7], beatDuration * 2);
+        }
+
+        this.barCount++;
+    }
+
+    start() {
+        if (this.isPlaying) return;
+
+        this.init().then(() => {
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+
+            this.isPlaying = true;
+            this.beatTime = this.ctx.currentTime;
+            this.barCount = 0;
+            this.scheduleLoop();
+        });
+    }
+
+    scheduleLoop() {
+        if (!this.isPlaying) return;
+
+        const barDuration = (60 / this.bpm) * 4;
+        const lookahead = 0.2;
+        const scheduleAhead = barDuration + 0.1;
+
+        while (this.beatTime < this.ctx.currentTime + scheduleAhead) {
+            this.scheduleBar(this.beatTime);
+            this.beatTime += barDuration;
+        }
+
+        setTimeout(() => this.scheduleLoop(), lookahead * 1000);
+    }
+
+    stop() {
+        this.isPlaying = false;
+    }
+
+    toggle() {
+        if (this.isPlaying) {
+            this.stop();
+        } else {
+            this.start();
+        }
+        return this.isPlaying;
+    }
+
+    // Call this every frame to decay reactivity values
+    update() {
+        const decay = 0.9;
+        this.kick *= decay;
+        this.hihat *= decay;
+        this.bass *= decay;
+        this.energy = this.kick * 0.5 + this.bass * 0.3 + this.hihat * 0.2;
+    }
+
+    // Get current beat phase (0-1) for smooth animations
+    getBeatPhase() {
+        if (!this.ctx || !this.isPlaying) return 0;
+        const beatDuration = 60 / this.bpm;
+        return ((this.ctx.currentTime % beatDuration) / beatDuration);
+    }
+}
+
 // ============== Main Simulation ==============
 class BoidsSimulation {
     constructor() {
@@ -579,6 +858,9 @@ class BoidsSimulation {
         // Spatial grid for optimization
         this.grid = null;
         this.useSpatialGrid = true;
+
+        // Audio engine
+        this.audio = new AudioEngine();
 
         // Initialize
         this.resize();
@@ -747,6 +1029,21 @@ class BoidsSimulation {
         document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
         document.getElementById('boundaryBtn').addEventListener('click', () => this.toggleBoundary());
+
+        // Music controls
+        document.getElementById('musicBtn').addEventListener('click', () => this.toggleMusic());
+
+        document.getElementById('bpmSlider').addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.audio.setBPM(value);
+            document.getElementById('bpmValue').textContent = value;
+        });
+
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            this.audio.setVolume(value);
+            document.getElementById('volumeValue').textContent = Math.round(value * 100) + '%';
+        });
     }
 
     updateBoidCountSlider() {
@@ -847,6 +1144,19 @@ class BoidsSimulation {
         } else {
             text.textContent = 'Wrap';
             icon.innerHTML = '&#8644;';
+        }
+    }
+
+    toggleMusic() {
+        const isPlaying = this.audio.toggle();
+        const btn = document.getElementById('musicBtn');
+
+        if (isPlaying) {
+            btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop Music';
+            btn.classList.add('playing');
+        } else {
+            btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play Music';
+            btn.classList.remove('playing');
         }
     }
 
@@ -975,6 +1285,13 @@ class BoidsSimulation {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+
+        // Update audio reactivity
+        this.audio.update();
+        this.params.audioKick = this.audio.kick;
+        this.params.audioBass = this.audio.bass;
+        this.params.audioEnergy = this.audio.energy;
+        this.params.beatPhase = this.audio.getBeatPhase();
 
         if (!this.paused) {
             this.update();
