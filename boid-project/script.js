@@ -94,9 +94,31 @@ class Boid {
         this.velocity = Vector.random().mult(Math.random() * 2 + 2);
         this.acceleration = new Vector(0, 0);
 
-        // Assign random neon color
-        const colors = ['#00ffff', '#ff00ff', '#00ff00', '#9d00ff', '#ff0066', '#ffff00'];
+        // Smoothed velocity for rendering (reduces jitter)
+        this.smoothedVelocity = this.velocity.copy();
+
+        // Previous acceleration for smoothing
+        this.prevAcceleration = new Vector(0, 0);
+
+        // Assign random neon color with bird/star theme
+        const colors = [
+            '#00ffff', // Cyan
+            '#ff00ff', // Magenta
+            '#ffd700', // Gold (star-like)
+            '#87ceeb', // Sky blue
+            '#ff69b4', // Hot pink
+            '#98fb98', // Pale green
+            '#dda0dd', // Plum
+            '#f0e68c'  // Khaki (warm star)
+        ];
         this.color = colors[Math.floor(Math.random() * colors.length)];
+
+        // Bird-specific properties
+        this.wingPhase = Math.random() * Math.PI * 2; // Wing flap animation offset
+        this.size = 0.8 + Math.random() * 0.4; // Size variation
+        this.isStar = Math.random() < 0.15; // 15% chance to be a star instead of bird
+        this.sparkleTimer = 0;
+        this.sparkleIntensity = 0;
 
         // Trail history
         this.trail = [];
@@ -136,61 +158,83 @@ class Boid {
         let cohesionCount = 0;
 
         const separationRadius = params.neighborRadius * 0.5;
+        const neighborRadiusSq = params.neighborRadius * params.neighborRadius;
+        const separationRadiusSq = separationRadius * separationRadius;
 
         for (const other of boids) {
             if (other === this) continue;
 
-            const d = this.position.dist(other.position);
+            // Use squared distance for faster comparison (avoid sqrt)
+            const dx = this.position.x - other.position.x;
+            const dy = this.position.y - other.position.y;
+            const dSq = dx * dx + dy * dy;
+
+            // Skip if outside max radius
+            if (dSq > neighborRadiusSq) continue;
 
             // Check if within vision cone
             if (!this.isInVisionCone(other, params.visionAngle)) continue;
 
-            // Separation (closer range)
-            if (d < separationRadius && d > 0) {
-                const diff = Vector.sub(this.position, other.position);
-                diff.normalize().div(d); // Weight by distance
+            const d = Math.sqrt(dSq);
+
+            // Separation (closer range) - use smooth falloff
+            if (dSq < separationRadiusSq && d > 0) {
+                const diff = new Vector(dx, dy);
+                // Smooth quadratic falloff instead of harsh 1/d
+                const strength = 1 - (d / separationRadius);
+                diff.normalize().mult(strength * strength);
                 separation.add(diff);
                 separationCount++;
             }
 
             // Alignment and Cohesion (neighbor radius)
             if (d < params.neighborRadius) {
-                alignment.add(other.velocity);
-                cohesion.add(other.position);
-                alignmentCount++;
-                cohesionCount++;
+                // Weight by distance - closer neighbors have more influence
+                const weight = 1 - (d / params.neighborRadius);
+                alignment.x += other.velocity.x * weight;
+                alignment.y += other.velocity.y * weight;
+                cohesion.x += other.position.x * weight;
+                cohesion.y += other.position.y * weight;
+                alignmentCount += weight;
+                cohesionCount += weight;
             }
         }
 
-        this.neighborCount = alignmentCount;
+        this.neighborCount = Math.round(alignmentCount);
 
-        // Separation
+        // Separation - apply with soft limiting
         if (separationCount > 0) {
             separation.div(separationCount);
-            separation.setMag(params.maxSpeed);
-            separation.sub(this.velocity);
-            separation.limit(params.maxForce);
-            separation.mult(params.separation);
+            if (separation.mag() > 0) {
+                separation.setMag(params.maxSpeed);
+                separation.sub(this.velocity);
+                separation.limit(params.maxForce * 1.2); // Slightly stronger separation
+                separation.mult(params.separation);
+            }
         }
 
-        // Alignment
+        // Alignment - smooth steering
         if (alignmentCount > 0) {
             alignment.div(alignmentCount);
-            alignment.setMag(params.maxSpeed);
-            alignment.sub(this.velocity);
-            alignment.limit(params.maxForce);
-            alignment.mult(params.alignment);
+            if (alignment.mag() > 0) {
+                alignment.setMag(params.maxSpeed);
+                alignment.sub(this.velocity);
+                alignment.limit(params.maxForce);
+                alignment.mult(params.alignment);
+            }
         }
 
-        // Cohesion
+        // Cohesion - smooth steering
         if (cohesionCount > 0) {
             cohesion.div(cohesionCount);
             const desired = Vector.sub(cohesion, this.position);
-            desired.setMag(params.maxSpeed);
-            const steer = Vector.sub(desired, this.velocity);
-            steer.limit(params.maxForce);
-            cohesion.x = steer.x * params.cohesion;
-            cohesion.y = steer.y * params.cohesion;
+            if (desired.mag() > 0) {
+                desired.setMag(params.maxSpeed);
+                const steer = Vector.sub(desired, this.velocity);
+                steer.limit(params.maxForce);
+                cohesion.x = steer.x * params.cohesion;
+                cohesion.y = steer.y * params.cohesion;
+            }
         }
 
         this.applyForce(separation);
@@ -231,90 +275,251 @@ class Boid {
             this.trail = [];
         }
 
+        // Smooth acceleration to reduce jitter (blend with previous)
+        const accelSmoothing = 0.7;
+        this.acceleration.x = this.acceleration.x * accelSmoothing + this.prevAcceleration.x * (1 - accelSmoothing);
+        this.acceleration.y = this.acceleration.y * accelSmoothing + this.prevAcceleration.y * (1 - accelSmoothing);
+        this.prevAcceleration = this.acceleration.copy();
+
+        // Apply acceleration with damping
         this.velocity.add(this.acceleration);
+
+        // Add slight velocity damping for smoother movement
+        this.velocity.mult(0.995);
+
         this.velocity.limit(params.maxSpeed);
         this.position.add(this.velocity);
         this.acceleration.mult(0);
+
+        // Smooth the velocity for rendering (interpolate towards actual velocity)
+        const velocitySmoothing = 0.15;
+        this.smoothedVelocity.x += (this.velocity.x - this.smoothedVelocity.x) * velocitySmoothing;
+        this.smoothedVelocity.y += (this.velocity.y - this.smoothedVelocity.y) * velocitySmoothing;
+
+        // Update wing animation
+        const speed = this.velocity.mag();
+        this.wingPhase += 0.15 + speed * 0.05;
+
+        // Random sparkle effect
+        this.sparkleTimer -= 1;
+        if (this.sparkleTimer <= 0 && Math.random() < 0.02) {
+            this.sparkleIntensity = 1;
+            this.sparkleTimer = 30 + Math.random() * 60;
+        }
+        this.sparkleIntensity *= 0.92;
     }
 
     edges(width, height, bounceMode) {
         if (bounceMode) {
-            const margin = 20;
-            const turnForce = 0.5;
+            // Soft edge avoidance with smooth force curve
+            const margin = 50;
+            const maxTurnForce = 0.8;
 
+            // Calculate distance from each edge and apply proportional force
             if (this.position.x < margin) {
-                this.velocity.x += turnForce;
+                const t = 1 - (this.position.x / margin);
+                this.velocity.x += maxTurnForce * t * t; // Quadratic easing
             }
             if (this.position.x > width - margin) {
-                this.velocity.x -= turnForce;
+                const t = 1 - ((width - this.position.x) / margin);
+                this.velocity.x -= maxTurnForce * t * t;
             }
             if (this.position.y < margin) {
-                this.velocity.y += turnForce;
+                const t = 1 - (this.position.y / margin);
+                this.velocity.y += maxTurnForce * t * t;
             }
             if (this.position.y > height - margin) {
-                this.velocity.y -= turnForce;
+                const t = 1 - ((height - this.position.y) / margin);
+                this.velocity.y -= maxTurnForce * t * t;
             }
         } else {
-            // Wrap mode
-            if (this.position.x > width) this.position.x = 0;
-            if (this.position.x < 0) this.position.x = width;
-            if (this.position.y > height) this.position.y = 0;
-            if (this.position.y < 0) this.position.y = height;
+            // Wrap mode - also wrap trail positions
+            if (this.position.x > width) {
+                this.position.x = 0;
+                this.trail = []; // Clear trail on wrap to avoid lines across screen
+            }
+            if (this.position.x < 0) {
+                this.position.x = width;
+                this.trail = [];
+            }
+            if (this.position.y > height) {
+                this.position.y = 0;
+                this.trail = [];
+            }
+            if (this.position.y < 0) {
+                this.position.y = height;
+                this.trail = [];
+            }
         }
     }
 
     draw(ctx, params) {
-        // Draw trail
+        // Draw trail with gradient fade
         if (this.trail.length > 1) {
-            ctx.beginPath();
-            ctx.moveTo(this.trail[0].x, this.trail[0].y);
-
             for (let i = 1; i < this.trail.length; i++) {
+                const alpha = (i / this.trail.length) * 0.4;
+                ctx.beginPath();
+                ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
                 ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 1 + (i / this.trail.length) * 2;
+                ctx.globalAlpha = alpha;
+                ctx.stroke();
             }
-
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
-            ctx.globalAlpha = 0.3;
-            ctx.stroke();
             ctx.globalAlpha = 1;
         }
 
-        // Draw boid as triangle
-        const angle = this.velocity.heading();
-        const speed = this.velocity.mag();
-        const size = 8 + (speed / params.maxSpeed) * 4; // Size varies with speed
+        // Use smoothed velocity for angle (reduces visual jitter)
+        const angle = this.smoothedVelocity.heading();
+        const speed = this.smoothedVelocity.mag();
+        const baseSize = (8 + (speed / params.maxSpeed) * 4) * this.size;
 
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(angle);
 
         // Glow effect
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 20;
         ctx.shadowColor = this.color;
 
-        // Draw triangle
-        ctx.beginPath();
-        ctx.moveTo(size, 0);
-        ctx.lineTo(-size * 0.6, size * 0.5);
-        ctx.lineTo(-size * 0.6, -size * 0.5);
-        ctx.closePath();
+        if (this.isStar) {
+            // Draw as a twinkling star
+            this.drawStar(ctx, baseSize);
+        } else {
+            // Draw as a bird
+            this.drawBird(ctx, baseSize, speed, params.maxSpeed);
+        }
 
+        ctx.restore();
+
+        // Draw sparkle effect
+        if (this.sparkleIntensity > 0.1) {
+            this.drawSparkle(ctx);
+        }
+    }
+
+    drawBird(ctx, size, speed, maxSpeed) {
+        // Wing flap amount based on speed
+        const flapAmount = Math.sin(this.wingPhase) * (0.3 + speed / maxSpeed * 0.4);
+
+        // Body (sleek elongated shape)
+        ctx.beginPath();
+        ctx.moveTo(size * 1.2, 0); // Beak tip
+        ctx.quadraticCurveTo(size * 0.3, -size * 0.15, -size * 0.5, 0); // Top body curve
+        ctx.quadraticCurveTo(size * 0.3, size * 0.15, size * 1.2, 0); // Bottom body curve
         ctx.fillStyle = this.color;
         ctx.fill();
 
-        // Inner glow
-        ctx.shadowBlur = 8;
+        // Left wing
         ctx.beginPath();
-        ctx.moveTo(size * 0.6, 0);
-        ctx.lineTo(-size * 0.3, size * 0.3);
-        ctx.lineTo(-size * 0.3, -size * 0.3);
-        ctx.closePath();
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.5;
+        ctx.moveTo(size * 0.2, -size * 0.1);
+        ctx.quadraticCurveTo(
+            -size * 0.3, -size * (0.8 + flapAmount),
+            -size * 0.8, -size * (0.4 + flapAmount * 0.5)
+        );
+        ctx.quadraticCurveTo(-size * 0.4, -size * 0.2, -size * 0.3, 0);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.9;
+        ctx.fill();
+
+        // Right wing
+        ctx.beginPath();
+        ctx.moveTo(size * 0.2, size * 0.1);
+        ctx.quadraticCurveTo(
+            -size * 0.3, size * (0.8 + flapAmount),
+            -size * 0.8, size * (0.4 + flapAmount * 0.5)
+        );
+        ctx.quadraticCurveTo(-size * 0.4, size * 0.2, -size * 0.3, 0);
         ctx.fill();
         ctx.globalAlpha = 1;
 
+        // Tail feathers
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.5, 0);
+        ctx.lineTo(-size * 0.9, -size * 0.2);
+        ctx.lineTo(-size * 0.7, 0);
+        ctx.lineTo(-size * 0.9, size * 0.2);
+        ctx.closePath();
+        ctx.globalAlpha = 0.8;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // White highlight on body
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.ellipse(size * 0.3, -size * 0.05, size * 0.3, size * 0.08, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.4;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    drawStar(ctx, size) {
+        const spikes = 4;
+        const outerRadius = size * 0.8;
+        const innerRadius = size * 0.3;
+        const twinkle = 0.8 + Math.sin(this.wingPhase * 2) * 0.2;
+
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius * twinkle : innerRadius;
+            const angle = (i * Math.PI) / spikes - Math.PI / 2;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.closePath();
+
+        // Gradient fill for star
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, outerRadius);
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(0.3, this.color);
+        gradient.addColorStop(1, this.color);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Extra glow core
+        ctx.beginPath();
+        ctx.arc(0, 0, innerRadius * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.8 * twinkle;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    drawSparkle(ctx) {
+        const sparkleSize = 15 * this.sparkleIntensity;
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+
+        // Four-pointed sparkle
+        ctx.beginPath();
+        ctx.moveTo(0, -sparkleSize);
+        ctx.lineTo(0, sparkleSize);
+        ctx.moveTo(-sparkleSize, 0);
+        ctx.lineTo(sparkleSize, 0);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = this.sparkleIntensity * 0.8;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffffff';
+        ctx.stroke();
+
+        // Diagonal lines
+        const diagSize = sparkleSize * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(-diagSize, -diagSize);
+        ctx.lineTo(diagSize, diagSize);
+        ctx.moveTo(diagSize, -diagSize);
+        ctx.lineTo(-diagSize, diagSize);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.globalAlpha = 1;
         ctx.restore();
     }
 }
@@ -423,6 +628,7 @@ class BoidsSimulation {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.grid = new SpatialGrid(this.canvas.width, this.canvas.height, 50);
+        this.backgroundStars = null; // Reinitialize on next draw
     }
 
     initBoids() {
@@ -844,13 +1050,48 @@ class BoidsSimulation {
 
     draw() {
         // Clear with slight transparency for motion blur effect
-        this.ctx.fillStyle = 'rgba(10, 0, 20, 0.15)';
+        this.ctx.fillStyle = 'rgba(10, 0, 20, 0.12)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw background stars (static, subtle)
+        if (!this.backgroundStars) {
+            this.initBackgroundStars();
+        }
+        this.drawBackgroundStars();
 
         // Draw all boids
         for (const boid of this.boids) {
             boid.draw(this.ctx, this.params);
         }
+    }
+
+    initBackgroundStars() {
+        this.backgroundStars = [];
+        const starCount = Math.floor((this.canvas.width * this.canvas.height) / 15000);
+        for (let i = 0; i < starCount; i++) {
+            this.backgroundStars.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                size: Math.random() * 1.5 + 0.5,
+                twinkleSpeed: Math.random() * 0.02 + 0.01,
+                twinkleOffset: Math.random() * Math.PI * 2
+            });
+        }
+    }
+
+    drawBackgroundStars() {
+        const time = performance.now() * 0.001;
+        this.ctx.save();
+
+        for (const star of this.backgroundStars) {
+            const twinkle = 0.3 + Math.sin(time * star.twinkleSpeed + star.twinkleOffset) * 0.2;
+            this.ctx.beginPath();
+            this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
+            this.ctx.fill();
+        }
+
+        this.ctx.restore();
     }
 }
 
