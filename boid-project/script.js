@@ -1,4 +1,4 @@
-// Boids Rave Lab - Main Script
+// Jellyfish Bloom - Main Script (v2)
 
 // ============== Vector Class ==============
 class Vector {
@@ -1032,18 +1032,26 @@ class BoidsSimulation {
         document.getElementById('boundaryBtn').addEventListener('click', () => this.toggleBoundary());
 
         // Music controls
-        document.getElementById('musicBtn').addEventListener('click', () => this.toggleMusic());
+        const musicBtn = document.getElementById('musicBtn');
+        if (musicBtn) musicBtn.addEventListener('click', () => this.toggleMusic());
 
-        document.getElementById('styleSelect').addEventListener('change', (e) => {
-            const index = parseInt(e.target.value);
-            this.audio.setStyle(index);
-        });
+        const styleSelect = document.getElementById('styleSelect');
+        if (styleSelect) {
+            styleSelect.addEventListener('change', (e) => {
+                const index = parseInt(e.target.value);
+                this.audio.setStyle(index);
+            });
+        }
 
-        document.getElementById('volumeSlider').addEventListener('input', (e) => {
-            const value = parseFloat(e.target.value);
-            this.audio.setVolume(value);
-            document.getElementById('volumeValue').textContent = Math.round(value * 100) + '%';
-        });
+        const volumeSlider = document.getElementById('volumeSlider');
+        if (volumeSlider) {
+            volumeSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                this.audio.setVolume(value);
+                const volumeValue = document.getElementById('volumeValue');
+                if (volumeValue) volumeValue.textContent = Math.round(value * 100) + '%';
+            });
+        }
     }
 
     updateBoidCountSlider() {
