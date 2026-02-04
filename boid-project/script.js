@@ -587,16 +587,16 @@ class AudioEngine {
         // Royalty-free house music tracks (from Pixabay - free for any use)
         this.tracks = [
             {
-                name: 'Deep House Vibes',
-                url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3'
+                name: 'Lofi Vibes',
+                url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'
             },
             {
                 name: 'Tech House Energy',
                 url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_ce782d5a6d.mp3'
             },
             {
-                name: 'Electronic Dance',
-                url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3'
+                name: 'Future Bass',
+                url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3'
             },
             {
                 name: 'Synthwave Pulse',
