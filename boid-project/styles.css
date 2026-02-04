@@ -288,6 +288,57 @@ input[type="range"]::-moz-range-thumb {
     padding: 10px;
 }
 
+/* Vision Presets */
+.vision-presets {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.mini-btn {
+    flex: 1;
+    padding: 6px 8px;
+    background: rgba(0, 255, 255, 0.15);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    border-radius: 4px;
+    color: #00ffff;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mini-btn:hover {
+    background: rgba(0, 255, 255, 0.3);
+    border-color: #00ffff;
+}
+
+.mini-btn.active {
+    background: rgba(0, 255, 255, 0.4);
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+}
+
+/* Checkbox Control */
+.checkbox-control {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.checkbox-control input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #00ffff;
+    cursor: pointer;
+}
+
 /* Buttons */
 .preset-buttons,
 .action-buttons {

@@ -378,6 +378,11 @@ class Boid {
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(angle);
 
+        // Draw vision cone if enabled
+        if (params.showCones && params.visionAngle < 360) {
+            this.drawVisionCone(ctx, params.neighborRadius, params.visionAngle);
+        }
+
         // Skip expensive shadowBlur in performance mode (default)
         if (params.enableGlow) {
             ctx.shadowBlur = 15;
@@ -392,6 +397,25 @@ class Boid {
         if (params.enableGlow && this.sparkleIntensity > 0.3) {
             this.drawSparkle(ctx);
         }
+    }
+
+    drawVisionCone(ctx, radius, angleInDegrees) {
+        const halfAngle = (angleInDegrees * Math.PI / 180) / 2;
+
+        // Draw the cone arc
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, -halfAngle, halfAngle);
+        ctx.closePath();
+
+        // Fill with semi-transparent color
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.08)';
+        ctx.fill();
+
+        // Draw the edges
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
     }
 
     drawJellyfish(ctx, size, speed, maxSpeed, params = {}) {
@@ -839,7 +863,8 @@ class BoidsSimulation {
             trailLength: 10,
             visionAngle: 270,
             mouseForce: 1.0,
-            enableGlow: false  // Disabled for performance
+            enableGlow: false,  // Disabled for performance
+            showCones: false    // Vision cone visualization
         };
 
         // Target params for smooth transitions
@@ -1019,7 +1044,31 @@ class BoidsSimulation {
             const value = parseInt(visionSlider.value);
             this.params.visionAngle = value;
             document.getElementById('visionAngleValue').textContent = value + '°';
+            this.updateVisionPresetButtons(value);
         });
+
+        // Vision preset buttons
+        const setVisionAngle = (angle) => {
+            this.params.visionAngle = angle;
+            visionSlider.value = angle;
+            document.getElementById('visionAngleValue').textContent = angle + '°';
+            this.updateVisionPresetButtons(angle);
+        };
+
+        const v360 = document.getElementById('vision360');
+        const v180 = document.getElementById('vision180');
+        const v90 = document.getElementById('vision90');
+        if (v360) v360.addEventListener('click', () => setVisionAngle(360));
+        if (v180) v180.addEventListener('click', () => setVisionAngle(180));
+        if (v90) v90.addEventListener('click', () => setVisionAngle(90));
+
+        // Show cones checkbox
+        const showConesCheckbox = document.getElementById('showCones');
+        if (showConesCheckbox) {
+            showConesCheckbox.addEventListener('change', (e) => {
+                this.params.showCones = e.target.checked;
+            });
+        }
 
         // Preset buttons
         document.getElementById('presetRave').addEventListener('click', () => this.applyPreset('rave'));
@@ -1118,6 +1167,21 @@ class BoidsSimulation {
         document.body.appendChild(overlay);
 
         setTimeout(() => overlay.remove(), 300);
+    }
+
+    updateVisionPresetButtons(angle) {
+        const btns = ['vision360', 'vision180', 'vision90'];
+        const angles = [360, 180, 90];
+        btns.forEach((id, i) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                if (angles[i] === angle) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        });
     }
 
     togglePause() {
