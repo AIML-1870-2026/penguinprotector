@@ -1854,6 +1854,20 @@ function togglePanel(panelId) {
     panel.classList.toggle('collapsed');
 }
 
+// Setup collapsible group headers
+function setupCollapsibleGroups() {
+    const headers = document.querySelectorAll('.control-group.collapsible .group-header');
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const group = header.parentElement;
+            group.classList.toggle('collapsed');
+        });
+    });
+}
+
+// Initialize collapsible groups when DOM is ready
+document.addEventListener('DOMContentLoaded', setupCollapsibleGroups);
+
 // Add flash animation style
 const style = document.createElement('style');
 style.textContent = `

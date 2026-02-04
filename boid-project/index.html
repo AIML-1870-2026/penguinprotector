@@ -46,8 +46,9 @@
         </div>
         <div class="panel-content">
             <!-- Behavior Group -->
-            <div class="control-group">
-                <h3>Behavior</h3>
+            <div class="control-group collapsible">
+                <h3 class="group-header">Behavior <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
 
                 <div class="control">
                     <label for="separationSlider">
@@ -102,12 +103,13 @@
                     <input type="range" id="maxForceSlider" min="0.05" max="0.5" step="0.01" value="0.2">
                     <span id="maxForceValue" class="value-display">0.2</span>
                 </div>
+                </div>
             </div>
 
             <!-- Appearance Group -->
-            <div class="control-group">
-                <h3>Appearance</h3>
-
+            <div class="control-group collapsible">
+                <h3 class="group-header">Appearance <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="control">
                     <label for="boidCountSlider">
                         Boid Count
@@ -144,11 +146,13 @@
                         <input type="checkbox" id="showCones"> Show Vision Cones
                     </label>
                 </div>
+                </div>
             </div>
 
             <!-- Flow Field -->
-            <div class="control-group">
-                <h3>Flow Field</h3>
+            <div class="control-group collapsible collapsed">
+                <h3 class="group-header">Flow Field <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="control checkbox-control">
                     <label>
                         <input type="checkbox" id="flowFieldEnabled"> Enable Flow Field
@@ -167,11 +171,13 @@
                         <input type="checkbox" id="showFlowField"> Show Flow Vectors
                     </label>
                 </div>
+                </div>
             </div>
 
             <!-- Presets -->
-            <div class="control-group">
-                <h3>Presets</h3>
+            <div class="control-group collapsible">
+                <h3 class="group-header">Presets <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="preset-buttons">
                     <button id="presetRave" class="preset-btn" data-tip="Synchronized flowing movement like dancers in a crowd">
                         Rave Swarm
@@ -182,6 +188,7 @@
                     <button id="presetBass" class="preset-btn" data-tip="Tightly packed group with strong attraction">
                         Bass Drop
                     </button>
+                </div>
                 </div>
             </div>
 
@@ -205,8 +212,9 @@
             </div>
 
             <!-- Music -->
-            <div class="control-group">
-                <h3>Music</h3>
+            <div class="control-group collapsible collapsed">
+                <h3 class="group-header">Music <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="control">
                     <label for="styleSelect">
                         Style
@@ -232,11 +240,13 @@
                     <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
                     <span id="volumeValue" class="value-display">50%</span>
                 </div>
+                </div>
             </div>
 
             <!-- Performance -->
-            <div class="control-group">
-                <h3>Performance</h3>
+            <div class="control-group collapsible collapsed">
+                <h3 class="group-header">Performance <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="control checkbox-control">
                     <label>
                         <input type="checkbox" id="spatialGrid" checked> Spatial Grid (O(n) vs O(n²))
@@ -256,11 +266,13 @@
                         <span id="theoreticalMax" class="perf-value">0</span>
                     </div>
                 </div>
+                </div>
             </div>
 
             <!-- Mouse Interaction -->
-            <div class="control-group">
-                <h3>Mouse Interaction</h3>
+            <div class="control-group collapsible collapsed">
+                <h3 class="group-header">Controls <span class="collapse-icon">▼</span></h3>
+                <div class="group-content">
                 <div class="interaction-info">
                     <p><strong>Left Click + Drag:</strong> Attract boids</p>
                     <p><strong>Right Click + Drag:</strong> Repel boids</p>
@@ -280,6 +292,7 @@
                 <div class="obstacle-controls">
                     <span class="obstacle-label">Obstacles: <span id="obstacleCount">0</span></span>
                     <button id="clearObstaclesBtn" class="action-btn small">Clear All</button>
+                </div>
                 </div>
             </div>
         </div>

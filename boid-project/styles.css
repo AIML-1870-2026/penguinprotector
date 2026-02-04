@@ -164,6 +164,41 @@ body {
     border-bottom: 1px solid rgba(157, 0, 255, 0.2);
 }
 
+/* Collapsible Groups */
+.control-group.collapsible .group-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: color 0.2s ease;
+}
+
+.control-group.collapsible .group-header:hover {
+    color: #00ffff;
+}
+
+.control-group.collapsible .collapse-icon {
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.control-group.collapsible.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.control-group.collapsible .group-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    max-height: 500px;
+    opacity: 1;
+}
+
+.control-group.collapsible.collapsed .group-content {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+}
+
 /* Individual Controls */
 .control {
     margin-bottom: 15px;
