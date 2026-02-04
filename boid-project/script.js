@@ -557,15 +557,13 @@ class SpatialGrid {
     }
 }
 
-// ============== Audio Engine (House/EDM Beat Generator) ==============
+// ============== Audio Engine (Real Music with Beat Detection) ==============
 class AudioEngine {
     constructor() {
         this.ctx = null;
         this.isPlaying = false;
-        this.bpm = 128;
         this.volume = 0.5;
-        this.beatTime = 0;
-        this.lastBeatTime = 0;
+        this.currentTrack = 0;
 
         // Audio reactivity values (0-1)
         this.kick = 0;
@@ -573,13 +571,38 @@ class AudioEngine {
         this.bass = 0;
         this.energy = 0;
 
-        // Beat pattern state
-        this.beatCount = 0;
-        this.barCount = 0;
-
         // Nodes
-        this.masterGain = null;
-        this.compressor = null;
+        this.audio = null;
+        this.source = null;
+        this.analyser = null;
+        this.gainNode = null;
+        this.freqData = null;
+
+        // Beat detection
+        this.lastKickValue = 0;
+        this.lastBassValue = 0;
+        this.kickThreshold = 0.6;
+        this.bassThreshold = 0.5;
+
+        // Royalty-free house music tracks (from Pixabay - free for any use)
+        this.tracks = [
+            {
+                name: 'Deep House Vibes',
+                url: 'https://cdn.pixabay.com/audio/2022/10/25/audio_6c3683e60a.mp3'
+            },
+            {
+                name: 'Tech House Energy',
+                url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'
+            },
+            {
+                name: 'Progressive Flow',
+                url: 'https://cdn.pixabay.com/audio/2023/07/30/audio_e6b8d7f379.mp3'
+            },
+            {
+                name: 'Minimal Groove',
+                url: 'https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3'
+            }
+        ];
     }
 
     async init() {
@@ -587,166 +610,57 @@ class AudioEngine {
 
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Simple master gain (skip compressor for reliability)
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.volume;
-        this.masterGain.connect(this.ctx.destination);
+        // Create gain node for volume control
+        this.gainNode = this.ctx.createGain();
+        this.gainNode.gain.value = this.volume;
+        this.gainNode.connect(this.ctx.destination);
+
+        // Create analyser for frequency detection
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 256;
+        this.analyser.smoothingTimeConstant = 0.8;
+        this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
+
+        // Create audio element
+        this.audio = new Audio();
+        this.audio.crossOrigin = 'anonymous';
+        this.audio.loop = true;
+        this.audio.volume = 1; // Volume controlled by gainNode
+
+        // Connect audio element to Web Audio API
+        this.source = this.ctx.createMediaElementSource(this.audio);
+        this.source.connect(this.analyser);
+        this.analyser.connect(this.gainNode);
     }
 
     setVolume(vol) {
         this.volume = vol;
-        if (this.masterGain) {
-            this.masterGain.gain.value = vol;
+        if (this.gainNode) {
+            this.gainNode.gain.value = vol;
         }
     }
 
-    setBPM(bpm) {
-        this.bpm = Math.max(60, Math.min(180, bpm));
-    }
-
-    playKick(time) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(150, time);
-        osc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
-
-        gain.gain.setValueAtTime(0.7, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-
-        osc.start(time);
-        osc.stop(time + 0.3);
-
-        // Trigger reactivity
-        this.kick = 1;
-    }
-
-    playHihat(time, accent = false) {
-        const bufferSize = this.ctx.sampleRate * 0.05;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
-        }
-
-        const source = this.ctx.createBufferSource();
-        source.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 7000;
-
-        const gain = this.ctx.createGain();
-        gain.gain.value = accent ? 0.3 : 0.15;
-
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-
-        source.start(time);
-
-        this.hihat = accent ? 0.8 : 0.4;
-    }
-
-    playBass(time, note) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        const freq = 55 * Math.pow(2, note / 12); // A1 base
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(freq, time);
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(400, time);
-        filter.frequency.linearRampToValueAtTime(150, time + 0.15);
-        filter.Q.value = 5;
-
-        gain.gain.setValueAtTime(0.4, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.masterGain);
-
-        osc.start(time);
-        osc.stop(time + 0.25);
-
-        this.bass = 1;
-    }
-
-    playSynth(time, notes, duration = 0.5) {
-        notes.forEach((note, i) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            const freq = 220 * Math.pow(2, note / 12);
-
-            osc.type = 'square';
-            osc.frequency.value = freq;
-
-            const filter = this.ctx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(2000, time);
-            filter.frequency.linearRampToValueAtTime(500, time + duration);
-
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.1, time + 0.02);
-            gain.gain.linearRampToValueAtTime(0.05, time + duration * 0.5);
-            gain.gain.linearRampToValueAtTime(0, time + duration);
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.masterGain);
-
-            osc.start(time);
-            osc.stop(time + duration + 0.1);
-        });
-    }
-
-    scheduleBar(barStartTime) {
-        const beatDuration = 60 / this.bpm;
-        const sixteenth = beatDuration / 4;
-
-        // House pattern with variations
-        const pattern = this.barCount % 4;
-
-        // Bass notes (minor key progression)
-        const bassNotes = [0, 0, 3, 5][pattern];
-
-        for (let beat = 0; beat < 4; beat++) {
-            const beatTime = barStartTime + beat * beatDuration;
-
-            // Four-on-the-floor kick
-            this.playKick(beatTime);
-
-            // Offbeat hi-hats
-            this.playHihat(beatTime + sixteenth * 2, beat === 0);
-
-            // Extra hi-hats for energy
-            if (pattern >= 2) {
-                this.playHihat(beatTime + sixteenth, false);
-                this.playHihat(beatTime + sixteenth * 3, false);
-            }
-
-            // Bass on beat 1 and 3
-            if (beat === 0 || beat === 2) {
-                this.playBass(beatTime, bassNotes);
+    setTrack(index) {
+        if (index >= 0 && index < this.tracks.length) {
+            this.currentTrack = index;
+            if (this.isPlaying) {
+                this.loadAndPlay();
             }
         }
+    }
 
-        // Synth stabs on some bars
-        if (pattern === 1 || pattern === 3) {
-            this.playSynth(barStartTime, [0, 3, 7], beatDuration * 2);
+    nextTrack() {
+        this.currentTrack = (this.currentTrack + 1) % this.tracks.length;
+        if (this.isPlaying) {
+            this.loadAndPlay();
         }
+        return this.currentTrack;
+    }
 
-        this.barCount++;
+    loadAndPlay() {
+        const track = this.tracks[this.currentTrack];
+        this.audio.src = track.url;
+        this.audio.play().catch(e => console.error('Playback failed:', e));
     }
 
     async start() {
@@ -754,42 +668,31 @@ class AudioEngine {
 
         try {
             await this.init();
-            console.log('Audio context created:', this.ctx.state);
 
             // Resume audio context (required after user interaction)
             if (this.ctx.state === 'suspended') {
                 await this.ctx.resume();
-                console.log('Audio context resumed:', this.ctx.state);
             }
 
+            this.loadAndPlay();
             this.isPlaying = true;
-            this.beatTime = this.ctx.currentTime + 0.05;
-            this.barCount = 0;
-            console.log('Starting music at time:', this.beatTime);
-            this.scheduleLoop();
         } catch (e) {
             console.error('Audio failed to start:', e);
             this.isPlaying = false;
         }
     }
 
-    scheduleLoop() {
-        if (!this.isPlaying) return;
-
-        const barDuration = (60 / this.bpm) * 4;
-        const lookahead = 0.2;
-        const scheduleAhead = barDuration + 0.1;
-
-        while (this.beatTime < this.ctx.currentTime + scheduleAhead) {
-            this.scheduleBar(this.beatTime);
-            this.beatTime += barDuration;
-        }
-
-        setTimeout(() => this.scheduleLoop(), lookahead * 1000);
-    }
-
     stop() {
+        if (this.audio) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+        }
         this.isPlaying = false;
+        // Reset reactivity immediately
+        this.kick = 0;
+        this.bass = 0;
+        this.hihat = 0;
+        this.energy = 0;
     }
 
     async toggle() {
@@ -802,20 +705,88 @@ class AudioEngine {
         }
     }
 
-    // Call this every frame to decay reactivity values
+    // Analyze frequency data to extract beat/bass/energy
     update() {
-        const decay = 0.9;
+        if (!this.isPlaying || !this.analyser) {
+            // Decay when not playing
+            const decay = 0.85;
+            this.kick *= decay;
+            this.bass *= decay;
+            this.hihat *= decay;
+            this.energy = 0;
+            return;
+        }
+
+        // Get frequency data
+        this.analyser.getByteFrequencyData(this.freqData);
+
+        // Frequency bands (approximated for 44.1kHz sample rate, 256 FFT)
+        // Each bin = ~172Hz, so:
+        // Kick/Sub bass: 0-3 bins (0-516Hz)
+        // Bass: 3-8 bins (516-1376Hz)
+        // Mids: 8-32 bins (1376-5504Hz)
+        // Highs: 32+ bins (5504Hz+)
+
+        // Calculate sub bass (kick drum range)
+        let subBass = 0;
+        for (let i = 0; i < 4; i++) {
+            subBass += this.freqData[i];
+        }
+        subBass = (subBass / 4) / 255;
+
+        // Calculate bass
+        let bass = 0;
+        for (let i = 4; i < 10; i++) {
+            bass += this.freqData[i];
+        }
+        bass = (bass / 6) / 255;
+
+        // Calculate highs (hi-hats)
+        let highs = 0;
+        for (let i = 40; i < 80; i++) {
+            highs += this.freqData[i];
+        }
+        highs = (highs / 40) / 255;
+
+        // Calculate overall energy
+        let totalEnergy = 0;
+        for (let i = 0; i < this.freqData.length; i++) {
+            totalEnergy += this.freqData[i];
+        }
+        totalEnergy = (totalEnergy / this.freqData.length) / 255;
+
+        // Kick detection (transient detection on sub-bass)
+        const kickDelta = subBass - this.lastKickValue;
+        if (kickDelta > 0.15 && subBass > this.kickThreshold) {
+            this.kick = Math.min(1, this.kick + 0.8);
+        }
+        this.lastKickValue = subBass;
+
+        // Bass detection
+        const bassDelta = bass - this.lastBassValue;
+        if (bassDelta > 0.1 && bass > this.bassThreshold) {
+            this.bass = Math.min(1, this.bass + 0.6);
+        }
+        this.lastBassValue = bass;
+
+        // Hi-hat from highs
+        this.hihat = highs * 1.5;
+
+        // Overall energy
+        this.energy = totalEnergy * 1.2;
+
+        // Decay
+        const decay = 0.88;
         this.kick *= decay;
-        this.hihat *= decay;
         this.bass *= decay;
-        this.energy = this.kick * 0.5 + this.bass * 0.3 + this.hihat * 0.2;
     }
 
-    // Get current beat phase (0-1) for smooth animations
     getBeatPhase() {
-        if (!this.ctx || !this.isPlaying) return 0;
-        const beatDuration = 60 / this.bpm;
-        return ((this.ctx.currentTime % beatDuration) / beatDuration);
+        return this.energy;
+    }
+
+    getTrackName() {
+        return this.tracks[this.currentTrack].name;
     }
 }
 
@@ -1036,10 +1007,14 @@ class BoidsSimulation {
         // Music controls
         document.getElementById('musicBtn').addEventListener('click', () => this.toggleMusic());
 
-        document.getElementById('bpmSlider').addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            this.audio.setBPM(value);
-            document.getElementById('bpmValue').textContent = value;
+        document.getElementById('trackSelect').addEventListener('change', (e) => {
+            const index = parseInt(e.target.value);
+            this.audio.setTrack(index);
+        });
+
+        document.getElementById('nextTrackBtn').addEventListener('click', () => {
+            const newIndex = this.audio.nextTrack();
+            document.getElementById('trackSelect').value = newIndex;
         });
 
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
@@ -1157,10 +1132,10 @@ class BoidsSimulation {
         const isPlaying = await this.audio.toggle();
 
         if (isPlaying) {
-            btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop Music';
+            btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop';
             btn.classList.add('playing');
         } else {
-            btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play Music';
+            btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play';
             btn.classList.remove('playing');
         }
 

@@ -171,18 +171,25 @@
             <!-- Music -->
             <div class="control-group">
                 <h3>Music</h3>
+                <div class="control">
+                    <label for="trackSelect">
+                        Track
+                        <span class="tooltip" data-tip="Choose a house music track">?</span>
+                    </label>
+                    <select id="trackSelect" class="track-select">
+                        <option value="0">Deep House Vibes</option>
+                        <option value="1">Tech House Energy</option>
+                        <option value="2">Progressive Flow</option>
+                        <option value="3">Minimal Groove</option>
+                    </select>
+                </div>
                 <div class="action-buttons">
                     <button id="musicBtn" class="action-btn music-btn">
-                        <span id="musicIcon">&#9835;</span> Play Music
+                        <span id="musicIcon">&#9835;</span> Play
                     </button>
-                </div>
-                <div class="control">
-                    <label for="bpmSlider">
-                        BPM
-                        <span class="tooltip" data-tip="Beats per minute">?</span>
-                    </label>
-                    <input type="range" id="bpmSlider" min="80" max="160" step="4" value="128">
-                    <span id="bpmValue" class="value-display">128</span>
+                    <button id="nextTrackBtn" class="action-btn">
+                        &#9197; Next
+                    </button>
                 </div>
                 <div class="control">
                     <label for="volumeSlider">
