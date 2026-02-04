@@ -100,16 +100,16 @@ class Boid {
         // Previous acceleration for smoothing
         this.prevAcceleration = new Vector(0, 0);
 
-        // Assign random neon color with bird/star theme
+        // Bioluminescent jellyfish colors
         const colors = [
             '#00ffff', // Cyan
             '#ff00ff', // Magenta
-            '#ffd700', // Gold (star-like)
-            '#87ceeb', // Sky blue
+            '#7b68ee', // Medium slate blue
+            '#00fa9a', // Medium spring green
             '#ff69b4', // Hot pink
-            '#98fb98', // Pale green
-            '#dda0dd', // Plum
-            '#f0e68c'  // Khaki (warm star)
+            '#87cefa', // Light sky blue
+            '#da70d6', // Orchid
+            '#40e0d0'  // Turquoise
         ];
         this.color = colors[Math.floor(Math.random() * colors.length)];
 
@@ -354,16 +354,17 @@ class Boid {
     }
 
     draw(ctx, params) {
-        // Draw trail as single path for performance
-        if (this.trail.length > 1) {
+        // Draw soft glowing trail (jellyfish wake)
+        if (this.trail.length > 2) {
             ctx.beginPath();
             ctx.moveTo(this.trail[0].x, this.trail[0].y);
             for (let i = 1; i < this.trail.length; i++) {
                 ctx.lineTo(this.trail[i].x, this.trail[i].y);
             }
             ctx.strokeStyle = this.color;
-            ctx.lineWidth = 2;
-            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.globalAlpha = 0.15;
             ctx.stroke();
             ctx.globalAlpha = 1;
         }
@@ -383,11 +384,7 @@ class Boid {
             ctx.shadowColor = this.color;
         }
 
-        if (this.isStar) {
-            this.drawStar(ctx, baseSize);
-        } else {
-            this.drawBird(ctx, baseSize, speed, params.maxSpeed);
-        }
+        this.drawJellyfish(ctx, baseSize, speed, params.maxSpeed);
 
         ctx.restore();
 
@@ -397,34 +394,54 @@ class Boid {
         }
     }
 
-    drawBird(ctx, size, speed, maxSpeed) {
-        // Wing flap amount based on speed
-        const flapAmount = Math.sin(this.wingPhase) * (0.3 + speed / maxSpeed * 0.4);
-        const wingY = size * (0.6 + flapAmount * 0.4);
+    drawJellyfish(ctx, size, speed, maxSpeed) {
+        // Pulsing animation for the bell
+        const pulse = 0.85 + Math.sin(this.wingPhase) * 0.15;
+        const bellWidth = size * 0.8 * pulse;
+        const bellHeight = size * 0.5;
 
-        // Draw entire bird as single path for performance
+        // Draw bell/dome (semi-circle facing forward)
         ctx.beginPath();
-
-        // Body - simple triangle
-        ctx.moveTo(size * 1.1, 0);  // Nose
-        ctx.lineTo(-size * 0.6, -size * 0.25);
-        ctx.lineTo(-size * 0.6, size * 0.25);
-        ctx.closePath();
-
-        // Left wing
-        ctx.moveTo(0, -size * 0.15);
-        ctx.lineTo(-size * 0.5, -wingY);
-        ctx.lineTo(-size * 0.4, 0);
-        ctx.closePath();
-
-        // Right wing
-        ctx.moveTo(0, size * 0.15);
-        ctx.lineTo(-size * 0.5, wingY);
-        ctx.lineTo(-size * 0.4, 0);
-        ctx.closePath();
-
+        ctx.ellipse(0, 0, bellHeight, bellWidth, 0, -Math.PI / 2, Math.PI / 2);
         ctx.fillStyle = this.color;
+        ctx.globalAlpha = 0.7;
         ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Inner glow on bell
+        ctx.beginPath();
+        ctx.ellipse(bellHeight * 0.2, 0, bellHeight * 0.4, bellWidth * 0.5, 0, -Math.PI / 2, Math.PI / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.3;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Draw tentacles (wavy lines trailing behind)
+        const tentacleCount = 5;
+        const tentacleLength = size * 1.5;
+        const waveAmount = 0.3 + (speed / maxSpeed) * 0.2;
+
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.6;
+
+        for (let t = 0; t < tentacleCount; t++) {
+            const yOffset = (t - (tentacleCount - 1) / 2) * (bellWidth * 0.35);
+            const phaseOffset = t * 0.8;
+
+            ctx.beginPath();
+            ctx.moveTo(-bellHeight * 0.3, yOffset);
+
+            // Draw wavy tentacle
+            for (let i = 1; i <= 8; i++) {
+                const x = -bellHeight * 0.3 - (i / 8) * tentacleLength;
+                const wave = Math.sin(this.wingPhase + phaseOffset + i * 0.5) * size * waveAmount;
+                ctx.lineTo(x, yOffset + wave);
+            }
+            ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
     }
 
     drawStar(ctx, size) {
@@ -997,8 +1014,8 @@ class BoidsSimulation {
     }
 
     draw() {
-        // Clear with slight transparency for motion blur effect
-        this.ctx.fillStyle = 'rgba(10, 0, 20, 0.12)';
+        // Deep ocean background with motion blur effect
+        this.ctx.fillStyle = 'rgba(0, 10, 30, 0.12)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw background stars (static, subtle)
