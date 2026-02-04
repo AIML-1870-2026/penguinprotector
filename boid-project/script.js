@@ -264,6 +264,33 @@ class Boid {
         }
     }
 
+    avoidObstacles(obstacles, obstacleRadius) {
+        if (!obstacles || obstacles.length === 0) return;
+
+        const avoidForce = new Vector();
+        const lookAhead = 40; // How far ahead to look
+
+        for (const obs of obstacles) {
+            const dx = this.position.x - obs.x;
+            const dy = this.position.y - obs.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+
+            const avoidRadius = obstacleRadius + lookAhead;
+
+            if (d < avoidRadius && d > 0) {
+                // Calculate avoidance force - stronger when closer
+                const strength = Math.pow(1 - d / avoidRadius, 2) * 2;
+                avoidForce.x += (dx / d) * strength;
+                avoidForce.y += (dy / d) * strength;
+            }
+        }
+
+        if (avoidForce.mag() > 0) {
+            avoidForce.normalize().mult(0.8); // Strong avoidance
+            this.applyForce(avoidForce);
+        }
+    }
+
     update(params) {
         // Store trail
         if (params.trailLength > 0) {
@@ -875,6 +902,11 @@ class BoidsSimulation {
         this.mousePos = null;
         this.isMouseDown = false;
         this.isRightMouseDown = false;
+        this.isPainting = false;
+
+        // Obstacles (painted by user)
+        this.obstacles = [];
+        this.obstacleRadius = 15;
 
         // FPS tracking
         this.frameCount = 0;
@@ -936,6 +968,30 @@ class BoidsSimulation {
         this.updateBoidCountSlider();
     }
 
+    paintObstacle(x, y) {
+        // Don't place obstacles too close together
+        const minDist = this.obstacleRadius * 1.2;
+        for (const obs of this.obstacles) {
+            const dx = x - obs.x;
+            const dy = y - obs.y;
+            if (dx * dx + dy * dy < minDist * minDist) {
+                return; // Too close to existing obstacle
+            }
+        }
+        this.obstacles.push({ x, y });
+        this.updateObstacleCount();
+    }
+
+    clearObstacles() {
+        this.obstacles = [];
+        this.updateObstacleCount();
+    }
+
+    updateObstacleCount() {
+        const el = document.getElementById('obstacleCount');
+        if (el) el.textContent = this.obstacles.length;
+    }
+
     setupEventListeners() {
         window.addEventListener('resize', () => this.resize());
 
@@ -953,6 +1009,9 @@ class BoidsSimulation {
                 this.isMouseDown = true;
                 if (e.shiftKey) {
                     this.spawnBoids(e.clientX, e.clientY, 10);
+                } else if (e.ctrlKey || e.metaKey) {
+                    this.isPainting = true;
+                    this.paintObstacle(e.clientX, e.clientY);
                 }
             } else if (e.button === 2) {
                 this.isRightMouseDown = true;
@@ -963,6 +1022,7 @@ class BoidsSimulation {
         this.canvas.addEventListener('mouseup', (e) => {
             if (e.button === 0) {
                 this.isMouseDown = false;
+                this.isPainting = false;
             } else if (e.button === 2) {
                 this.isRightMouseDown = false;
             }
@@ -971,6 +1031,9 @@ class BoidsSimulation {
 
         this.canvas.addEventListener('mousemove', (e) => {
             this.mousePos = new Vector(e.clientX, e.clientY);
+            if (this.isPainting && (e.ctrlKey || e.metaKey)) {
+                this.paintObstacle(e.clientX, e.clientY);
+            }
             this.updateMouseIndicator();
         });
 
@@ -978,6 +1041,7 @@ class BoidsSimulation {
             this.mousePos = null;
             this.isMouseDown = false;
             this.isRightMouseDown = false;
+            this.isPainting = false;
             this.updateMouseIndicator();
         });
 
@@ -993,11 +1057,13 @@ class BoidsSimulation {
             indicator.style.left = this.mousePos.x + 'px';
             indicator.style.top = this.mousePos.y + 'px';
 
-            if (this.isRightMouseDown) {
-                indicator.classList.remove('attract');
+            indicator.classList.remove('attract', 'repel', 'paint');
+
+            if (this.isPainting) {
+                indicator.classList.add('paint');
+            } else if (this.isRightMouseDown) {
                 indicator.classList.add('repel');
             } else {
-                indicator.classList.remove('repel');
                 indicator.classList.add('attract');
             }
         } else {
@@ -1088,6 +1154,12 @@ class BoidsSimulation {
         document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
         document.getElementById('boundaryBtn').addEventListener('click', () => this.toggleBoundary());
+
+        // Clear obstacles button
+        const clearObstaclesBtn = document.getElementById('clearObstaclesBtn');
+        if (clearObstaclesBtn) {
+            clearObstaclesBtn.addEventListener('click', () => this.clearObstacles());
+        }
 
         // Music controls
         const musicBtn = document.getElementById('musicBtn');
@@ -1436,10 +1508,11 @@ class BoidsSimulation {
             boid.flock(neighbors, this.params);
             boid.applyMouseForce(
                 this.mousePos,
-                this.isMouseDown && !this.isRightMouseDown,
+                this.isMouseDown && !this.isRightMouseDown && !this.isPainting,
                 this.isRightMouseDown,
                 this.params.mouseForce
             );
+            boid.avoidObstacles(this.obstacles, this.obstacleRadius);
         }
 
         for (const boid of this.boids) {
@@ -1459,10 +1532,47 @@ class BoidsSimulation {
         }
         this.drawBackgroundStars();
 
+        // Draw obstacles
+        this.drawObstacles();
+
         // Draw all boids
         for (const boid of this.boids) {
             boid.draw(this.ctx, this.params);
         }
+    }
+
+    drawObstacles() {
+        if (this.obstacles.length === 0) return;
+
+        this.ctx.save();
+        for (const obs of this.obstacles) {
+            // Outer glow
+            const gradient = this.ctx.createRadialGradient(
+                obs.x, obs.y, 0,
+                obs.x, obs.y, this.obstacleRadius * 2
+            );
+            gradient.addColorStop(0, 'rgba(255, 0, 102, 0.6)');
+            gradient.addColorStop(0.5, 'rgba(255, 0, 102, 0.2)');
+            gradient.addColorStop(1, 'rgba(255, 0, 102, 0)');
+
+            this.ctx.beginPath();
+            this.ctx.arc(obs.x, obs.y, this.obstacleRadius * 2, 0, Math.PI * 2);
+            this.ctx.fillStyle = gradient;
+            this.ctx.fill();
+
+            // Core
+            this.ctx.beginPath();
+            this.ctx.arc(obs.x, obs.y, this.obstacleRadius, 0, Math.PI * 2);
+            this.ctx.fillStyle = 'rgba(255, 0, 102, 0.8)';
+            this.ctx.fill();
+
+            // Inner highlight
+            this.ctx.beginPath();
+            this.ctx.arc(obs.x, obs.y, this.obstacleRadius * 0.4, 0, Math.PI * 2);
+            this.ctx.fillStyle = 'rgba(255, 150, 180, 0.6)';
+            this.ctx.fill();
+        }
+        this.ctx.restore();
     }
 
     initBackgroundStars() {

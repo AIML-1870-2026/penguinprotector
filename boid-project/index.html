@@ -238,6 +238,7 @@
                 <div class="interaction-info">
                     <p><strong>Left Click + Drag:</strong> Attract boids</p>
                     <p><strong>Right Click + Drag:</strong> Repel boids</p>
+                    <p><strong>Ctrl/Cmd + Drag:</strong> Paint obstacles</p>
                     <p><strong>Shift + Click:</strong> Spawn 10 boids</p>
                     <p><strong>Spacebar:</strong> Pause/Resume</p>
                 </div>
@@ -248,6 +249,10 @@
                     </label>
                     <input type="range" id="mouseForceSlider" min="0.1" max="3" step="0.1" value="1">
                     <span id="mouseForceValue" class="value-display">1.0</span>
+                </div>
+                <div class="obstacle-controls">
+                    <span class="obstacle-label">Obstacles: <span id="obstacleCount">0</span></span>
+                    <button id="clearObstaclesBtn" class="action-btn small">Clear All</button>
                 </div>
             </div>
         </div>
