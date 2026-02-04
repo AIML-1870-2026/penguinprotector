@@ -354,18 +354,17 @@ class Boid {
     }
 
     draw(ctx, params) {
-        // Draw trail with gradient fade
+        // Draw trail as single path for performance
         if (this.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.trail[0].x, this.trail[0].y);
             for (let i = 1; i < this.trail.length; i++) {
-                const alpha = (i / this.trail.length) * 0.4;
-                ctx.beginPath();
-                ctx.moveTo(this.trail[i - 1].x, this.trail[i - 1].y);
                 ctx.lineTo(this.trail[i].x, this.trail[i].y);
-                ctx.strokeStyle = this.color;
-                ctx.lineWidth = 1 + (i / this.trail.length) * 2;
-                ctx.globalAlpha = alpha;
-                ctx.stroke();
             }
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.3;
+            ctx.stroke();
             ctx.globalAlpha = 1;
         }
 
@@ -378,22 +377,22 @@ class Boid {
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(angle);
 
-        // Glow effect
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = this.color;
+        // Skip expensive shadowBlur in performance mode (default)
+        if (params.enableGlow) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
+        }
 
         if (this.isStar) {
-            // Draw as a twinkling star
             this.drawStar(ctx, baseSize);
         } else {
-            // Draw as a bird
             this.drawBird(ctx, baseSize, speed, params.maxSpeed);
         }
 
         ctx.restore();
 
-        // Draw sparkle effect
-        if (this.sparkleIntensity > 0.1) {
+        // Skip sparkles for performance (only draw occasionally)
+        if (params.enableGlow && this.sparkleIntensity > 0.3) {
             this.drawSparkle(ctx);
         }
     }
@@ -401,122 +400,70 @@ class Boid {
     drawBird(ctx, size, speed, maxSpeed) {
         // Wing flap amount based on speed
         const flapAmount = Math.sin(this.wingPhase) * (0.3 + speed / maxSpeed * 0.4);
+        const wingY = size * (0.6 + flapAmount * 0.4);
 
-        // Body (sleek elongated shape)
+        // Draw entire bird as single path for performance
         ctx.beginPath();
-        ctx.moveTo(size * 1.2, 0); // Beak tip
-        ctx.quadraticCurveTo(size * 0.3, -size * 0.15, -size * 0.5, 0); // Top body curve
-        ctx.quadraticCurveTo(size * 0.3, size * 0.15, size * 1.2, 0); // Bottom body curve
-        ctx.fillStyle = this.color;
-        ctx.fill();
+
+        // Body - simple triangle
+        ctx.moveTo(size * 1.1, 0);  // Nose
+        ctx.lineTo(-size * 0.6, -size * 0.25);
+        ctx.lineTo(-size * 0.6, size * 0.25);
+        ctx.closePath();
 
         // Left wing
-        ctx.beginPath();
-        ctx.moveTo(size * 0.2, -size * 0.1);
-        ctx.quadraticCurveTo(
-            -size * 0.3, -size * (0.8 + flapAmount),
-            -size * 0.8, -size * (0.4 + flapAmount * 0.5)
-        );
-        ctx.quadraticCurveTo(-size * 0.4, -size * 0.2, -size * 0.3, 0);
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = 0.9;
-        ctx.fill();
+        ctx.moveTo(0, -size * 0.15);
+        ctx.lineTo(-size * 0.5, -wingY);
+        ctx.lineTo(-size * 0.4, 0);
+        ctx.closePath();
 
         // Right wing
-        ctx.beginPath();
-        ctx.moveTo(size * 0.2, size * 0.1);
-        ctx.quadraticCurveTo(
-            -size * 0.3, size * (0.8 + flapAmount),
-            -size * 0.8, size * (0.4 + flapAmount * 0.5)
-        );
-        ctx.quadraticCurveTo(-size * 0.4, size * 0.2, -size * 0.3, 0);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-
-        // Tail feathers
-        ctx.beginPath();
-        ctx.moveTo(-size * 0.5, 0);
-        ctx.lineTo(-size * 0.9, -size * 0.2);
-        ctx.lineTo(-size * 0.7, 0);
-        ctx.lineTo(-size * 0.9, size * 0.2);
+        ctx.moveTo(0, size * 0.15);
+        ctx.lineTo(-size * 0.5, wingY);
+        ctx.lineTo(-size * 0.4, 0);
         ctx.closePath();
-        ctx.globalAlpha = 0.8;
-        ctx.fill();
-        ctx.globalAlpha = 1;
 
-        // White highlight on body
-        ctx.shadowBlur = 5;
-        ctx.beginPath();
-        ctx.ellipse(size * 0.3, -size * 0.05, size * 0.3, size * 0.08, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.globalAlpha = 1;
     }
 
     drawStar(ctx, size) {
-        const spikes = 4;
         const outerRadius = size * 0.8;
         const innerRadius = size * 0.3;
         const twinkle = 0.8 + Math.sin(this.wingPhase * 2) * 0.2;
 
+        // Simple 4-pointed star as single path
         ctx.beginPath();
-        for (let i = 0; i < spikes * 2; i++) {
-            const radius = i % 2 === 0 ? outerRadius * twinkle : innerRadius;
-            const angle = (i * Math.PI) / spikes - Math.PI / 2;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-        }
+        ctx.moveTo(0, -outerRadius * twinkle);
+        ctx.lineTo(innerRadius, 0);
+        ctx.lineTo(0, outerRadius * twinkle);
+        ctx.lineTo(-innerRadius, 0);
         ctx.closePath();
 
-        // Gradient fill for star
-        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, outerRadius);
-        gradient.addColorStop(0, '#ffffff');
-        gradient.addColorStop(0.3, this.color);
-        gradient.addColorStop(1, this.color);
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = this.color;
         ctx.fill();
 
-        // Extra glow core
+        // Small bright core
         ctx.beginPath();
-        ctx.arc(0, 0, innerRadius * 0.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, innerRadius * 0.4, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.8 * twinkle;
         ctx.fill();
-        ctx.globalAlpha = 1;
     }
 
     drawSparkle(ctx) {
-        const sparkleSize = 15 * this.sparkleIntensity;
+        const sparkleSize = 12 * this.sparkleIntensity;
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
 
-        // Four-pointed sparkle
+        // Simple cross sparkle
         ctx.beginPath();
         ctx.moveTo(0, -sparkleSize);
         ctx.lineTo(0, sparkleSize);
         ctx.moveTo(-sparkleSize, 0);
         ctx.lineTo(sparkleSize, 0);
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = this.sparkleIntensity * 0.8;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ffffff';
-        ctx.stroke();
-
-        // Diagonal lines
-        const diagSize = sparkleSize * 0.6;
-        ctx.beginPath();
-        ctx.moveTo(-diagSize, -diagSize);
-        ctx.lineTo(diagSize, diagSize);
-        ctx.moveTo(diagSize, -diagSize);
-        ctx.lineTo(-diagSize, diagSize);
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = this.sparkleIntensity * 0.6;
         ctx.stroke();
 
         ctx.globalAlpha = 1;
@@ -590,9 +537,10 @@ class BoidsSimulation {
             maxSpeed: 4,
             maxForce: 0.2,
             boidCount: 100,
-            trailLength: 20,
+            trailLength: 10,
             visionAngle: 270,
-            mouseForce: 1.0
+            mouseForce: 1.0,
+            enableGlow: false  // Disabled for performance
         };
 
         // Target params for smooth transitions
@@ -1066,32 +1014,32 @@ class BoidsSimulation {
     }
 
     initBackgroundStars() {
-        this.backgroundStars = [];
-        const starCount = Math.floor((this.canvas.width * this.canvas.height) / 15000);
+        // Create offscreen canvas for static stars (major performance boost)
+        this.starCanvas = document.createElement('canvas');
+        this.starCanvas.width = this.canvas.width;
+        this.starCanvas.height = this.canvas.height;
+        const starCtx = this.starCanvas.getContext('2d');
+
+        const starCount = Math.floor((this.canvas.width * this.canvas.height) / 20000);
+        starCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+
         for (let i = 0; i < starCount; i++) {
-            this.backgroundStars.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                size: Math.random() * 1.5 + 0.5,
-                twinkleSpeed: Math.random() * 0.02 + 0.01,
-                twinkleOffset: Math.random() * Math.PI * 2
-            });
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            const size = Math.random() * 1.5 + 0.5;
+            starCtx.beginPath();
+            starCtx.arc(x, y, size, 0, Math.PI * 2);
+            starCtx.fill();
         }
+
+        this.backgroundStars = true;  // Flag that stars are ready
     }
 
     drawBackgroundStars() {
-        const time = performance.now() * 0.001;
-        this.ctx.save();
-
-        for (const star of this.backgroundStars) {
-            const twinkle = 0.3 + Math.sin(time * star.twinkleSpeed + star.twinkleOffset) * 0.2;
-            this.ctx.beginPath();
-            this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${twinkle})`;
-            this.ctx.fill();
-        }
-
-        this.ctx.restore();
+        // Simply blit the pre-rendered star canvas
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.drawImage(this.starCanvas, 0, 0);
+        this.ctx.globalAlpha = 1;
     }
 }
 
