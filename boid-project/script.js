@@ -587,16 +587,9 @@ class AudioEngine {
 
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Master chain
-        this.compressor = this.ctx.createDynamicsCompressor();
-        this.compressor.threshold.value = -10;
-        this.compressor.knee.value = 10;
-        this.compressor.ratio.value = 4;
-
+        // Simple master gain (skip compressor for reliability)
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = this.volume;
-
-        this.compressor.connect(this.masterGain);
         this.masterGain.connect(this.ctx.destination);
     }
 
@@ -619,11 +612,11 @@ class AudioEngine {
         osc.frequency.setValueAtTime(150, time);
         osc.frequency.exponentialRampToValueAtTime(30, time + 0.1);
 
-        gain.gain.setValueAtTime(0.8, time);
+        gain.gain.setValueAtTime(0.7, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
 
         osc.connect(gain);
-        gain.connect(this.compressor);
+        gain.connect(this.masterGain);
 
         osc.start(time);
         osc.stop(time + 0.3);
@@ -653,7 +646,7 @@ class AudioEngine {
 
         source.connect(filter);
         filter.connect(gain);
-        gain.connect(this.compressor);
+        gain.connect(this.masterGain);
 
         source.start(time);
 
@@ -680,7 +673,7 @@ class AudioEngine {
 
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(this.compressor);
+        gain.connect(this.masterGain);
 
         osc.start(time);
         osc.stop(time + 0.25);
@@ -710,7 +703,7 @@ class AudioEngine {
 
             osc.connect(filter);
             filter.connect(gain);
-            gain.connect(this.compressor);
+            gain.connect(this.masterGain);
 
             osc.start(time);
             osc.stop(time + duration + 0.1);
@@ -756,19 +749,24 @@ class AudioEngine {
         this.barCount++;
     }
 
-    start() {
+    async start() {
         if (this.isPlaying) return;
 
-        this.init().then(() => {
+        try {
+            await this.init();
+
+            // Resume audio context (required after user interaction)
             if (this.ctx.state === 'suspended') {
-                this.ctx.resume();
+                await this.ctx.resume();
             }
 
             this.isPlaying = true;
-            this.beatTime = this.ctx.currentTime;
+            this.beatTime = this.ctx.currentTime + 0.1; // Small delay to ensure scheduling works
             this.barCount = 0;
             this.scheduleLoop();
-        });
+        } catch (e) {
+            console.error('Audio failed to start:', e);
+        }
     }
 
     scheduleLoop() {
