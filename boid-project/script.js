@@ -557,13 +557,14 @@ class SpatialGrid {
     }
 }
 
-// ============== Audio Engine (Real Music with Beat Detection) ==============
+// ============== Audio Engine (Procedural House Music) ==============
 class AudioEngine {
     constructor() {
         this.ctx = null;
         this.isPlaying = false;
+        this.bpm = 128;
         this.volume = 0.5;
-        this.currentTrack = 0;
+        this.style = 0; // 0=house, 1=techno, 2=trance, 3=ambient
 
         // Audio reactivity values (0-1)
         this.kick = 0;
@@ -571,124 +572,219 @@ class AudioEngine {
         this.bass = 0;
         this.energy = 0;
 
+        // Scheduling
+        this.nextBeatTime = 0;
+        this.beatCount = 0;
+        this.schedulerId = null;
+
         // Nodes
-        this.audio = null;
-        this.source = null;
-        this.analyser = null;
-        this.gainNode = null;
-        this.freqData = null;
-
-        // Beat detection
-        this.lastKickValue = 0;
-        this.lastBassValue = 0;
-        this.kickThreshold = 0.6;
-        this.bassThreshold = 0.5;
-
-        // Royalty-free house music tracks (from Pixabay - free for any use)
-        this.tracks = [
-            {
-                name: 'Lofi Vibes',
-                url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'
-            },
-            {
-                name: 'Tech House Energy',
-                url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_ce782d5a6d.mp3'
-            },
-            {
-                name: 'Future Bass',
-                url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3'
-            },
-            {
-                name: 'Synthwave Pulse',
-                url: 'https://cdn.pixabay.com/audio/2022/04/27/audio_67bcb98a46.mp3'
-            }
-        ];
+        this.masterGain = null;
     }
 
     async init() {
         if (this.ctx) return;
-
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-        // Create gain node for volume control
-        this.gainNode = this.ctx.createGain();
-        this.gainNode.gain.value = this.volume;
-        this.gainNode.connect(this.ctx.destination);
-
-        // Create analyser for frequency detection
-        this.analyser = this.ctx.createAnalyser();
-        this.analyser.fftSize = 256;
-        this.analyser.smoothingTimeConstant = 0.8;
-        this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
-
-        // Create audio element
-        this.audio = new Audio();
-        this.audio.crossOrigin = 'anonymous';
-        this.audio.loop = true;
-        this.audio.volume = 1; // Volume controlled by gainNode
-
-        // Connect audio element to Web Audio API
-        this.source = this.ctx.createMediaElementSource(this.audio);
-        this.source.connect(this.analyser);
-        this.analyser.connect(this.gainNode);
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = this.volume;
+        this.masterGain.connect(this.ctx.destination);
     }
 
     setVolume(vol) {
         this.volume = vol;
-        if (this.gainNode) {
-            this.gainNode.gain.value = vol;
+        if (this.masterGain) {
+            this.masterGain.gain.value = vol;
         }
     }
 
-    setTrack(index) {
-        if (index >= 0 && index < this.tracks.length) {
-            this.currentTrack = index;
-            if (this.isPlaying) {
-                this.loadAndPlay();
+    setStyle(index) {
+        this.style = index;
+        // Adjust BPM based on style
+        const bpms = [128, 138, 140, 100];
+        this.bpm = bpms[index] || 128;
+    }
+
+    playKick(time) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(40, time + 0.08);
+
+        gain.gain.setValueAtTime(0.8, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(time);
+        osc.stop(time + 0.25);
+
+        // Schedule reactivity
+        const delay = (time - this.ctx.currentTime) * 1000;
+        setTimeout(() => { this.kick = 1; }, Math.max(0, delay));
+    }
+
+    playHihat(time, open = false) {
+        const bufferSize = this.ctx.sampleRate * (open ? 0.15 : 0.05);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, open ? 2 : 4);
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 8000;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = open ? 0.15 : 0.1;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        source.start(time);
+
+        const delay = (time - this.ctx.currentTime) * 1000;
+        setTimeout(() => { this.hihat = open ? 0.6 : 0.3; }, Math.max(0, delay));
+    }
+
+    playBass(time, note, duration = 0.2) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        const freq = 55 * Math.pow(2, note / 12);
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, time);
+        filter.frequency.exponentialRampToValueAtTime(200, time + duration);
+        filter.Q.value = 8;
+
+        gain.gain.setValueAtTime(0.35, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(time);
+        osc.stop(time + duration + 0.05);
+
+        const delay = (time - this.ctx.currentTime) * 1000;
+        setTimeout(() => { this.bass = 1; }, Math.max(0, delay));
+    }
+
+    playChord(time, notes, duration = 0.4) {
+        notes.forEach(note => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+
+            osc.type = 'square';
+            osc.frequency.value = 220 * Math.pow(2, note / 12);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(1500, time);
+            filter.frequency.exponentialRampToValueAtTime(400, time + duration);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.06, time + 0.01);
+            gain.gain.linearRampToValueAtTime(0.03, time + duration * 0.7);
+            gain.gain.linearRampToValueAtTime(0, time + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(time);
+            osc.stop(time + duration + 0.05);
+        });
+    }
+
+    scheduleBeats() {
+        if (!this.isPlaying) return;
+
+        const beatDuration = 60 / this.bpm;
+        const lookAhead = 0.1;
+        const scheduleAhead = 0.2;
+
+        while (this.nextBeatTime < this.ctx.currentTime + scheduleAhead) {
+            const time = this.nextBeatTime;
+            const beat = this.beatCount % 16;
+            const bar = Math.floor(this.beatCount / 4) % 4;
+
+            // Four-on-the-floor kick
+            this.playKick(time);
+
+            // Hi-hats pattern varies by style
+            if (this.style === 1) { // Techno - more hi-hats
+                this.playHihat(time + beatDuration * 0.25);
+                this.playHihat(time + beatDuration * 0.5, beat % 4 === 2);
+                this.playHihat(time + beatDuration * 0.75);
+            } else if (this.style === 2) { // Trance - offbeat
+                this.playHihat(time + beatDuration * 0.5, true);
+            } else if (this.style === 3) { // Ambient - minimal
+                if (beat % 2 === 1) this.playHihat(time + beatDuration * 0.5);
+            } else { // House - classic offbeat
+                this.playHihat(time + beatDuration * 0.5, beat % 8 === 4);
             }
-        }
-    }
 
-    nextTrack() {
-        this.currentTrack = (this.currentTrack + 1) % this.tracks.length;
-        if (this.isPlaying) {
-            this.loadAndPlay();
-        }
-        return this.currentTrack;
-    }
+            // Bass line - different progressions per style
+            const bassPatterns = [
+                [0, 0, 5, 7],  // House - Am progression
+                [0, 0, 0, 3],  // Techno - minimal
+                [0, 3, 5, 7],  // Trance - melodic
+                [0, 0, 0, 0]   // Ambient - drone
+            ];
+            const bassNote = bassPatterns[this.style][bar];
+            if (beat % 2 === 0) {
+                this.playBass(time, bassNote, this.style === 3 ? 0.5 : 0.2);
+            }
 
-    loadAndPlay() {
-        const track = this.tracks[this.currentTrack];
-        this.audio.src = track.url;
-        this.audio.play().catch(e => console.error('Playback failed:', e));
+            // Chords on some beats
+            if (bar === 1 || bar === 3) {
+                if (beat === 0) {
+                    const chords = [
+                        [0, 3, 7],    // Am
+                        [0, 4, 7],    // A (techno)
+                        [0, 3, 7, 10],// Am7 (trance)
+                        [0, 7, 12]    // Power (ambient)
+                    ];
+                    this.playChord(time, chords[this.style], beatDuration * 2);
+                }
+            }
+
+            this.nextBeatTime += beatDuration;
+            this.beatCount++;
+        }
+
+        this.schedulerId = setTimeout(() => this.scheduleBeats(), lookAhead * 1000);
     }
 
     async start() {
         if (this.isPlaying) return;
 
-        try {
-            await this.init();
-
-            // Resume audio context (required after user interaction)
-            if (this.ctx.state === 'suspended') {
-                await this.ctx.resume();
-            }
-
-            this.loadAndPlay();
-            this.isPlaying = true;
-        } catch (e) {
-            console.error('Audio failed to start:', e);
-            this.isPlaying = false;
+        await this.init();
+        if (this.ctx.state === 'suspended') {
+            await this.ctx.resume();
         }
+
+        this.isPlaying = true;
+        this.nextBeatTime = this.ctx.currentTime + 0.05;
+        this.beatCount = 0;
+        this.scheduleBeats();
     }
 
     stop() {
-        if (this.audio) {
-            this.audio.pause();
-            this.audio.currentTime = 0;
-        }
         this.isPlaying = false;
-        // Reset reactivity immediately
+        if (this.schedulerId) {
+            clearTimeout(this.schedulerId);
+            this.schedulerId = null;
+        }
+        // Immediately reset reactivity
         this.kick = 0;
         this.bass = 0;
         this.hihat = 0;
@@ -701,96 +797,23 @@ class AudioEngine {
             return false;
         } else {
             await this.start();
-            return this.isPlaying;
+            return true;
         }
     }
 
-    // Analyze frequency data to extract beat/bass/energy
     update() {
-        if (!this.isPlaying || !this.analyser || !this.freqData) {
-            // Decay when not playing
-            const decay = 0.85;
-            this.kick *= decay;
-            this.bass *= decay;
-            this.hihat *= decay;
-            this.energy = 0;
-            return;
-        }
-
-        try {
-            // Get frequency data
-            this.analyser.getByteFrequencyData(this.freqData);
-        } catch (e) {
-            return;
-        }
-
-        // Frequency bands (approximated for 44.1kHz sample rate, 256 FFT)
-        // Each bin = ~172Hz, so:
-        // Kick/Sub bass: 0-3 bins (0-516Hz)
-        // Bass: 3-8 bins (516-1376Hz)
-        // Mids: 8-32 bins (1376-5504Hz)
-        // Highs: 32+ bins (5504Hz+)
-
-        // Calculate sub bass (kick drum range)
-        let subBass = 0;
-        for (let i = 0; i < 4; i++) {
-            subBass += this.freqData[i];
-        }
-        subBass = (subBass / 4) / 255;
-
-        // Calculate bass
-        let bass = 0;
-        for (let i = 4; i < 10; i++) {
-            bass += this.freqData[i];
-        }
-        bass = (bass / 6) / 255;
-
-        // Calculate highs (hi-hats)
-        let highs = 0;
-        for (let i = 40; i < 80; i++) {
-            highs += this.freqData[i];
-        }
-        highs = (highs / 40) / 255;
-
-        // Calculate overall energy
-        let totalEnergy = 0;
-        for (let i = 0; i < this.freqData.length; i++) {
-            totalEnergy += this.freqData[i];
-        }
-        totalEnergy = (totalEnergy / this.freqData.length) / 255;
-
-        // Kick detection (transient detection on sub-bass)
-        const kickDelta = subBass - this.lastKickValue;
-        if (kickDelta > 0.15 && subBass > this.kickThreshold) {
-            this.kick = Math.min(1, this.kick + 0.8);
-        }
-        this.lastKickValue = subBass;
-
-        // Bass detection
-        const bassDelta = bass - this.lastBassValue;
-        if (bassDelta > 0.1 && bass > this.bassThreshold) {
-            this.bass = Math.min(1, this.bass + 0.6);
-        }
-        this.lastBassValue = bass;
-
-        // Hi-hat from highs
-        this.hihat = highs * 1.5;
-
-        // Overall energy
-        this.energy = totalEnergy * 1.2;
-
-        // Decay
+        // Decay reactivity values
         const decay = 0.88;
         this.kick *= decay;
         this.bass *= decay;
+        this.hihat *= decay;
+        this.energy = this.kick * 0.5 + this.bass * 0.3 + this.hihat * 0.2;
     }
 
     getBeatPhase() {
-        return this.energy;
-    }
-
-    getTrackName() {
-        return this.tracks[this.currentTrack].name;
+        if (!this.ctx || !this.isPlaying) return 0;
+        const beatDuration = 60 / this.bpm;
+        return (this.ctx.currentTime % beatDuration) / beatDuration;
     }
 }
 
@@ -1011,14 +1034,9 @@ class BoidsSimulation {
         // Music controls
         document.getElementById('musicBtn').addEventListener('click', () => this.toggleMusic());
 
-        document.getElementById('trackSelect').addEventListener('change', (e) => {
+        document.getElementById('styleSelect').addEventListener('change', (e) => {
             const index = parseInt(e.target.value);
-            this.audio.setTrack(index);
-        });
-
-        document.getElementById('nextTrackBtn').addEventListener('click', () => {
-            const newIndex = this.audio.nextTrack();
-            document.getElementById('trackSelect').value = newIndex;
+            this.audio.setStyle(index);
         });
 
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
