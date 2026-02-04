@@ -707,7 +707,7 @@ class AudioEngine {
 
     // Analyze frequency data to extract beat/bass/energy
     update() {
-        if (!this.isPlaying || !this.analyser) {
+        if (!this.isPlaying || !this.analyser || !this.freqData) {
             // Decay when not playing
             const decay = 0.85;
             this.kick *= decay;
@@ -717,8 +717,12 @@ class AudioEngine {
             return;
         }
 
-        // Get frequency data
-        this.analyser.getByteFrequencyData(this.freqData);
+        try {
+            // Get frequency data
+            this.analyser.getByteFrequencyData(this.freqData);
+        } catch (e) {
+            return;
+        }
 
         // Frequency bands (approximated for 44.1kHz sample rate, 256 FFT)
         // Each bin = ~172Hz, so:
@@ -1268,12 +1272,19 @@ class BoidsSimulation {
     animate() {
         requestAnimationFrame(() => this.animate());
 
-        // Update audio reactivity
-        this.audio.update();
-        this.params.audioKick = this.audio.kick;
-        this.params.audioBass = this.audio.bass;
-        this.params.audioEnergy = this.audio.energy;
-        this.params.beatPhase = this.audio.getBeatPhase();
+        // Update audio reactivity (with error protection)
+        try {
+            this.audio.update();
+            this.params.audioKick = this.audio.kick || 0;
+            this.params.audioBass = this.audio.bass || 0;
+            this.params.audioEnergy = this.audio.energy || 0;
+            this.params.beatPhase = this.audio.getBeatPhase() || 0;
+        } catch (e) {
+            this.params.audioKick = 0;
+            this.params.audioBass = 0;
+            this.params.audioEnergy = 0;
+            this.params.beatPhase = 0;
+        }
 
         if (!this.paused) {
             this.update();
