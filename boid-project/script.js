@@ -588,19 +588,19 @@ class AudioEngine {
         this.tracks = [
             {
                 name: 'Deep House Vibes',
-                url: 'https://cdn.pixabay.com/audio/2022/10/25/audio_6c3683e60a.mp3'
+                url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3'
             },
             {
                 name: 'Tech House Energy',
-                url: 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3'
+                url: 'https://cdn.pixabay.com/audio/2022/10/18/audio_ce782d5a6d.mp3'
             },
             {
-                name: 'Progressive Flow',
-                url: 'https://cdn.pixabay.com/audio/2023/07/30/audio_e6b8d7f379.mp3'
+                name: 'Electronic Dance',
+                url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3'
             },
             {
-                name: 'Minimal Groove',
-                url: 'https://cdn.pixabay.com/audio/2022/08/02/audio_884fe92c21.mp3'
+                name: 'Synthwave Pulse',
+                url: 'https://cdn.pixabay.com/audio/2022/04/27/audio_67bcb98a46.mp3'
             }
         ];
     }
