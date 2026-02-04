@@ -397,12 +397,11 @@ class Boid {
     drawJellyfish(ctx, size, speed, maxSpeed) {
         // Pulsing animation for the bell
         const pulse = 0.85 + Math.sin(this.wingPhase) * 0.15;
-        const bellWidth = size * 0.8 * pulse;
-        const bellHeight = size * 0.5;
+        const bellRadius = size * 0.55 * pulse;
 
-        // Draw bell/dome (semi-circle facing forward)
+        // Draw bell/dome (rounded semi-circle)
         ctx.beginPath();
-        ctx.ellipse(0, 0, bellHeight, bellWidth, 0, -Math.PI / 2, Math.PI / 2);
+        ctx.arc(0, 0, bellRadius, -Math.PI / 2, Math.PI / 2);
         ctx.fillStyle = this.color;
         ctx.globalAlpha = 0.7;
         ctx.fill();
@@ -410,11 +409,14 @@ class Boid {
 
         // Inner glow on bell
         ctx.beginPath();
-        ctx.ellipse(bellHeight * 0.2, 0, bellHeight * 0.4, bellWidth * 0.5, 0, -Math.PI / 2, Math.PI / 2);
+        ctx.arc(bellRadius * 0.15, 0, bellRadius * 0.5, -Math.PI / 2, Math.PI / 2);
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = 0.3;
         ctx.fill();
         ctx.globalAlpha = 1;
+
+        const bellWidth = bellRadius;
+        const bellHeight = bellRadius;
 
         // Draw tentacles (wavy lines trailing behind)
         const tentacleCount = 5;
