@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boids Rave Lab</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <!-- Pause Overlay -->
+    <div id="pauseOverlay" class="pause-overlay hidden">
+        <span>PAUSED</span>
+    </div>
+
+    <!-- Instrumentation Panel -->
+    <div id="statsPanel" class="panel stats-panel">
+        <div class="stat">
+            <span class="stat-icon">&#9201;</span>
+            <span class="stat-label">FPS</span>
+            <span id="fpsValue" class="stat-value">60</span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon">&#9679;</span>
+            <span class="stat-label">Boids</span>
+            <span id="boidCount" class="stat-value">100</span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon">&#8644;</span>
+            <span class="stat-label">Avg Speed</span>
+            <span id="avgSpeed" class="stat-value">0.0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon">&#8599;</span>
+            <span class="stat-label">Avg Neighbors</span>
+            <span id="avgNeighbors" class="stat-value">0</span>
+        </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div id="controlPanel" class="panel control-panel">
+        <div class="panel-header" onclick="togglePanel('controlPanel')">
+            <h2>Controls</h2>
+            <span class="toggle-icon">&#9660;</span>
+        </div>
+        <div class="panel-content">
+            <!-- Behavior Group -->
+            <div class="control-group">
+                <h3>Behavior</h3>
+
+                <div class="control">
+                    <label for="separationSlider">
+                        Separation
+                        <span class="tooltip" data-tip="How strongly boids avoid crowding neighbors">?</span>
+                    </label>
+                    <input type="range" id="separationSlider" min="0" max="5" step="0.1" value="1.5">
+                    <span id="separationValue" class="value-display">1.5</span>
+                </div>
+
+                <div class="control">
+                    <label for="alignmentSlider">
+                        Alignment
+                        <span class="tooltip" data-tip="How much boids match neighbors' velocity direction">?</span>
+                    </label>
+                    <input type="range" id="alignmentSlider" min="0" max="5" step="0.1" value="1.0">
+                    <span id="alignmentValue" class="value-display">1.0</span>
+                </div>
+
+                <div class="control">
+                    <label for="cohesionSlider">
+                        Cohesion
+                        <span class="tooltip" data-tip="How strongly boids move toward the group center">?</span>
+                    </label>
+                    <input type="range" id="cohesionSlider" min="0" max="5" step="0.1" value="1.0">
+                    <span id="cohesionValue" class="value-display">1.0</span>
+                </div>
+
+                <div class="control">
+                    <label for="neighborRadiusSlider">
+                        Neighbor Radius
+                        <span class="tooltip" data-tip="Detection range for nearby boids (pixels)">?</span>
+                    </label>
+                    <input type="range" id="neighborRadiusSlider" min="10" max="200" step="5" value="50">
+                    <span id="neighborRadiusValue" class="value-display">50</span>
+                </div>
+
+                <div class="control">
+                    <label for="maxSpeedSlider">
+                        Max Speed
+                        <span class="tooltip" data-tip="Maximum velocity of boids">?</span>
+                    </label>
+                    <input type="range" id="maxSpeedSlider" min="1" max="10" step="0.5" value="4">
+                    <span id="maxSpeedValue" class="value-display">4</span>
+                </div>
+
+                <div class="control">
+                    <label for="maxForceSlider">
+                        Steering Force
+                        <span class="tooltip" data-tip="How quickly boids can change direction">?</span>
+                    </label>
+                    <input type="range" id="maxForceSlider" min="0.05" max="0.5" step="0.01" value="0.2">
+                    <span id="maxForceValue" class="value-display">0.2</span>
+                </div>
+            </div>
+
+            <!-- Appearance Group -->
+            <div class="control-group">
+                <h3>Appearance</h3>
+
+                <div class="control">
+                    <label for="boidCountSlider">
+                        Boid Count
+                        <span class="tooltip" data-tip="Number of boids in the simulation">?</span>
+                    </label>
+                    <input type="range" id="boidCountSlider" min="10" max="500" step="10" value="100">
+                    <span id="boidCountValue" class="value-display">100</span>
+                </div>
+
+                <div class="control">
+                    <label for="trailLengthSlider">
+                        Trail Length
+                        <span class="tooltip" data-tip="Motion trail persistence (frames)">?</span>
+                    </label>
+                    <input type="range" id="trailLengthSlider" min="0" max="100" step="5" value="20">
+                    <span id="trailLengthValue" class="value-display">20</span>
+                </div>
+
+                <div class="control">
+                    <label for="visionAngleSlider">
+                        Vision Angle
+                        <span class="tooltip" data-tip="Field of view angle for detecting neighbors">?</span>
+                    </label>
+                    <input type="range" id="visionAngleSlider" min="60" max="360" step="10" value="270">
+                    <span id="visionAngleValue" class="value-display">270°</span>
+                </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="control-group">
+                <h3>Presets</h3>
+                <div class="preset-buttons">
+                    <button id="presetRave" class="preset-btn" data-tip="Synchronized flowing movement like dancers in a crowd">
+                        Rave Swarm
+                    </button>
+                    <button id="presetChaos" class="preset-btn" data-tip="Wild, unpredictable energy with minimal coordination">
+                        Chaos Mosh
+                    </button>
+                    <button id="presetBass" class="preset-btn" data-tip="Tightly packed group with strong attraction">
+                        Bass Drop
+                    </button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="control-group">
+                <h3>Actions</h3>
+                <div class="action-buttons">
+                    <button id="pauseBtn" class="action-btn">
+                        <span id="pauseIcon">&#10074;&#10074;</span> Pause
+                    </button>
+                    <button id="resetBtn" class="action-btn" data-tip="Randomize positions?">
+                        &#8634; Reset
+                    </button>
+                    <button id="boundaryBtn" class="action-btn">
+                        <span id="boundaryIcon">&#8644;</span> <span id="boundaryText">Wrap</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mouse Interaction -->
+            <div class="control-group">
+                <h3>Mouse Interaction</h3>
+                <div class="interaction-info">
+                    <p><strong>Left Click + Drag:</strong> Attract boids</p>
+                    <p><strong>Right Click + Drag:</strong> Repel boids</p>
+                    <p><strong>Shift + Click:</strong> Spawn 10 boids</p>
+                    <p><strong>Spacebar:</strong> Pause/Resume</p>
+                </div>
+                <div class="control">
+                    <label for="mouseForceSlider">
+                        Mouse Force
+                        <span class="tooltip" data-tip="Strength of mouse attract/repel">?</span>
+                    </label>
+                    <input type="range" id="mouseForceSlider" min="0.1" max="3" step="0.1" value="1">
+                    <span id="mouseForceValue" class="value-display">1.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mouse Indicator -->
+    <div id="mouseIndicator" class="mouse-indicator hidden"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
