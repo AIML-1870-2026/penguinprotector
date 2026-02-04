@@ -1151,24 +1151,17 @@ class BoidsSimulation {
     }
 
     async toggleMusic() {
-        console.log('toggleMusic called');
         const btn = document.getElementById('musicBtn');
         btn.disabled = true;
 
-        try {
-            console.log('Calling audio.toggle()');
-            const isPlaying = await this.audio.toggle();
-            console.log('Audio toggle result:', isPlaying);
+        const isPlaying = await this.audio.toggle();
 
-            if (isPlaying) {
-                btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop Music';
-                btn.classList.add('playing');
-            } else {
-                btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play Music';
-                btn.classList.remove('playing');
-            }
-        } catch (e) {
-            console.error('toggleMusic error:', e);
+        if (isPlaying) {
+            btn.innerHTML = '<span id="musicIcon">&#9724;</span> Stop Music';
+            btn.classList.add('playing');
+        } else {
+            btn.innerHTML = '<span id="musicIcon">&#9835;</span> Play Music';
+            btn.classList.remove('playing');
         }
 
         btn.disabled = false;
