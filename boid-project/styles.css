@@ -339,6 +339,44 @@ input[type="range"]::-moz-range-thumb {
     cursor: pointer;
 }
 
+/* Performance Stats */
+.perf-stats {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.perf-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.perf-stat:last-child {
+    margin-bottom: 0;
+}
+
+.perf-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.perf-value {
+    color: #00ffff;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.perf-value.brute-force {
+    color: #ff6600;
+}
+
+.perf-value.optimized {
+    color: #00ff00;
+}
+
 /* Buttons */
 .preset-buttons,
 .action-buttons {

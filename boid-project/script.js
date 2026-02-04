@@ -884,6 +884,7 @@ class BoidsSimulation {
         // Spatial grid for optimization
         this.grid = null;
         this.useSpatialGrid = true;
+        this.neighborChecks = 0;
 
         // Audio engine
         this.audio = new AudioEngine();
@@ -1067,6 +1068,14 @@ class BoidsSimulation {
         if (showConesCheckbox) {
             showConesCheckbox.addEventListener('change', (e) => {
                 this.params.showCones = e.target.checked;
+            });
+        }
+
+        // Spatial grid toggle
+        const spatialGridCheckbox = document.getElementById('spatialGrid');
+        if (spatialGridCheckbox) {
+            spatialGridCheckbox.addEventListener('change', (e) => {
+                this.useSpatialGrid = e.target.checked;
             });
         }
 
@@ -1306,6 +1315,24 @@ class BoidsSimulation {
 
         document.getElementById('avgSpeed').textContent = avgSpeed.toFixed(1);
         document.getElementById('avgNeighbors').textContent = avgNeighbors.toFixed(1);
+
+        // Performance stats
+        const n = this.boids.length;
+        const theoreticalMax = n * (n - 1); // O(n²) brute force
+        const algorithmEl = document.getElementById('algorithmMode');
+        const checksEl = document.getElementById('neighborChecks');
+        const maxEl = document.getElementById('theoreticalMax');
+
+        if (algorithmEl) {
+            algorithmEl.textContent = this.useSpatialGrid ? 'Grid O(n)' : 'Brute O(n²)';
+            algorithmEl.className = 'perf-value ' + (this.useSpatialGrid ? 'optimized' : 'brute-force');
+        }
+        if (checksEl) {
+            checksEl.textContent = this.neighborChecks.toLocaleString();
+        }
+        if (maxEl) {
+            maxEl.textContent = theoreticalMax.toLocaleString();
+        }
     }
 
     loadFromURL() {
@@ -1394,11 +1421,17 @@ class BoidsSimulation {
             }
         }
 
+        // Reset neighbor checks counter
+        this.neighborChecks = 0;
+
         // Update each boid
         for (const boid of this.boids) {
             const neighbors = this.useSpatialGrid
                 ? this.grid.getNeighbors(boid, this.params.neighborRadius)
                 : this.boids;
+
+            // Count neighbor checks (excluding self)
+            this.neighborChecks += neighbors.length - 1;
 
             boid.flock(neighbors, this.params);
             boid.applyMouseForce(
