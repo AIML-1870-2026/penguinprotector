@@ -87,9 +87,26 @@ class Vector {
     }
 }
 
+// ============== Species Color Palettes ==============
+const SPECIES_PALETTES = [
+    // Species 0: Cyan/Blue (Ocean)
+    ['#00ffff', '#00e5ff', '#00bcd4', '#26c6da', '#4dd0e1', '#80deea'],
+    // Species 1: Magenta/Pink (Nebula)
+    ['#ff00ff', '#e040fb', '#ea80fc', '#ff4081', '#f50057', '#ff80ab'],
+    // Species 2: Green/Lime (Forest)
+    ['#00ff88', '#00e676', '#69f0ae', '#76ff03', '#b2ff59', '#ccff90'],
+    // Species 3: Orange/Gold (Solar)
+    ['#ffab00', '#ffc400', '#ffd740', '#ff9100', '#ff6d00', '#ffea00'],
+    // Species 4: Purple/Violet (Cosmic)
+    ['#7c4dff', '#651fff', '#b388ff', '#d500f9', '#aa00ff', '#e040fb']
+];
+
 // ============== Boid Class ==============
+let boidIdCounter = 0;
+
 class Boid {
-    constructor(x, y) {
+    constructor(x, y, species = 0) {
+        this.id = boidIdCounter++;
         this.position = new Vector(x, y);
         this.velocity = Vector.random().mult(Math.random() * 2 + 2);
         this.acceleration = new Vector(0, 0);
@@ -100,18 +117,12 @@ class Boid {
         // Previous acceleration for smoothing
         this.prevAcceleration = new Vector(0, 0);
 
-        // Bioluminescent jellyfish colors
-        const colors = [
-            '#00ffff', // Cyan
-            '#ff00ff', // Magenta
-            '#7b68ee', // Medium slate blue
-            '#00fa9a', // Medium spring green
-            '#ff69b4', // Hot pink
-            '#87cefa', // Light sky blue
-            '#da70d6', // Orchid
-            '#40e0d0'  // Turquoise
-        ];
-        this.color = colors[Math.floor(Math.random() * colors.length)];
+        // Species assignment
+        this.species = species;
+
+        // Color based on species palette
+        const palette = SPECIES_PALETTES[species % SPECIES_PALETTES.length];
+        this.color = palette[Math.floor(Math.random() * palette.length)];
 
         // Bird-specific properties
         this.wingPhase = Math.random() * Math.PI * 2; // Wing flap animation offset
@@ -161,6 +172,11 @@ class Boid {
         const neighborRadiusSq = params.neighborRadius * params.neighborRadius;
         const separationRadiusSq = separationRadius * separationRadius;
 
+        // Species interaction settings
+        const speciesCount = params.speciesCount || 1;
+        const sameSpeciesOnly = speciesCount > 1 && params.speciesInteraction === 'separate';
+        const mixedFlocking = speciesCount > 1 && params.speciesInteraction === 'mixed';
+
         for (const other of boids) {
             if (other === this) continue;
 
@@ -176,21 +192,39 @@ class Boid {
             if (!this.isInVisionCone(other, params.visionAngle)) continue;
 
             const d = Math.sqrt(dSq);
+            const sameSpecies = other.species === this.species;
 
-            // Separation (closer range) - use smooth falloff
+            // Separation (closer range) - applies to ALL boids regardless of species
+            // But stronger separation from different species when in 'separate' mode
             if (dSq < separationRadiusSq && d > 0) {
                 const diff = new Vector(dx, dy);
                 // Smooth quadratic falloff instead of harsh 1/d
-                const strength = 1 - (d / separationRadius);
+                let strength = 1 - (d / separationRadius);
+
+                // Stronger separation from other species
+                if (!sameSpecies && sameSpeciesOnly) {
+                    strength *= 1.5;
+                }
+
                 diff.normalize().mult(strength * strength);
                 separation.add(diff);
                 separationCount++;
             }
 
             // Alignment and Cohesion (neighbor radius)
+            // In 'separate' mode, only flock with same species
+            // In 'mixed' mode, slight preference for same species
             if (d < params.neighborRadius) {
+                let speciesWeight = 1.0;
+
+                if (sameSpeciesOnly && !sameSpecies) {
+                    continue; // Skip alignment/cohesion with other species
+                } else if (mixedFlocking && !sameSpecies) {
+                    speciesWeight = 0.3; // Reduced influence from other species
+                }
+
                 // Weight by distance - closer neighbors have more influence
-                const weight = 1 - (d / params.neighborRadius);
+                const weight = (1 - (d / params.neighborRadius)) * speciesWeight;
                 alignment.x += other.velocity.x * weight;
                 alignment.y += other.velocity.y * weight;
                 cohesion.x += other.position.x * weight;
@@ -1043,7 +1077,15 @@ class BoidsSimulation {
             visionAngle: 270,
             mouseForce: 1.0,
             enableGlow: false,  // Disabled for performance
-            showCones: false    // Vision cone visualization
+            showCones: false,   // Vision cone visualization
+            // Species settings
+            speciesCount: 1,
+            speciesInteraction: 'separate', // 'separate', 'mixed', or 'unified'
+            // Constellation mode
+            constellationMode: false,
+            constellationRadius: 60,
+            constellationOpacity: 0.4,
+            constellationSameSpecies: true  // Only connect same species
         };
 
         // Target params for smooth transitions
@@ -1110,7 +1152,8 @@ class BoidsSimulation {
         for (let i = 0; i < this.params.boidCount; i++) {
             const x = Math.random() * this.canvas.width;
             const y = Math.random() * this.canvas.height;
-            this.boids.push(new Boid(x, y));
+            const species = i % this.params.speciesCount;
+            this.boids.push(new Boid(x, y, species));
         }
     }
 
@@ -1118,10 +1161,24 @@ class BoidsSimulation {
         while (this.boids.length < targetCount) {
             const x = Math.random() * this.canvas.width;
             const y = Math.random() * this.canvas.height;
-            this.boids.push(new Boid(x, y));
+            const species = this.boids.length % this.params.speciesCount;
+            this.boids.push(new Boid(x, y, species));
         }
         while (this.boids.length > targetCount) {
             this.boids.pop();
+        }
+    }
+
+    reassignSpecies() {
+        // Reassign species to all boids when species count changes
+        for (let i = 0; i < this.boids.length; i++) {
+            const newSpecies = i % this.params.speciesCount;
+            if (this.boids[i].species !== newSpecies) {
+                this.boids[i].species = newSpecies;
+                // Update color based on new species
+                const palette = SPECIES_PALETTES[newSpecies % SPECIES_PALETTES.length];
+                this.boids[i].color = palette[Math.floor(Math.random() * palette.length)];
+            }
         }
     }
 
@@ -1129,7 +1186,8 @@ class BoidsSimulation {
         for (let i = 0; i < count; i++) {
             const offsetX = (Math.random() - 0.5) * 50;
             const offsetY = (Math.random() - 0.5) * 50;
-            this.boids.push(new Boid(x + offsetX, y + offsetY));
+            const species = Math.floor(Math.random() * this.params.speciesCount);
+            this.boids.push(new Boid(x + offsetX, y + offsetY, species));
         }
         this.updateBoidCountSlider();
     }
@@ -1327,6 +1385,59 @@ class BoidsSimulation {
             });
         }
 
+        // Species count slider
+        const speciesCountSlider = document.getElementById('speciesCountSlider');
+        if (speciesCountSlider) {
+            speciesCountSlider.addEventListener('input', () => {
+                const value = parseInt(speciesCountSlider.value);
+                this.params.speciesCount = value;
+                document.getElementById('speciesCountValue').textContent = value;
+                this.reassignSpecies();
+                this.updateSpeciesPreview();
+            });
+        }
+
+        // Species interaction mode
+        const speciesInteraction = document.getElementById('speciesInteraction');
+        if (speciesInteraction) {
+            speciesInteraction.addEventListener('change', (e) => {
+                this.params.speciesInteraction = e.target.value;
+            });
+        }
+
+        // Constellation mode controls
+        const constellationMode = document.getElementById('constellationMode');
+        if (constellationMode) {
+            constellationMode.addEventListener('change', (e) => {
+                this.params.constellationMode = e.target.checked;
+            });
+        }
+
+        const constellationRadius = document.getElementById('constellationRadius');
+        if (constellationRadius) {
+            constellationRadius.addEventListener('input', () => {
+                const value = parseInt(constellationRadius.value);
+                this.params.constellationRadius = value;
+                document.getElementById('constellationRadiusValue').textContent = value;
+            });
+        }
+
+        const constellationOpacity = document.getElementById('constellationOpacity');
+        if (constellationOpacity) {
+            constellationOpacity.addEventListener('input', () => {
+                const value = parseFloat(constellationOpacity.value);
+                this.params.constellationOpacity = value;
+                document.getElementById('constellationOpacityValue').textContent = value.toFixed(1);
+            });
+        }
+
+        const constellationSameSpecies = document.getElementById('constellationSameSpecies');
+        if (constellationSameSpecies) {
+            constellationSameSpecies.addEventListener('change', (e) => {
+                this.params.constellationSameSpecies = e.target.checked;
+            });
+        }
+
         // Preset buttons
         document.getElementById('presetRave').addEventListener('click', () => this.applyPreset('rave'));
         document.getElementById('presetChaos').addEventListener('click', () => this.applyPreset('chaos'));
@@ -1402,6 +1513,20 @@ class BoidsSimulation {
         slider.value = this.boids.length;
         display.textContent = this.boids.length;
         this.params.boidCount = this.boids.length;
+    }
+
+    updateSpeciesPreview() {
+        const preview = document.getElementById('speciesPreview');
+        if (!preview) return;
+
+        preview.innerHTML = '';
+        for (let i = 0; i < this.params.speciesCount; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'species-dot';
+            // Use first color from each species palette
+            dot.style.background = SPECIES_PALETTES[i % SPECIES_PALETTES.length][0];
+            preview.appendChild(dot);
+        }
     }
 
     applyPreset(preset) {
@@ -1778,6 +1903,9 @@ class BoidsSimulation {
         // Draw obstacles
         this.drawObstacles();
 
+        // Draw constellation connections (behind boids)
+        this.drawConstellations();
+
         // Draw all boids
         for (const boid of this.boids) {
             boid.draw(this.ctx, this.params);
@@ -1816,6 +1944,91 @@ class BoidsSimulation {
             this.ctx.fill();
         }
         this.ctx.restore();
+    }
+
+    drawConstellations() {
+        if (!this.params.constellationMode) return;
+
+        const radius = this.params.constellationRadius;
+        const radiusSq = radius * radius;
+        const opacity = this.params.constellationOpacity;
+        const sameSpeciesOnly = this.params.constellationSameSpecies;
+
+        this.ctx.save();
+        this.ctx.lineWidth = 1;
+        this.ctx.lineCap = 'round';
+
+        // Use spatial grid if available for performance
+        const connections = new Set(); // Track drawn connections to avoid duplicates
+
+        for (let i = 0; i < this.boids.length; i++) {
+            const boid = this.boids[i];
+
+            // Get potential neighbors
+            const neighbors = this.useSpatialGrid
+                ? this.grid.getNeighbors(boid, radius)
+                : this.boids;
+
+            for (const other of neighbors) {
+                if (other === boid) continue;
+
+                // Check species constraint
+                if (sameSpeciesOnly && other.species !== boid.species) continue;
+
+                // Calculate distance
+                const dx = boid.position.x - other.position.x;
+                const dy = boid.position.y - other.position.y;
+                const dSq = dx * dx + dy * dy;
+
+                if (dSq > radiusSq) continue;
+
+                // Create unique connection ID to avoid drawing same line twice
+                const id1 = boid.id;
+                const id2 = other.id;
+                const connId = id1 < id2 ? `${id1}-${id2}` : `${id2}-${id1}`;
+
+                if (connections.has(connId)) continue;
+                connections.add(connId);
+
+                // Calculate opacity based on distance (closer = more opaque)
+                const d = Math.sqrt(dSq);
+                const distFactor = 1 - (d / radius);
+                const lineOpacity = opacity * distFactor * distFactor;
+
+                // Use gradient between the two boid colors
+                const gradient = this.ctx.createLinearGradient(
+                    boid.position.x, boid.position.y,
+                    other.position.x, other.position.y
+                );
+
+                // Parse colors and apply opacity
+                const color1 = this.hexToRgba(boid.color, lineOpacity);
+                const color2 = this.hexToRgba(other.color, lineOpacity);
+
+                gradient.addColorStop(0, color1);
+                gradient.addColorStop(1, color2);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(boid.position.x, boid.position.y);
+                this.ctx.lineTo(other.position.x, other.position.y);
+                this.ctx.strokeStyle = gradient;
+                this.ctx.stroke();
+            }
+        }
+
+        this.ctx.restore();
+    }
+
+    hexToRgba(hex, alpha) {
+        // Convert hex color to rgba
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+            const r = parseInt(result[1], 16);
+            const g = parseInt(result[2], 16);
+            const b = parseInt(result[3], 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return `rgba(255, 255, 255, ${alpha})`;
     }
 
     initBackgroundStars() {

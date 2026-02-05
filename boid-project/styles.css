@@ -678,3 +678,33 @@ input[type="range"]::-moz-range-thumb {
         font-size: 10px;
     }
 }
+
+/* Species Preview */
+.species-preview {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.species-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px currentColor;
+    transition: all 0.3s ease;
+}
+
+.species-dot:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 20px currentColor;
+}
+
+/* Constellation-specific indicator in stats */
+.constellation-indicator {
+    color: #7c4dff;
+    text-shadow: 0 0 10px #7c4dff;
+}
