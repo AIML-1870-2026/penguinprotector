@@ -21,15 +21,15 @@ const PRESETS = [
     { name: 'Bubbles', f: 0.098, k: 0.057 }
 ];
 
-// Color schemes
+// Color schemes - more colors for smoother gradients
 const COLOR_SCHEMES = {
-    rave: [[0,0,0], [255,0,128], [0,255,255], [255,0,255], [255,255,0], [0,255,128], [255,255,255]],
-    grayscale: [[0,0,0], [255,255,255]],
-    plasma: [[13,8,135], [126,3,168], [204,71,120], [248,149,64], [240,249,33]],
-    ocean: [[0,51,102], [0,102,153], [0,204,204], [255,255,255]],
-    fire: [[0,0,0], [128,0,0], [255,0,0], [255,102,0], [255,255,0], [255,255,255]],
-    rainbow: [[255,0,0], [255,127,0], [255,255,0], [0,255,0], [0,0,255], [75,0,130], [148,0,211]],
-    neon: [[0,0,0], [255,0,255], [0,255,255], [255,255,255]]
+    rave: [[0,0,0], [128,0,64], [255,0,128], [128,128,192], [0,255,255], [128,128,255], [255,0,255], [255,128,128], [255,255,0], [128,255,64], [0,255,128], [128,255,192], [255,255,255]],
+    grayscale: [[0,0,0], [32,32,32], [64,64,64], [96,96,96], [128,128,128], [160,160,160], [192,192,192], [224,224,224], [255,255,255]],
+    plasma: [[13,8,135], [70,6,152], [126,3,168], [165,37,144], [204,71,120], [226,110,92], [248,149,64], [244,199,48], [240,249,33]],
+    ocean: [[0,30,60], [0,51,102], [0,76,128], [0,102,153], [0,140,180], [0,180,200], [0,204,204], [64,220,220], [128,235,235], [192,245,245], [255,255,255]],
+    fire: [[0,0,0], [64,0,0], [128,0,0], [192,32,0], [255,0,0], [255,51,0], [255,102,0], [255,153,0], [255,204,0], [255,255,0], [255,255,128], [255,255,255]],
+    rainbow: [[255,0,0], [255,64,0], [255,127,0], [255,191,0], [255,255,0], [128,255,0], [0,255,0], [0,255,128], [0,255,255], [0,128,255], [0,0,255], [75,0,130], [148,0,211]],
+    neon: [[0,0,0], [64,0,64], [128,0,128], [192,0,192], [255,0,255], [192,64,224], [128,128,192], [64,192,224], [0,255,255], [128,255,255], [255,255,255]]
 };
 
 // ============================================
@@ -250,7 +250,7 @@ function initWebGL() {
     const renderFrag = `
         precision highp float;
         uniform sampler2D uTexture;
-        uniform vec3 uColors[7];
+        uniform vec3 uColors[16];
         uniform float uColorCount;
         uniform float uInvert;
         uniform float uColorOffset;
@@ -269,19 +269,31 @@ function initWebGL() {
             float i = floor(idx);
             float fr = idx - i;
 
+            // Smoothstep for even smoother interpolation
+            fr = fr * fr * (3.0 - 2.0 * fr);
+
             if (i >= uColorCount - 1.0) {
                 i = uColorCount - 2.0;
                 fr = 1.0;
             }
 
-            // Manual color interpolation
+            // Manual color interpolation - support up to 16 colors
             vec3 c1, c2;
             if (i < 0.5) { c1 = uColors[0]; c2 = uColors[1]; }
             else if (i < 1.5) { c1 = uColors[1]; c2 = uColors[2]; }
             else if (i < 2.5) { c1 = uColors[2]; c2 = uColors[3]; }
             else if (i < 3.5) { c1 = uColors[3]; c2 = uColors[4]; }
             else if (i < 4.5) { c1 = uColors[4]; c2 = uColors[5]; }
-            else { c1 = uColors[5]; c2 = uColors[6]; }
+            else if (i < 5.5) { c1 = uColors[5]; c2 = uColors[6]; }
+            else if (i < 6.5) { c1 = uColors[6]; c2 = uColors[7]; }
+            else if (i < 7.5) { c1 = uColors[7]; c2 = uColors[8]; }
+            else if (i < 8.5) { c1 = uColors[8]; c2 = uColors[9]; }
+            else if (i < 9.5) { c1 = uColors[9]; c2 = uColors[10]; }
+            else if (i < 10.5) { c1 = uColors[10]; c2 = uColors[11]; }
+            else if (i < 11.5) { c1 = uColors[11]; c2 = uColors[12]; }
+            else if (i < 12.5) { c1 = uColors[12]; c2 = uColors[13]; }
+            else if (i < 13.5) { c1 = uColors[13]; c2 = uColors[14]; }
+            else { c1 = uColors[14]; c2 = uColors[15]; }
 
             vec3 color = mix(c1, c2, fr);
 
@@ -619,11 +631,13 @@ function render() {
     // Set color scheme
     const colors = COLOR_SCHEMES[state.colorScheme];
     const colorArray = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 16; i++) {
         if (i < colors.length) {
             colorArray.push(colors[i][0]/255, colors[i][1]/255, colors[i][2]/255);
         } else {
-            colorArray.push(1, 1, 1);
+            // Repeat last color for unused slots
+            const lastColor = colors[colors.length - 1];
+            colorArray.push(lastColor[0]/255, lastColor[1]/255, lastColor[2]/255);
         }
     }
     gl.uniform3fv(gl.getUniformLocation(renderProgram, 'uColors'), colorArray);
