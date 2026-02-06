@@ -38,7 +38,7 @@ const COLOR_SCHEMES = {
 let state = {
     playing: false,
     mode: '2d',
-    colorScheme: 'rave',
+    colorScheme: 'ocean',
     invert: false,
     seedType: 'center',
     params: {
@@ -96,28 +96,51 @@ let brushCursor = null;
 // INITIALIZATION
 // ============================================
 function init() {
+    console.log('Initializing Turing Patterns...');
+
     canvas2d = document.getElementById('canvas2d');
     canvas3d = document.getElementById('canvas3d');
 
     canvas2d.width = CONFIG.width;
     canvas2d.height = CONFIG.height;
 
-    initWebGL();
+    try {
+        initWebGL();
+        console.log('WebGL initialized');
+    } catch (e) {
+        console.error('WebGL init failed:', e);
+        alert('WebGL initialization failed: ' + e.message);
+        return;
+    }
+
     initPresets();
-    init3D();
-    initBrushCursor();
+
+    try {
+        init3D();
+        console.log('3D initialized');
+    } catch (e) {
+        console.error('3D init failed (non-critical):', e);
+    }
+
+    try {
+        initBrushCursor();
+    } catch (e) {
+        console.error('Brush cursor init failed (non-critical):', e);
+    }
+
     initEventListeners();
 
-    // Set rave color scheme as active
+    // Set ocean color scheme as active (matches reference style)
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-    const raveBtn = document.querySelector('.color-btn.color-rave');
-    if (raveBtn) raveBtn.classList.add('active');
+    const oceanBtn = document.querySelector('.color-btn[data-scheme="ocean"]');
+    if (oceanBtn) oceanBtn.classList.add('active');
 
     reset();
 
     // Auto-start simulation for rave mode
     state.playing = true;
     document.getElementById('playPauseBtn').textContent = 'Pause';
+    console.log('Simulation auto-started');
 
     requestAnimationFrame(animate);
 }
@@ -133,16 +156,18 @@ function initBrushCursor() {
 function initWebGL() {
     gl = canvas2d.getContext('webgl', { preserveDrawingBuffer: true });
     if (!gl) {
-        alert('WebGL not supported');
-        return;
+        throw new Error('WebGL not supported');
     }
 
     // Enable float textures
     const ext = gl.getExtension('OES_texture_float');
     if (!ext) {
-        alert('Float textures not supported');
-        return;
+        throw new Error('Float textures not supported');
     }
+
+    // Check for float texture rendering support
+    gl.getExtension('WEBGL_color_buffer_float');
+    gl.getExtension('OES_texture_float_linear');
 
     // Simulation shader
     const simVert = `
@@ -300,14 +325,18 @@ function createProgram(vertSrc, fragSrc) {
     gl.shaderSource(vert, vertSrc);
     gl.compileShader(vert);
     if (!gl.getShaderParameter(vert, gl.COMPILE_STATUS)) {
-        console.error('Vertex shader error:', gl.getShaderInfoLog(vert));
+        const err = gl.getShaderInfoLog(vert);
+        console.error('Vertex shader error:', err);
+        throw new Error('Vertex shader compilation failed: ' + err);
     }
 
     const frag = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(frag, fragSrc);
     gl.compileShader(frag);
     if (!gl.getShaderParameter(frag, gl.COMPILE_STATUS)) {
-        console.error('Fragment shader error:', gl.getShaderInfoLog(frag));
+        const err = gl.getShaderInfoLog(frag);
+        console.error('Fragment shader error:', err);
+        throw new Error('Fragment shader compilation failed: ' + err);
     }
 
     const program = gl.createProgram();
@@ -315,13 +344,23 @@ function createProgram(vertSrc, fragSrc) {
     gl.attachShader(program, frag);
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error('Program link error:', gl.getProgramInfoLog(program));
+        const err = gl.getProgramInfoLog(program);
+        console.error('Program link error:', err);
+        throw new Error('Shader program link failed: ' + err);
     }
 
+    console.log('Shader program created successfully');
     return program;
 }
 
 function init3D() {
+    if (typeof THREE === 'undefined') {
+        console.warn('Three.js not loaded, 3D mode disabled');
+        document.getElementById('btn3d').disabled = true;
+        document.getElementById('btn3d').style.opacity = '0.5';
+        return;
+    }
+
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0f0f1a);
 
@@ -475,7 +514,7 @@ function initializeGrid() {
     // Add seed pattern
     switch (state.seedType) {
         case 'center':
-            addCircle(data, CONFIG.width/2, CONFIG.height/2, 20);
+            addCircle(data, CONFIG.width/2, CONFIG.height/2, 30);
             break;
         case 'multiple':
             // Multiple small seeds scattered around
@@ -516,10 +555,13 @@ function addCircle(data, cx, cy, radius) {
         for (let x = 0; x < CONFIG.width; x++) {
             const dx = x - cx;
             const dy = y - cy;
-            if (dx * dx + dy * dy < radius * radius) {
+            const distSq = dx * dx + dy * dy;
+            if (distSq < radius * radius) {
                 const idx = (y * CONFIG.width + x) * 4;
+                // Stronger seed with gradient falloff
+                const falloff = 1 - Math.sqrt(distSq) / radius;
                 data[idx] = 0.5;     // Lower U
-                data[idx + 1] = 0.25; // Add V
+                data[idx + 1] = 0.25 + falloff * 0.25; // Add V with stronger center
             }
         }
     }
@@ -592,6 +634,11 @@ function render() {
 }
 
 function render3D() {
+    if (!renderer || !geometry) {
+        render(); // Fall back to 2D
+        return;
+    }
+
     // Read data from texture
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTexture]);
     const pixels = new Float32Array(CONFIG.width * CONFIG.height * 4);
@@ -748,6 +795,12 @@ function updateVisualization() {
 }
 
 function setMode(mode) {
+    // Can't switch to 3D if it's not initialized
+    if (mode === '3d' && !renderer) {
+        console.warn('3D mode not available');
+        return;
+    }
+
     state.mode = mode;
     document.getElementById('btn2d').classList.toggle('active', mode === '2d');
     document.getElementById('btn3d').classList.toggle('active', mode === '3d');
@@ -1135,4 +1188,11 @@ function setCycleSpeed(value) {
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        init();
+    } catch (e) {
+        console.error('Init failed:', e);
+        alert('Initialization error: ' + e.message + '\n\nCheck browser console for details.');
+    }
+});
