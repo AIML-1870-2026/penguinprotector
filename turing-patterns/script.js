@@ -63,6 +63,14 @@ let state = {
         cycleSpeed: 0.002,
         beatPulse: 0,
         musicPlaying: false
+    },
+    // Parameter space journey
+    journey: {
+        active: false,
+        speed: 0.0005,
+        progress: 0,
+        currentSegment: 0,
+        path: [] // Will be populated with waypoints
     }
 };
 
@@ -129,6 +137,7 @@ function init() {
     }
 
     initEventListeners();
+    initJourneyPath();
 
     // Set ocean color scheme as active (matches reference style)
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -468,6 +477,9 @@ function initEventListeners() {
             case 'm':
                 toggleMusic();
                 break;
+            case 'j':
+                toggleJourney();
+                break;
             case '[':
                 adjustBrushSize(-5);
                 break;
@@ -686,6 +698,11 @@ function animate(time) {
     if (state.rave.colorCycling) {
         state.rave.colorOffset += state.rave.cycleSpeed;
         if (state.rave.colorOffset > 1) state.rave.colorOffset -= 1;
+    }
+
+    // Update parameter space journey
+    if (state.journey.active) {
+        updateJourney();
     }
 
     // Update beat pulse from audio analysis
@@ -1185,6 +1202,109 @@ function toggleColorCycling() {
 function setCycleSpeed(value) {
     state.rave.cycleSpeed = value;
     document.getElementById('cycleSpeedValue').textContent = (value * 1000).toFixed(1);
+}
+
+// ============================================
+// PARAMETER SPACE JOURNEY
+// ============================================
+function initJourneyPath() {
+    // Create a smooth path through interesting parameter space regions
+    // Each waypoint has f, k values and a name for display
+    state.journey.path = [
+        { f: 0.055, k: 0.062, name: 'Fingerprint' },
+        { f: 0.0545, k: 0.062, name: 'Coral' },
+        { f: 0.0367, k: 0.0649, name: 'Mitosis' },
+        { f: 0.029, k: 0.057, name: 'Maze' },
+        { f: 0.022, k: 0.051, name: 'Stripes' },
+        { f: 0.018, k: 0.051, name: 'Spirals' },
+        { f: 0.014, k: 0.054, name: 'Spots' },
+        { f: 0.014, k: 0.045, name: 'Waves' },
+        { f: 0.042, k: 0.059, name: 'Transition' },
+        { f: 0.078, k: 0.061, name: 'Worms' },
+        { f: 0.098, k: 0.057, name: 'Bubbles' },
+        { f: 0.062, k: 0.061, name: 'Solitons' },
+        { f: 0.055, k: 0.062, name: 'Fingerprint' } // Loop back
+    ];
+}
+
+function toggleJourney() {
+    state.journey.active = !state.journey.active;
+
+    if (state.journey.active) {
+        // Initialize path if needed
+        if (state.journey.path.length === 0) {
+            initJourneyPath();
+        }
+        // Make sure simulation is playing
+        if (!state.playing) {
+            togglePlay();
+        }
+    }
+
+    updateJourneyButton();
+}
+
+function updateJourneyButton() {
+    const btn = document.getElementById('journeyBtn');
+    if (btn) {
+        btn.textContent = state.journey.active ? 'Stop Journey' : 'Start Journey';
+        btn.classList.toggle('active', state.journey.active);
+    }
+}
+
+function setJourneySpeed(value) {
+    state.journey.speed = value;
+    document.getElementById('journeySpeedValue').textContent = (value * 10000).toFixed(1) + 'x';
+}
+
+function updateJourney() {
+    if (!state.journey.active || state.journey.path.length < 2) return;
+
+    // Advance progress
+    state.journey.progress += state.journey.speed;
+
+    // Calculate which segment we're in
+    const totalSegments = state.journey.path.length - 1;
+    const totalProgress = state.journey.progress * totalSegments;
+    const segmentIndex = Math.floor(totalProgress) % totalSegments;
+    const segmentProgress = totalProgress - Math.floor(totalProgress);
+
+    // Get current and next waypoint
+    const current = state.journey.path[segmentIndex];
+    const next = state.journey.path[(segmentIndex + 1) % state.journey.path.length];
+
+    // Smooth interpolation using ease-in-out
+    const t = smoothstep(segmentProgress);
+
+    // Interpolate parameters
+    state.params.f = lerp(current.f, next.f, t);
+    state.params.k = lerp(current.k, next.k, t);
+
+    // Update UI sliders
+    document.getElementById('feedSlider').value = state.params.f * 1000;
+    document.getElementById('killSlider').value = state.params.k * 1000;
+    document.getElementById('feedValue').textContent = state.params.f.toFixed(4);
+    document.getElementById('killValue').textContent = state.params.k.toFixed(4);
+
+    // Update current location display
+    const locationDisplay = document.getElementById('journeyLocation');
+    if (locationDisplay) {
+        locationDisplay.textContent = `${current.name} → ${next.name}`;
+    }
+
+    // Loop the journey
+    if (state.journey.progress >= 1) {
+        state.journey.progress = 0;
+    }
+}
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function smoothstep(t) {
+    // Smooth ease-in-out curve
+    return t * t * (3 - 2 * t);
 }
 
 // Initialize when DOM is ready

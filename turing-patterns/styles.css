@@ -389,6 +389,47 @@ input[type="checkbox"] {
     }
 }
 
+/* Journey Button */
+.journey-btn {
+    transition: all 0.3s ease;
+}
+
+.journey-btn.active {
+    background: linear-gradient(135deg, #00ffff, #ff00ff);
+    animation: journeyPulse 2s ease-in-out infinite;
+}
+
+@keyframes journeyPulse {
+    0%, 100% {
+        box-shadow: 0 0 10px #00ffff, 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px #ff00ff, 0 0 30px rgba(255, 0, 255, 0.5);
+    }
+}
+
+.journey-location {
+    display: block;
+    font-size: 0.9rem;
+    color: #00ffff;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    padding: 8px 12px;
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    border-radius: 4px;
+    text-align: center;
+    animation: locationGlow 3s ease-in-out infinite;
+}
+
+@keyframes locationGlow {
+    0%, 100% {
+        border-color: rgba(0, 255, 255, 0.3);
+    }
+    50% {
+        border-color: rgba(255, 0, 255, 0.5);
+    }
+}
+
 .keyboard-hint {
     font-size: 0.7rem;
     color: #ff80ff;

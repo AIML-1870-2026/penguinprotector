@@ -81,6 +81,30 @@
                 </div>
             </div>
 
+            <!-- Parameter Journey -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Parameter Journey</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="btn-group">
+                        <button class="btn btn-primary journey-btn" id="journeyBtn" onclick="toggleJourney()">Start Journey</button>
+                    </div>
+                    <div class="journey-status" id="journeyStatus" style="margin-top: 10px;">
+                        <span id="journeyLocation" class="journey-location">Ready to explore</span>
+                    </div>
+                    <div class="control-row" style="margin-top: 15px;">
+                        <label>Journey Speed</label>
+                        <div class="slider-container">
+                            <input type="range" id="journeySpeedSlider" min="1" max="20" value="5" oninput="setJourneySpeed(this.value / 10000)">
+                            <span class="value-display" id="journeySpeedValue">5.0x</span>
+                        </div>
+                    </div>
+                    <p class="help-text">Smoothly travel through F/K parameter space, watching patterns morph in real-time!</p>
+                </div>
+            </div>
+
             <!-- Initial Conditions -->
             <div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
@@ -248,9 +272,10 @@
                 <kbd>M</kbd> Music<br>
                 <kbd>R</kbd> Reset &nbsp;
                 <kbd>S</kbd> Random<br>
+                <kbd>J</kbd> Journey &nbsp;
+                <kbd>B</kbd> Brush<br>
                 <kbd>1-9</kbd> Presets &nbsp;
-                <kbd>B</kbd> Toggle Brush<br>
-                <kbd>[</kbd> <kbd>]</kbd> Brush Size
+                <kbd>[</kbd> <kbd>]</kbd> Size
             </div>
         </div>
 
