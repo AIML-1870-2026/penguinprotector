@@ -24,10 +24,15 @@ turing-patterns/
 - Real-time parameter controls (f, k, Du, Dv)
 - 10 preset patterns (Mitosis, Coral, Spots, Stripes, etc.)
 - 6 color schemes (Grayscale, Plasma, Ocean, Fire, Rainbow, Neon)
-- Multiple seed patterns (Center, Multiple, Grid, Noise, Draw)
+- Multiple seed patterns (Center, Multiple, Grid, Noise)
+- Interactive brush tools with adjustable size and intensity
+  - Chemical V brush (adds reaction catalyst)
+  - Chemical U brush (adds substrate)
+  - Both chemicals brush (creates reaction zones)
+  - Eraser (resets to initial state)
 - 3D height map visualization with camera controls
 - PNG export with resolution multiplier
-- Keyboard shortcuts (Space, R, S, 1-9)
+- Keyboard shortcuts (Space, R, S, B, [, ], 1-9)
 
 ## Gray-Scott Equations
 ```

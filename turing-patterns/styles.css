@@ -321,6 +321,110 @@ input[type="checkbox"] {
     font-family: monospace;
 }
 
+/* Brush Tools */
+.brush-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.brush-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    background: #0f3460;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    color: #eee;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.brush-type-btn:hover {
+    background: #533483;
+    border-color: #e94560;
+}
+
+.brush-type-btn.active {
+    border-color: #e94560;
+    background: #2a1a4e;
+}
+
+.brush-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: block;
+}
+
+.brush-icon.chemical-v {
+    background: radial-gradient(circle, #e94560 0%, #e94560 60%, transparent 60%);
+    box-shadow: 0 0 8px #e94560;
+}
+
+.brush-icon.chemical-u {
+    background: radial-gradient(circle, #00cccc 0%, #00cccc 60%, transparent 60%);
+    box-shadow: 0 0 8px #00cccc;
+}
+
+.brush-icon.chemical-both {
+    background: radial-gradient(circle, #ff00ff 0%, #ff00ff 60%, transparent 60%);
+    box-shadow: 0 0 8px #ff00ff;
+}
+
+.brush-icon.eraser {
+    background: radial-gradient(circle, #666 0%, #666 60%, transparent 60%);
+    border: 2px dashed #999;
+}
+
+/* Canvas cursor styles */
+#canvas2d.brush-enabled {
+    cursor: crosshair;
+}
+
+#canvas2d.brush-v { cursor: crosshair; }
+#canvas2d.brush-u { cursor: crosshair; }
+#canvas2d.brush-both { cursor: crosshair; }
+#canvas2d.brush-eraser { cursor: cell; }
+
+/* Brush cursor indicator */
+.brush-cursor {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    display: none;
+}
+
+.brush-cursor.active {
+    display: block;
+}
+
+.brush-cursor.type-v {
+    border-color: #e94560;
+    box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+}
+
+.brush-cursor.type-u {
+    border-color: #00cccc;
+    box-shadow: 0 0 10px rgba(0, 204, 204, 0.5);
+}
+
+.brush-cursor.type-both {
+    border-color: #ff00ff;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+}
+
+.brush-cursor.type-eraser {
+    border-color: #999;
+    border-style: dashed;
+}
+
 @media (max-width: 768px) {
     .container {
         flex-direction: column-reverse;

@@ -95,17 +95,60 @@
                             <option value="multiple">Multiple Seeds</option>
                             <option value="grid">Grid Pattern</option>
                             <option value="noise">Random Noise</option>
-                            <option value="draw">Custom Draw</option>
                         </select>
                     </div>
-                    <div class="control-row" id="brushControls" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Brush Tools -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Brush Tools</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="control-row">
+                        <label>Brush Type</label>
+                        <div class="brush-type-grid">
+                            <button class="brush-type-btn active" data-type="v" onclick="setBrushType('v', this)">
+                                <span class="brush-icon chemical-v"></span>
+                                Chemical V
+                            </button>
+                            <button class="brush-type-btn" data-type="u" onclick="setBrushType('u', this)">
+                                <span class="brush-icon chemical-u"></span>
+                                Chemical U
+                            </button>
+                            <button class="brush-type-btn" data-type="both" onclick="setBrushType('both', this)">
+                                <span class="brush-icon chemical-both"></span>
+                                Both
+                            </button>
+                            <button class="brush-type-btn" data-type="eraser" onclick="setBrushType('eraser', this)">
+                                <span class="brush-icon eraser"></span>
+                                Eraser
+                            </button>
+                        </div>
+                    </div>
+                    <div class="control-row">
                         <label>Brush Size</label>
                         <div class="slider-container">
-                            <input type="range" id="brushSlider" min="5" max="50" value="20">
-                            <span class="value-display" id="brushValue">20</span>
+                            <input type="range" id="brushSizeSlider" min="2" max="50" value="15" oninput="updateBrushSize()">
+                            <span class="value-display" id="brushSizeValue">15</span>
                         </div>
-                        <p class="help-text">Click and drag on canvas to draw</p>
                     </div>
+                    <div class="control-row">
+                        <label>Brush Intensity</label>
+                        <div class="slider-container">
+                            <input type="range" id="brushIntensitySlider" min="10" max="100" value="80" oninput="updateBrushIntensity()">
+                            <span class="value-display" id="brushIntensityValue">80%</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="brushEnabledCheck" checked onchange="toggleBrushEnabled()">
+                            <label for="brushEnabledCheck">Enable Drawing</label>
+                        </div>
+                    </div>
+                    <p class="help-text">Click and drag on canvas to paint chemicals. Works while simulation is running!</p>
                 </div>
             </div>
 
@@ -169,7 +212,9 @@
                 <kbd>Space</kbd> Play/Pause &nbsp;
                 <kbd>R</kbd> Reset &nbsp;
                 <kbd>S</kbd> Random<br>
-                <kbd>1-9</kbd> Load Presets
+                <kbd>1-9</kbd> Presets &nbsp;
+                <kbd>B</kbd> Toggle Brush<br>
+                <kbd>[</kbd> <kbd>]</kbd> Brush Size
             </div>
         </div>
 

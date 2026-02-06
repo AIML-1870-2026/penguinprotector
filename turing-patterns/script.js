@@ -40,7 +40,6 @@ let state = {
     colorScheme: 'grayscale',
     invert: false,
     seedType: 'center',
-    brushSize: 20,
     params: {
         f: 0.055,
         k: 0.062,
@@ -48,7 +47,14 @@ let state = {
         Dv: 0.08
     },
     iterations: 0,
-    heightScale: 2.0
+    heightScale: 2.0,
+    // Brush settings
+    brush: {
+        enabled: true,
+        type: 'v',        // 'v', 'u', 'both', 'eraser'
+        size: 15,
+        intensity: 0.8
+    }
 };
 
 // WebGL
@@ -68,6 +74,7 @@ let lastFpsUpdate = 0;
 
 // Drawing
 let isDrawing = false;
+let brushCursor = null;
 
 // ============================================
 // INITIALIZATION
@@ -82,10 +89,19 @@ function init() {
     initWebGL();
     initPresets();
     init3D();
+    initBrushCursor();
     initEventListeners();
 
     reset();
     requestAnimationFrame(animate);
+}
+
+function initBrushCursor() {
+    // Create brush cursor element
+    brushCursor = document.createElement('div');
+    brushCursor.className = 'brush-cursor';
+    document.querySelector('.canvas-container').appendChild(brushCursor);
+    updateBrushCursor();
 }
 
 function initWebGL() {
@@ -175,30 +191,31 @@ function initWebGL() {
         precision highp float;
         uniform sampler2D uTexture;
         uniform vec3 uColors[7];
-        uniform int uColorCount;
-        uniform bool uInvert;
+        uniform float uColorCount;
+        uniform float uInvert;
         varying vec2 uv;
 
         vec3 getColor(float t) {
-            if (uInvert) t = 1.0 - t;
+            if (uInvert > 0.5) t = 1.0 - t;
             t = clamp(t, 0.0, 1.0);
 
-            float segments = float(uColorCount - 1);
+            float segments = uColorCount - 1.0;
             float idx = t * segments;
-            int i = int(floor(idx));
-            float frac = fract(idx);
+            float i = floor(idx);
+            float frac = idx - i;
 
-            if (i >= uColorCount - 1) {
-                return uColors[uColorCount - 1];
+            if (i >= uColorCount - 1.0) {
+                i = uColorCount - 2.0;
+                frac = 1.0;
             }
 
             // Manual color interpolation since GLSL ES doesn't support dynamic indexing well
             vec3 c1, c2;
-            if (i == 0) { c1 = uColors[0]; c2 = uColors[1]; }
-            else if (i == 1) { c1 = uColors[1]; c2 = uColors[2]; }
-            else if (i == 2) { c1 = uColors[2]; c2 = uColors[3]; }
-            else if (i == 3) { c1 = uColors[3]; c2 = uColors[4]; }
-            else if (i == 4) { c1 = uColors[4]; c2 = uColors[5]; }
+            if (i < 0.5) { c1 = uColors[0]; c2 = uColors[1]; }
+            else if (i < 1.5) { c1 = uColors[1]; c2 = uColors[2]; }
+            else if (i < 2.5) { c1 = uColors[2]; c2 = uColors[3]; }
+            else if (i < 3.5) { c1 = uColors[3]; c2 = uColors[4]; }
+            else if (i < 4.5) { c1 = uColors[4]; c2 = uColors[5]; }
             else { c1 = uColors[5]; c2 = uColors[6]; }
 
             return mix(c1, c2, frac);
@@ -245,15 +262,24 @@ function createProgram(vertSrc, fragSrc) {
     const vert = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vert, vertSrc);
     gl.compileShader(vert);
+    if (!gl.getShaderParameter(vert, gl.COMPILE_STATUS)) {
+        console.error('Vertex shader error:', gl.getShaderInfoLog(vert));
+    }
 
     const frag = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(frag, fragSrc);
     gl.compileShader(frag);
+    if (!gl.getShaderParameter(frag, gl.COMPILE_STATUS)) {
+        console.error('Fragment shader error:', gl.getShaderInfoLog(frag));
+    }
 
     const program = gl.createProgram();
     gl.attachShader(program, vert);
     gl.attachShader(program, frag);
     gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program link error:', gl.getProgramInfoLog(program));
+    }
 
     return program;
 }
@@ -357,6 +383,18 @@ function initEventListeners() {
             case 's':
                 randomize();
                 break;
+            case 'b':
+                state.brush.enabled = !state.brush.enabled;
+                document.getElementById('brushEnabledCheck').checked = state.brush.enabled;
+                updateCanvasCursor();
+                updateBrushCursor();
+                break;
+            case '[':
+                adjustBrushSize(-5);
+                break;
+            case ']':
+                adjustBrushSize(5);
+                break;
             default:
                 const num = parseInt(e.key);
                 if (num >= 1 && num <= 9) {
@@ -367,9 +405,12 @@ function initEventListeners() {
 
     // Drawing on canvas
     canvas2d.addEventListener('mousedown', startDrawing);
-    canvas2d.addEventListener('mousemove', draw);
+    canvas2d.addEventListener('mousemove', handleCanvasMove);
     canvas2d.addEventListener('mouseup', stopDrawing);
-    canvas2d.addEventListener('mouseleave', stopDrawing);
+    canvas2d.addEventListener('mouseleave', handleCanvasLeave);
+
+    // Update canvas class for cursor
+    updateCanvasCursor();
 }
 
 // ============================================
@@ -491,8 +532,8 @@ function render() {
         }
     }
     gl.uniform3fv(gl.getUniformLocation(renderProgram, 'uColors'), colorArray);
-    gl.uniform1i(gl.getUniformLocation(renderProgram, 'uColorCount'), colors.length);
-    gl.uniform1i(gl.getUniformLocation(renderProgram, 'uInvert'), state.invert ? 1 : 0);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'uColorCount'), colors.length);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'uInvert'), state.invert ? 1.0 : 0.0);
 
     // Bind texture
     gl.activeTexture(gl.TEXTURE0);
@@ -657,36 +698,168 @@ function update3DHeight() {
 
 function updateSeedType() {
     state.seedType = document.getElementById('seedSelect').value;
-    document.getElementById('brushControls').style.display =
-        state.seedType === 'draw' ? 'block' : 'none';
 }
 
-// Drawing
+// ============================================
+// BRUSH TOOLS
+// ============================================
+function setBrushType(type, btn) {
+    state.brush.type = type;
+    document.querySelectorAll('.brush-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateBrushCursor();
+    updateCanvasCursor();
+}
+
+function updateBrushSize() {
+    const val = parseInt(document.getElementById('brushSizeSlider').value);
+    state.brush.size = val;
+    document.getElementById('brushSizeValue').textContent = val;
+    updateBrushCursor();
+}
+
+function updateBrushIntensity() {
+    const val = parseInt(document.getElementById('brushIntensitySlider').value);
+    state.brush.intensity = val / 100;
+    document.getElementById('brushIntensityValue').textContent = val + '%';
+}
+
+function toggleBrushEnabled() {
+    state.brush.enabled = document.getElementById('brushEnabledCheck').checked;
+    updateCanvasCursor();
+    updateBrushCursor();
+}
+
+function adjustBrushSize(delta) {
+    const slider = document.getElementById('brushSizeSlider');
+    const newVal = Math.max(2, Math.min(50, state.brush.size + delta));
+    slider.value = newVal;
+    state.brush.size = newVal;
+    document.getElementById('brushSizeValue').textContent = newVal;
+    updateBrushCursor();
+}
+
+function updateCanvasCursor() {
+    canvas2d.classList.remove('brush-enabled', 'brush-v', 'brush-u', 'brush-both', 'brush-eraser');
+    if (state.brush.enabled && state.mode === '2d') {
+        canvas2d.classList.add('brush-enabled', 'brush-' + state.brush.type);
+    }
+}
+
+function updateBrushCursor() {
+    if (!brushCursor) return;
+
+    // Calculate display size based on canvas scaling
+    const rect = canvas2d.getBoundingClientRect();
+    const scale = rect.width / CONFIG.width;
+    const displaySize = state.brush.size * scale * 2;
+
+    brushCursor.style.width = displaySize + 'px';
+    brushCursor.style.height = displaySize + 'px';
+
+    // Update type class
+    brushCursor.className = 'brush-cursor type-' + state.brush.type;
+    if (state.brush.enabled && state.mode === '2d') {
+        brushCursor.classList.add('active');
+    }
+}
+
+function handleCanvasMove(e) {
+    // Update brush cursor position
+    if (brushCursor && state.brush.enabled && state.mode === '2d') {
+        const rect = canvas2d.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+            brushCursor.style.left = (e.clientX - rect.left + canvas2d.offsetLeft) + 'px';
+            brushCursor.style.top = (e.clientY - rect.top + canvas2d.offsetTop) + 'px';
+            brushCursor.classList.add('active');
+        } else {
+            brushCursor.classList.remove('active');
+        }
+    }
+
+    // Draw if mouse is down
+    if (isDrawing) {
+        draw(e);
+    }
+}
+
+function handleCanvasLeave() {
+    stopDrawing();
+    if (brushCursor) {
+        brushCursor.classList.remove('active');
+    }
+}
+
 function startDrawing(e) {
-    if (state.seedType !== 'draw') return;
+    if (!state.brush.enabled || state.mode !== '2d') return;
     isDrawing = true;
     draw(e);
 }
 
 function draw(e) {
-    if (!isDrawing || state.seedType !== 'draw') return;
+    if (!isDrawing || !state.brush.enabled || state.mode !== '2d') return;
 
     const rect = canvas2d.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * CONFIG.width;
     const y = (1 - (e.clientY - rect.top) / rect.height) * CONFIG.height;
-    const radius = parseInt(document.getElementById('brushSlider').value);
 
     // Read current texture
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffers[currentTexture]);
     const pixels = new Float32Array(CONFIG.width * CONFIG.height * 4);
     gl.readPixels(0, 0, CONFIG.width, CONFIG.height, gl.RGBA, gl.FLOAT, pixels);
 
-    // Add circle
-    addCircle(pixels, x, y, radius);
+    // Apply brush based on type
+    applyBrush(pixels, x, y, state.brush.size, state.brush.type, state.brush.intensity);
 
-    // Upload modified data
+    // Upload modified data to both textures for immediate effect
     gl.bindTexture(gl.TEXTURE_2D, textures[currentTexture]);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, CONFIG.width, CONFIG.height, 0, gl.RGBA, gl.FLOAT, pixels);
+}
+
+function applyBrush(data, cx, cy, radius, type, intensity) {
+    const radiusSq = radius * radius;
+
+    for (let py = 0; py < CONFIG.height; py++) {
+        for (let px = 0; px < CONFIG.width; px++) {
+            const dx = px - cx;
+            const dy = py - cy;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq < radiusSq) {
+                const idx = (py * CONFIG.width + px) * 4;
+
+                // Smooth falloff from center
+                const falloff = 1 - Math.sqrt(distSq) / radius;
+                const strength = falloff * intensity;
+
+                switch (type) {
+                    case 'v':
+                        // Add chemical V (reduces U, increases V)
+                        data[idx] = Math.max(0, data[idx] - strength * 0.5);
+                        data[idx + 1] = Math.min(1, data[idx + 1] + strength * 0.25);
+                        break;
+                    case 'u':
+                        // Add chemical U (increases U, reduces V)
+                        data[idx] = Math.min(1, data[idx] + strength * 0.5);
+                        data[idx + 1] = Math.max(0, data[idx + 1] - strength * 0.25);
+                        break;
+                    case 'both':
+                        // Add both chemicals (creates reaction zone)
+                        data[idx] = 0.5 + (data[idx] - 0.5) * (1 - strength);
+                        data[idx + 1] = Math.min(1, data[idx + 1] + strength * 0.3);
+                        break;
+                    case 'eraser':
+                        // Reset to initial state (U=1, V=0)
+                        data[idx] = data[idx] + (1 - data[idx]) * strength;
+                        data[idx + 1] = data[idx + 1] * (1 - strength);
+                        break;
+                }
+            }
+        }
+    }
 }
 
 function stopDrawing() {
