@@ -23,6 +23,7 @@ const PRESETS = [
 
 // Color schemes
 const COLOR_SCHEMES = {
+    rave: [[0,0,0], [255,0,128], [0,255,255], [255,0,255], [255,255,0], [0,255,128], [255,255,255]],
     grayscale: [[0,0,0], [255,255,255]],
     plasma: [[13,8,135], [126,3,168], [204,71,120], [248,149,64], [240,249,33]],
     ocean: [[0,51,102], [0,102,153], [0,204,204], [255,255,255]],
@@ -37,7 +38,7 @@ const COLOR_SCHEMES = {
 let state = {
     playing: false,
     mode: '2d',
-    colorScheme: 'grayscale',
+    colorScheme: 'rave',
     invert: false,
     seedType: 'center',
     params: {
@@ -54,8 +55,23 @@ let state = {
         type: 'v',        // 'v', 'u', 'both', 'eraser'
         size: 15,
         intensity: 0.8
+    },
+    // Rave mode settings
+    rave: {
+        colorCycling: true,
+        colorOffset: 0,
+        cycleSpeed: 0.002,
+        beatPulse: 0,
+        musicPlaying: false
     }
 };
+
+// Audio context and music
+let audioContext = null;
+let analyser = null;
+let audioSource = null;
+let beatData = new Uint8Array(128);
+let musicGain = null;
 
 // WebGL
 let gl, canvas2d, canvas3d;
@@ -92,7 +108,17 @@ function init() {
     initBrushCursor();
     initEventListeners();
 
+    // Set rave color scheme as active
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    const raveBtn = document.querySelector('.color-btn.color-rave');
+    if (raveBtn) raveBtn.classList.add('active');
+
     reset();
+
+    // Auto-start simulation for rave mode
+    state.playing = true;
+    document.getElementById('playPauseBtn').textContent = 'Pause';
+
     requestAnimationFrame(animate);
 }
 
@@ -193,23 +219,28 @@ function initWebGL() {
         uniform vec3 uColors[7];
         uniform float uColorCount;
         uniform float uInvert;
+        uniform float uColorOffset;
+        uniform float uBeatPulse;
         varying vec2 uv;
 
         vec3 getColor(float t) {
             if (uInvert > 0.5) t = 1.0 - t;
             t = clamp(t, 0.0, 1.0);
 
+            // Apply color cycling by shifting the lookup position
+            float cycledT = fract(t + uColorOffset);
+
             float segments = uColorCount - 1.0;
-            float idx = t * segments;
+            float idx = cycledT * segments;
             float i = floor(idx);
-            float frac = idx - i;
+            float fr = idx - i;
 
             if (i >= uColorCount - 1.0) {
                 i = uColorCount - 2.0;
-                frac = 1.0;
+                fr = 1.0;
             }
 
-            // Manual color interpolation since GLSL ES doesn't support dynamic indexing well
+            // Manual color interpolation
             vec3 c1, c2;
             if (i < 0.5) { c1 = uColors[0]; c2 = uColors[1]; }
             else if (i < 1.5) { c1 = uColors[1]; c2 = uColors[2]; }
@@ -218,7 +249,13 @@ function initWebGL() {
             else if (i < 4.5) { c1 = uColors[4]; c2 = uColors[5]; }
             else { c1 = uColors[5]; c2 = uColors[6]; }
 
-            return mix(c1, c2, frac);
+            vec3 color = mix(c1, c2, fr);
+
+            // Apply beat pulse - brighten colors
+            color = color + vec3(uBeatPulse * 0.3);
+            color = clamp(color, 0.0, 1.0);
+
+            return color;
         }
 
         void main() {
@@ -389,6 +426,9 @@ function initEventListeners() {
                 updateCanvasCursor();
                 updateBrushCursor();
                 break;
+            case 'm':
+                toggleMusic();
+                break;
             case '[':
                 adjustBrushSize(-5);
                 break;
@@ -438,25 +478,26 @@ function initializeGrid() {
             addCircle(data, CONFIG.width/2, CONFIG.height/2, 20);
             break;
         case 'multiple':
-            for (let i = 0; i < 10; i++) {
-                const x = Math.random() * CONFIG.width;
-                const y = Math.random() * CONFIG.height;
-                const r = 5 + Math.random() * 15;
+            // Multiple small seeds scattered around
+            for (let i = 0; i < 15; i++) {
+                const x = 30 + Math.random() * (CONFIG.width - 60);
+                const y = 30 + Math.random() * (CONFIG.height - 60);
+                const r = 3 + Math.random() * 5;
                 addCircle(data, x, y, r);
             }
             break;
         case 'grid':
-            const spacing = 40;
+            const spacing = 50;
             for (let x = spacing; x < CONFIG.width; x += spacing) {
                 for (let y = spacing; y < CONFIG.height; y += spacing) {
-                    addCircle(data, x, y, 8);
+                    addCircle(data, x, y, 4);
                 }
             }
             break;
         case 'noise':
             for (let i = 0; i < CONFIG.width * CONFIG.height; i++) {
-                if (Math.random() < 0.1) {
-                    data[i * 4 + 1] = Math.random();
+                if (Math.random() < 0.05) {
+                    data[i * 4 + 1] = Math.random() * 0.5;
                 }
             }
             break;
@@ -534,6 +575,8 @@ function render() {
     gl.uniform3fv(gl.getUniformLocation(renderProgram, 'uColors'), colorArray);
     gl.uniform1f(gl.getUniformLocation(renderProgram, 'uColorCount'), colors.length);
     gl.uniform1f(gl.getUniformLocation(renderProgram, 'uInvert'), state.invert ? 1.0 : 0.0);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'uColorOffset'), state.rave ? state.rave.colorOffset || 0 : 0);
+    gl.uniform1f(gl.getUniformLocation(renderProgram, 'uBeatPulse'), state.rave ? state.rave.beatPulse || 0 : 0);
 
     // Bind texture
     gl.activeTexture(gl.TEXTURE0);
@@ -591,6 +634,28 @@ function render3D() {
 // ============================================
 function animate(time) {
     requestAnimationFrame(animate);
+
+    // Update color cycling
+    if (state.rave.colorCycling) {
+        state.rave.colorOffset += state.rave.cycleSpeed;
+        if (state.rave.colorOffset > 1) state.rave.colorOffset -= 1;
+    }
+
+    // Update beat pulse from audio analysis
+    if (analyser && state.rave.musicPlaying) {
+        analyser.getByteFrequencyData(beatData);
+        // Get bass frequencies for beat detection (indices 0-10)
+        let bass = 0;
+        for (let i = 0; i < 10; i++) {
+            bass += beatData[i];
+        }
+        bass /= 10 * 255;
+        // Smooth the beat pulse
+        state.rave.beatPulse = state.rave.beatPulse * 0.7 + bass * 0.3;
+    } else {
+        // Decay the pulse when no music
+        state.rave.beatPulse *= 0.95;
+    }
 
     if (state.playing) {
         const steps = parseInt(document.getElementById('speedSlider').value);
@@ -884,6 +949,189 @@ function exportImage() {
     link.download = `turing-pattern-${Date.now()}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
+}
+
+// ============================================
+// MUSIC SYSTEM
+// ============================================
+function initAudio() {
+    if (audioContext) return;
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.8;
+    beatData = new Uint8Array(analyser.frequencyBinCount);
+
+    musicGain = audioContext.createGain();
+    musicGain.gain.value = 0.5;
+    musicGain.connect(analyser);
+    analyser.connect(audioContext.destination);
+}
+
+function generateHouseBeat() {
+    initAudio();
+
+    if (audioSource) {
+        audioSource.stop();
+        audioSource = null;
+    }
+
+    const bpm = 128;
+    const beatDuration = 60 / bpm;
+    const barDuration = beatDuration * 4;
+    const loopDuration = barDuration * 4; // 4 bars
+
+    // Create an offline context to render the beat
+    const sampleRate = audioContext.sampleRate;
+    const bufferLength = loopDuration * sampleRate;
+    const buffer = audioContext.createBuffer(2, bufferLength, sampleRate);
+
+    const leftChannel = buffer.getChannelData(0);
+    const rightChannel = buffer.getChannelData(1);
+
+    // Kick drum on every beat (4-on-the-floor)
+    for (let beat = 0; beat < 16; beat++) {
+        const kickTime = beat * beatDuration;
+        addKick(leftChannel, rightChannel, kickTime, sampleRate);
+    }
+
+    // Hi-hats on offbeats
+    for (let beat = 0; beat < 32; beat++) {
+        const hihatTime = beat * beatDuration * 0.5 + beatDuration * 0.25;
+        if (hihatTime < loopDuration) {
+            addHihat(leftChannel, rightChannel, hihatTime, sampleRate, beat % 2 === 0 ? 0.15 : 0.1);
+        }
+    }
+
+    // Snare/clap on beats 2 and 4
+    for (let bar = 0; bar < 4; bar++) {
+        addSnare(leftChannel, rightChannel, bar * barDuration + beatDuration, sampleRate);
+        addSnare(leftChannel, rightChannel, bar * barDuration + beatDuration * 3, sampleRate);
+    }
+
+    // Bass line
+    const bassNotes = [55, 55, 73.4, 82.4]; // A1, A1, D2, E2
+    for (let bar = 0; bar < 4; bar++) {
+        for (let note = 0; note < 4; note++) {
+            const noteTime = bar * barDuration + note * beatDuration;
+            addBass(leftChannel, rightChannel, noteTime, sampleRate, bassNotes[note], beatDuration * 0.8);
+        }
+    }
+
+    // Create looping source
+    audioSource = audioContext.createBufferSource();
+    audioSource.buffer = buffer;
+    audioSource.loop = true;
+    audioSource.connect(musicGain);
+    audioSource.start();
+
+    state.rave.musicPlaying = true;
+    updateMusicButton();
+}
+
+function addKick(left, right, time, sampleRate) {
+    const startSample = Math.floor(time * sampleRate);
+    const duration = 0.15;
+    const samples = Math.floor(duration * sampleRate);
+
+    for (let i = 0; i < samples && startSample + i < left.length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 30);
+        const pitch = 150 * Math.exp(-t * 50) + 40;
+        const sample = Math.sin(2 * Math.PI * pitch * t) * envelope * 0.7;
+        left[startSample + i] += sample;
+        right[startSample + i] += sample;
+    }
+}
+
+function addHihat(left, right, time, sampleRate, volume = 0.12) {
+    const startSample = Math.floor(time * sampleRate);
+    const duration = 0.05;
+    const samples = Math.floor(duration * sampleRate);
+
+    for (let i = 0; i < samples && startSample + i < left.length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 80);
+        const noise = (Math.random() * 2 - 1);
+        // Bandpass filter simulation
+        const sample = noise * envelope * volume;
+        left[startSample + i] += sample;
+        right[startSample + i] += sample;
+    }
+}
+
+function addSnare(left, right, time, sampleRate) {
+    const startSample = Math.floor(time * sampleRate);
+    const duration = 0.12;
+    const samples = Math.floor(duration * sampleRate);
+
+    for (let i = 0; i < samples && startSample + i < left.length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 25);
+        const noise = (Math.random() * 2 - 1) * 0.3;
+        const tone = Math.sin(2 * Math.PI * 180 * t) * 0.3;
+        const sample = (noise + tone) * envelope * 0.5;
+        left[startSample + i] += sample;
+        right[startSample + i] += sample;
+    }
+}
+
+function addBass(left, right, time, sampleRate, freq, duration) {
+    const startSample = Math.floor(time * sampleRate);
+    const samples = Math.floor(duration * sampleRate);
+
+    for (let i = 0; i < samples && startSample + i < left.length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.min(1, t * 20) * Math.exp(-t * 3);
+        // Square-ish wave for that house bass
+        let sample = Math.sin(2 * Math.PI * freq * t);
+        sample += Math.sin(4 * Math.PI * freq * t) * 0.3;
+        sample = sample * envelope * 0.25;
+        left[startSample + i] += sample;
+        right[startSample + i] += sample;
+    }
+}
+
+function toggleMusic() {
+    if (state.rave.musicPlaying) {
+        stopMusic();
+    } else {
+        generateHouseBeat();
+    }
+}
+
+function stopMusic() {
+    if (audioSource) {
+        audioSource.stop();
+        audioSource = null;
+    }
+    state.rave.musicPlaying = false;
+    updateMusicButton();
+}
+
+function updateMusicButton() {
+    const btn = document.getElementById('musicBtn');
+    if (btn) {
+        btn.textContent = state.rave.musicPlaying ? 'Stop Music' : 'Play Music';
+        btn.classList.toggle('playing', state.rave.musicPlaying);
+    }
+}
+
+function setMusicVolume(value) {
+    if (musicGain) {
+        musicGain.gain.value = value;
+    }
+    document.getElementById('volumeValue').textContent = Math.round(value * 100) + '%';
+}
+
+function toggleColorCycling() {
+    state.rave.colorCycling = document.getElementById('colorCycleCheck').checked;
+}
+
+function setCycleSpeed(value) {
+    state.rave.cycleSpeed = value;
+    document.getElementById('cycleSpeedValue').textContent = (value * 1000).toFixed(1);
 }
 
 // Initialize when DOM is ready

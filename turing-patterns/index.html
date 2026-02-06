@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turing Patterns Explorer</title>
+    <title>Turing Patterns Rave</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -152,6 +152,40 @@
                 </div>
             </div>
 
+            <!-- Music -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Music</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="btn-group">
+                        <button class="btn btn-primary music-btn" id="musicBtn" onclick="toggleMusic()">Play Music</button>
+                    </div>
+                    <div class="control-row" style="margin-top: 15px;">
+                        <label>Volume</label>
+                        <div class="slider-container">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="setMusicVolume(this.value / 100)">
+                            <span class="value-display" id="volumeValue">50%</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="colorCycleCheck" checked onchange="toggleColorCycling()">
+                            <label for="colorCycleCheck">Color Cycling</label>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>Cycle Speed</label>
+                        <div class="slider-container">
+                            <input type="range" id="cycleSpeedSlider" min="1" max="20" value="2" oninput="setCycleSpeed(this.value / 1000)">
+                            <span class="value-display" id="cycleSpeedValue">2.0</span>
+                        </div>
+                    </div>
+                    <p class="help-text">128 BPM house beat with bass-reactive visuals!</p>
+                </div>
+            </div>
+
             <!-- Visualization -->
             <div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
@@ -162,12 +196,12 @@
                     <div class="control-row">
                         <label>Color Scheme</label>
                         <div class="color-scheme-grid">
-                            <button class="color-btn color-grayscale active" data-scheme="grayscale" onclick="setColorScheme('grayscale', this)"></button>
+                            <button class="color-btn color-rave active" data-scheme="rave" onclick="setColorScheme('rave', this)"></button>
                             <button class="color-btn color-plasma" data-scheme="plasma" onclick="setColorScheme('plasma', this)"></button>
-                            <button class="color-btn color-ocean" data-scheme="ocean" onclick="setColorScheme('ocean', this)"></button>
+                            <button class="color-btn color-neon" data-scheme="neon" onclick="setColorScheme('neon', this)"></button>
                             <button class="color-btn color-fire" data-scheme="fire" onclick="setColorScheme('fire', this)"></button>
                             <button class="color-btn color-rainbow" data-scheme="rainbow" onclick="setColorScheme('rainbow', this)"></button>
-                            <button class="color-btn color-neon" data-scheme="neon" onclick="setColorScheme('neon', this)"></button>
+                            <button class="color-btn color-grayscale" data-scheme="grayscale" onclick="setColorScheme('grayscale', this)"></button>
                         </div>
                     </div>
                     <div class="control-row">
@@ -210,6 +244,7 @@
             <div class="keyboard-hint">
                 <strong>Shortcuts:</strong><br>
                 <kbd>Space</kbd> Play/Pause &nbsp;
+                <kbd>M</kbd> Music<br>
                 <kbd>R</kbd> Reset &nbsp;
                 <kbd>S</kbd> Random<br>
                 <kbd>1-9</kbd> Presets &nbsp;
@@ -220,7 +255,7 @@
 
         <div class="canvas-area">
             <header>
-                <h1>Turing Patterns Explorer</h1>
+                <h1>Turing Patterns Rave</h1>
                 <div class="mode-toggle">
                     <button class="mode-btn active" id="btn2d" onclick="setMode('2d')">2D</button>
                     <button class="mode-btn" id="btn3d" onclick="setMode('3d')">3D</button>

@@ -44,7 +44,24 @@ header {
 
 header h1 {
     font-size: 1.4rem;
-    color: #e94560;
+    color: #ff00ff;
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff;
+    animation: titleGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+    0% {
+        color: #ff00ff;
+        text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+    }
+    50% {
+        color: #00ffff;
+        text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+    }
+    100% {
+        color: #ffff00;
+        text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00;
+    }
 }
 
 .mode-toggle {
@@ -264,12 +281,22 @@ input[type="range"]::-webkit-slider-thumb {
     transform: scale(1.05);
 }
 
+.color-rave {
+    background: linear-gradient(to right, #000, #ff0080, #00ffff, #ff00ff, #ffff00, #00ff80, #fff);
+    animation: raveGlow 2s ease-in-out infinite alternate;
+}
 .color-grayscale { background: linear-gradient(to right, #000, #fff); }
 .color-plasma { background: linear-gradient(to right, #0d0887, #cc4778, #f0f921); }
 .color-ocean { background: linear-gradient(to right, #003366, #00cccc, #ffffff); }
 .color-fire { background: linear-gradient(to right, #000, #ff0000, #ff6600, #ffff00, #ffffff); }
 .color-rainbow { background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet); }
 .color-neon { background: linear-gradient(to right, #000, #ff00ff, #00ffff, #fff); }
+
+@keyframes raveGlow {
+    0% { box-shadow: 0 0 5px #ff00ff; }
+    50% { box-shadow: 0 0 15px #00ffff; }
+    100% { box-shadow: 0 0 5px #ffff00; }
+}
 
 select {
     width: 100%;
@@ -303,6 +330,27 @@ input[type="checkbox"] {
     font-size: 0.75rem;
     color: #666;
     margin-top: 5px;
+}
+
+/* Music Button */
+.music-btn {
+    transition: all 0.3s ease;
+}
+
+.music-btn.playing {
+    background: linear-gradient(45deg, #ff00ff, #00ffff);
+    animation: musicPulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes musicPulse {
+    0% {
+        box-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+        transform: scale(1.02);
+    }
 }
 
 .keyboard-hint {
