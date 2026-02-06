@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #1a1a2e;
+    background: #0a0a15;
     color: #eee;
     overflow: hidden;
     height: 100vh;
@@ -19,11 +19,12 @@ body {
 
 .control-panel {
     width: 320px;
-    background: #16213e;
+    background: linear-gradient(180deg, #1a0a2e 0%, #0d0620 50%, #1a0a2e 100%);
     padding: 15px;
     overflow-y: auto;
     flex-shrink: 0;
-    border-right: 1px solid #0f3460;
+    border-right: 2px solid;
+    border-image: linear-gradient(180deg, #ff00ff, #00ffff, #ff00ff) 1;
 }
 
 .canvas-area {
@@ -37,11 +38,12 @@ body {
 
 header {
     padding: 15px 20px;
-    background: #16213e;
+    background: linear-gradient(90deg, rgba(255, 0, 128, 0.2), rgba(0, 255, 255, 0.2));
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #0f3460;
+    border-bottom: 2px solid;
+    border-image: linear-gradient(90deg, #ff00ff, #00ffff) 1;
 }
 
 header h1 {
@@ -73,20 +75,24 @@ header h1 {
 
 .mode-btn {
     padding: 8px 16px;
-    border: none;
-    background: #0f3460;
-    color: #eee;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    background: rgba(20, 10, 50, 0.8);
+    color: #00ffff;
     cursor: pointer;
     border-radius: 4px;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .mode-btn.active {
-    background: #e94560;
+    background: linear-gradient(135deg, #ff0080, #ff00ff);
+    border-color: #ff00ff;
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+    color: #fff;
 }
 
 .mode-btn:hover {
-    background: #533483;
+    background: rgba(128, 0, 128, 0.5);
+    border-color: #ff00ff;
 }
 
 .canvas-container {
@@ -110,38 +116,42 @@ header h1 {
 
 footer {
     padding: 10px 20px;
-    background: #16213e;
+    background: linear-gradient(90deg, rgba(255, 0, 128, 0.1), rgba(0, 255, 255, 0.1));
     display: flex;
     justify-content: space-between;
     font-size: 0.85rem;
-    color: #888;
-    border-top: 1px solid #0f3460;
+    color: #00ffff;
+    border-top: 1px solid rgba(255, 0, 255, 0.3);
 }
 
 .section {
     margin-bottom: 15px;
-    border: 1px solid #0f3460;
+    border: 1px solid rgba(255, 0, 255, 0.3);
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.1);
 }
 
 .section-header {
-    background: #0f3460;
+    background: linear-gradient(90deg, rgba(255, 0, 128, 0.2), rgba(0, 255, 255, 0.2));
     padding: 12px 15px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
     user-select: none;
+    border-bottom: 1px solid rgba(255, 0, 255, 0.2);
 }
 
 .section-header:hover {
-    background: #1a4a7a;
+    background: linear-gradient(90deg, rgba(255, 0, 128, 0.4), rgba(0, 255, 255, 0.4));
 }
 
 .section-header h3 {
     font-size: 0.95rem;
     font-weight: 500;
+    color: #ff80ff;
+    text-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
 }
 
 .section-header .arrow {
@@ -158,7 +168,7 @@ footer {
 
 .section-content {
     padding: 15px;
-    background: #1a1a3e;
+    background: rgba(20, 10, 40, 0.8);
 }
 
 .control-row {
@@ -169,7 +179,7 @@ footer {
     display: block;
     margin-bottom: 5px;
     font-size: 0.85rem;
-    color: #aaa;
+    color: #ff80ff;
 }
 
 .slider-container {
@@ -182,7 +192,7 @@ input[type="range"] {
     flex: 1;
     height: 6px;
     -webkit-appearance: none;
-    background: #0f3460;
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.3), rgba(255, 0, 255, 0.3));
     border-radius: 3px;
     outline: none;
 }
@@ -191,9 +201,20 @@ input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 16px;
     height: 16px;
-    background: #e94560;
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
     border-radius: 50%;
     cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+    border: none;
 }
 
 .value-display {
@@ -201,7 +222,8 @@ input[type="range"]::-webkit-slider-thumb {
     text-align: right;
     font-family: monospace;
     font-size: 0.85rem;
-    color: #e94560;
+    color: #00ffff;
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
 .btn-group {
@@ -222,21 +244,26 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .btn-primary {
-    background: #e94560;
+    background: linear-gradient(135deg, #ff0080, #ff00ff);
     color: white;
+    box-shadow: 0 0 15px rgba(255, 0, 128, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-primary:hover {
-    background: #ff6b6b;
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
+    box-shadow: 0 0 25px rgba(255, 0, 255, 0.7);
 }
 
 .btn-secondary {
-    background: #0f3460;
-    color: #eee;
+    background: rgba(30, 20, 60, 0.8);
+    color: #00ffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
 }
 
 .btn-secondary:hover {
-    background: #533483;
+    background: rgba(80, 0, 128, 0.6);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
 }
 
 .preset-grid {
@@ -247,23 +274,27 @@ input[type="range"]::-webkit-slider-thumb {
 
 .preset-btn {
     padding: 10px 8px;
-    background: #0f3460;
-    border: 2px solid transparent;
+    background: rgba(20, 10, 50, 0.8);
+    border: 1px solid rgba(0, 255, 255, 0.3);
     border-radius: 6px;
-    color: #eee;
+    color: #00ffff;
     cursor: pointer;
     font-size: 0.8rem;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .preset-btn:hover {
-    background: #533483;
-    border-color: #e94560;
+    background: rgba(80, 0, 128, 0.5);
+    border-color: #ff00ff;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
+    color: #ff80ff;
 }
 
 .preset-btn.active {
-    border-color: #e94560;
-    background: #2a1a4e;
+    border-color: #ff00ff;
+    background: linear-gradient(135deg, rgba(255, 0, 128, 0.3), rgba(128, 0, 255, 0.3));
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+    color: #fff;
 }
 
 .color-scheme-grid {
@@ -305,17 +336,18 @@ input[type="range"]::-webkit-slider-thumb {
 select {
     width: 100%;
     padding: 10px;
-    background: #0f3460;
-    border: 1px solid #533483;
+    background: rgba(20, 10, 50, 0.8);
+    border: 1px solid rgba(0, 255, 255, 0.3);
     border-radius: 6px;
-    color: #eee;
+    color: #00ffff;
     font-size: 0.9rem;
     cursor: pointer;
 }
 
 select:focus {
     outline: none;
-    border-color: #e94560;
+    border-color: #ff00ff;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
 }
 
 .checkbox-row {
@@ -359,18 +391,21 @@ input[type="checkbox"] {
 
 .keyboard-hint {
     font-size: 0.7rem;
-    color: #555;
+    color: #ff80ff;
     margin-top: 10px;
     padding: 10px;
-    background: #0f0f2a;
+    background: rgba(20, 10, 40, 0.6);
     border-radius: 4px;
+    border: 1px solid rgba(255, 0, 255, 0.2);
 }
 
 .keyboard-hint kbd {
-    background: #333;
+    background: rgba(255, 0, 255, 0.2);
     padding: 2px 6px;
     border-radius: 3px;
     font-family: monospace;
+    color: #00ffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
 }
 
 /* Brush Tools */
@@ -386,23 +421,26 @@ input[type="checkbox"] {
     align-items: center;
     gap: 4px;
     padding: 10px 8px;
-    background: #0f3460;
-    border: 2px solid transparent;
+    background: rgba(20, 10, 50, 0.8);
+    border: 1px solid rgba(0, 255, 255, 0.3);
     border-radius: 6px;
-    color: #eee;
+    color: #00ffff;
     cursor: pointer;
     font-size: 0.75rem;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .brush-type-btn:hover {
-    background: #533483;
-    border-color: #e94560;
+    background: rgba(80, 0, 128, 0.5);
+    border-color: #ff00ff;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.4);
 }
 
 .brush-type-btn.active {
-    border-color: #e94560;
-    background: #2a1a4e;
+    border-color: #ff00ff;
+    background: linear-gradient(135deg, rgba(255, 0, 128, 0.3), rgba(128, 0, 255, 0.3));
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+    color: #fff;
 }
 
 .brush-icon {
