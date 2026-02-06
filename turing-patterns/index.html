@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turing Patterns Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="control-panel">
+            <!-- Simulation Controls -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Simulation</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="playPauseBtn" onclick="togglePlay()">Play</button>
+                        <button class="btn btn-secondary" onclick="reset()">Reset</button>
+                        <button class="btn btn-secondary" onclick="randomize()">Random</button>
+                    </div>
+                    <div class="control-row" style="margin-top: 15px;">
+                        <label>Speed</label>
+                        <div class="slider-container">
+                            <input type="range" id="speedSlider" min="1" max="20" value="8" oninput="updateSpeed()">
+                            <span class="value-display" id="speedValue">8</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Presets</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="preset-grid" id="presetGrid"></div>
+                </div>
+            </div>
+
+            <!-- Parameters -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Parameters</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="control-row">
+                        <label>Feed Rate (f)</label>
+                        <div class="slider-container">
+                            <input type="range" id="feedSlider" min="0" max="100" value="55" oninput="updateParams()">
+                            <span class="value-display" id="feedValue">0.055</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>Kill Rate (k)</label>
+                        <div class="slider-container">
+                            <input type="range" id="killSlider" min="0" max="100" value="62" oninput="updateParams()">
+                            <span class="value-display" id="killValue">0.062</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>Diffusion U (Du)</label>
+                        <div class="slider-container">
+                            <input type="range" id="duSlider" min="1" max="50" value="16" oninput="updateParams()">
+                            <span class="value-display" id="duValue">0.16</span>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>Diffusion V (Dv)</label>
+                        <div class="slider-container">
+                            <input type="range" id="dvSlider" min="1" max="50" value="8" oninput="updateParams()">
+                            <span class="value-display" id="dvValue">0.08</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Initial Conditions -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Initial Conditions</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="control-row">
+                        <label>Seed Pattern</label>
+                        <select id="seedSelect" onchange="updateSeedType()">
+                            <option value="center">Central Blob</option>
+                            <option value="multiple">Multiple Seeds</option>
+                            <option value="grid">Grid Pattern</option>
+                            <option value="noise">Random Noise</option>
+                            <option value="draw">Custom Draw</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="brushControls" style="display: none;">
+                        <label>Brush Size</label>
+                        <div class="slider-container">
+                            <input type="range" id="brushSlider" min="5" max="50" value="20">
+                            <span class="value-display" id="brushValue">20</span>
+                        </div>
+                        <p class="help-text">Click and drag on canvas to draw</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Visualization</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="control-row">
+                        <label>Color Scheme</label>
+                        <div class="color-scheme-grid">
+                            <button class="color-btn color-grayscale active" data-scheme="grayscale" onclick="setColorScheme('grayscale', this)"></button>
+                            <button class="color-btn color-plasma" data-scheme="plasma" onclick="setColorScheme('plasma', this)"></button>
+                            <button class="color-btn color-ocean" data-scheme="ocean" onclick="setColorScheme('ocean', this)"></button>
+                            <button class="color-btn color-fire" data-scheme="fire" onclick="setColorScheme('fire', this)"></button>
+                            <button class="color-btn color-rainbow" data-scheme="rainbow" onclick="setColorScheme('rainbow', this)"></button>
+                            <button class="color-btn color-neon" data-scheme="neon" onclick="setColorScheme('neon', this)"></button>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="invertCheck" onchange="updateVisualization()">
+                            <label for="invertCheck">Invert Colors</label>
+                        </div>
+                    </div>
+                    <div class="control-row" id="heightControls" style="display: none;">
+                        <label>Height Scale (3D)</label>
+                        <div class="slider-container">
+                            <input type="range" id="heightSlider" min="1" max="50" value="20" oninput="update3DHeight()">
+                            <span class="value-display" id="heightValue">2.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <h3>Export</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="section-content">
+                    <div class="control-row">
+                        <label>Resolution</label>
+                        <select id="exportRes">
+                            <option value="1">Current (1x)</option>
+                            <option value="2">2x</option>
+                            <option value="4">4x</option>
+                        </select>
+                    </div>
+                    <div class="btn-group" style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="exportImage()">Save PNG</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="keyboard-hint">
+                <strong>Shortcuts:</strong><br>
+                <kbd>Space</kbd> Play/Pause &nbsp;
+                <kbd>R</kbd> Reset &nbsp;
+                <kbd>S</kbd> Random<br>
+                <kbd>1-9</kbd> Load Presets
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <header>
+                <h1>Turing Patterns Explorer</h1>
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn2d" onclick="setMode('2d')">2D</button>
+                    <button class="mode-btn" id="btn3d" onclick="setMode('3d')">3D</button>
+                </div>
+            </header>
+            <div class="canvas-container">
+                <canvas id="canvas2d"></canvas>
+                <canvas id="canvas3d"></canvas>
+            </div>
+            <footer>
+                <span id="fpsCounter">FPS: 0</span>
+                <span id="iterCounter">Iterations: 0</span>
+                <span id="resolutionInfo">256x256</span>
+            </footer>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
