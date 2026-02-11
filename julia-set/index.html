@@ -424,22 +424,33 @@ canvas {
 
 #orbit-panel.visible { display: block; }
 
-/* Quiz Modal */
+/* Quiz Modal - Rave Theme */
 #quiz-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(10, 10, 20, 0.92);
+  background: rgba(5, 0, 15, 0.95);
   z-index: 500;
   display: none;
   justify-content: center;
   align-items: center;
 }
 
-#quiz-overlay.visible { display: flex; }
+#quiz-overlay.visible {
+  display: flex;
+  animation: raveOverlayPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes raveOverlayPulse {
+  0% { background: rgba(5, 0, 15, 0.95); }
+  33% { background: rgba(15, 0, 30, 0.95); }
+  66% { background: rgba(0, 10, 25, 0.95); }
+  100% { background: rgba(10, 0, 20, 0.95); }
+}
 
 #quiz-box {
-  background: var(--panel-bg);
-  border: 2px solid var(--highlight);
+  background: linear-gradient(135deg, #0a0015 0%, #0d0d1a 40%, #0a0020 70%, #001020 100%);
+  border: 2px solid;
+  border-image: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan), var(--neon-green), var(--neon-yellow), var(--neon-pink)) 1;
   border-radius: 12px;
   padding: 32px;
   width: 520px;
@@ -448,33 +459,50 @@ canvas {
   overflow-y: auto;
   text-align: center;
   position: relative;
-  box-shadow: 0 0 60px rgba(233, 69, 96, 0.3);
+  box-shadow: 0 0 40px rgba(255, 0, 255, 0.3), 0 0 80px rgba(0, 255, 255, 0.15), inset 0 0 40px rgba(255, 0, 255, 0.05);
+  animation: raveBoxGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes raveBoxGlow {
+  0% { box-shadow: 0 0 40px rgba(255, 0, 255, 0.3), 0 0 80px rgba(0, 255, 255, 0.15); }
+  50% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.4), 0 0 100px rgba(57, 255, 20, 0.2); }
+  100% { box-shadow: 0 0 40px rgba(255, 255, 0, 0.3), 0 0 80px rgba(255, 0, 255, 0.2); }
 }
 
 #quiz-box h2 {
-  color: var(--highlight);
-  font-size: 20px;
+  font-size: 22px;
+  font-weight: 700;
   margin-bottom: 6px;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan), var(--neon-green), var(--neon-yellow), var(--neon-pink));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: raveTitle 3s linear infinite;
 }
 
 #quiz-box .quiz-subtitle {
-  color: var(--text-dim);
+  color: var(--neon-cyan);
   font-size: 13px;
   margin-bottom: 20px;
+  text-shadow: 0 0 8px var(--neon-cyan);
 }
 
 #quiz-box .quiz-question {
   font-size: 15px;
   margin-bottom: 16px;
   line-height: 1.5;
+  color: var(--text);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
 #quiz-box .quiz-step {
-  color: var(--text-dim);
+  color: var(--neon-green);
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   margin-bottom: 12px;
+  text-shadow: 0 0 6px var(--neon-green);
 }
 
 .quiz-options {
@@ -486,30 +514,43 @@ canvas {
 
 .quiz-option {
   padding: 10px 16px;
-  background: var(--accent);
-  border: 1px solid var(--border);
+  background: rgba(26, 10, 46, 0.6);
+  border: 1px solid var(--neon-pink);
   border-radius: 8px;
   color: var(--text);
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
   text-align: left;
+  box-shadow: 0 0 4px rgba(255, 0, 255, 0.15);
 }
 
 .quiz-option:hover {
-  background: var(--highlight);
-  border-color: var(--highlight);
-  transform: translateX(4px);
+  background: rgba(255, 0, 255, 0.2);
+  border-color: var(--neon-cyan);
+  transform: translateX(6px);
+  box-shadow: 0 0 12px var(--neon-pink), 0 0 24px rgba(0, 255, 255, 0.2);
+  text-shadow: 0 0 4px var(--neon-cyan);
 }
 
 .quiz-option.correct {
-  background: #1a7a3a;
-  border-color: #2ecc71;
+  background: rgba(57, 255, 20, 0.2);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 16px var(--neon-green), 0 0 32px rgba(57, 255, 20, 0.3);
+  text-shadow: 0 0 4px var(--neon-green);
 }
 
 .quiz-option.wrong {
-  background: #7a1a1a;
-  border-color: #e74c3c;
+  background: rgba(255, 0, 60, 0.2);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 16px var(--neon-pink), 0 0 32px rgba(255, 0, 255, 0.3);
+  animation: raveWrong 0.3s ease;
+}
+
+@keyframes raveWrong {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
 }
 
 #quiz-result {
@@ -519,10 +560,14 @@ canvas {
 }
 
 .quiz-restart-msg {
-  color: var(--highlight);
   font-size: 18px;
-  font-weight: 600;
-  animation: quizShake 0.5s ease;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-yellow), var(--neon-pink));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: raveTitle 2s linear infinite, quizShake 0.5s ease;
 }
 
 @keyframes quizShake {
@@ -536,15 +581,21 @@ canvas {
 .quiz-personality {
   margin-top: 16px;
   padding: 16px;
-  background: var(--accent);
+  background: rgba(26, 10, 46, 0.5);
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid;
+  border-image: linear-gradient(135deg, var(--neon-pink), var(--neon-cyan)) 1;
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.1), inset 0 0 20px rgba(0, 255, 255, 0.05);
 }
 
 .quiz-personality h3 {
-  color: var(--highlight);
   font-size: 16px;
   margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
 }
 
 .quiz-personality p {
@@ -556,16 +607,22 @@ canvas {
 .quiz-close-btn {
   margin-top: 16px;
   padding: 8px 24px;
-  background: var(--highlight);
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
   color: white;
   border: none;
   border-radius: 6px;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.3s;
+  box-shadow: 0 0 12px rgba(255, 0, 255, 0.3);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
 
-.quiz-close-btn:hover { opacity: 0.8; }
+.quiz-close-btn:hover {
+  box-shadow: 0 0 20px var(--neon-pink), 0 0 40px rgba(0, 255, 255, 0.3);
+  transform: scale(1.05);
+}
 
 /* Gradient Editor */
 #gradient-preview {
@@ -796,7 +853,7 @@ canvas {
 <div id="header">
   <button class="header-btn" id="toggle-controls" title="Toggle Controls (Space)">&#9776;</button>
   <h1>Julia Set Explorer</h1>
-  <button class="header-btn" id="quiz-btn" title="Fractal Personality Quiz">&#10070;</button>
+  <button class="header-btn" id="quiz-btn" title="Fractal Personality Quiz" style="font-size:13px; display:flex; align-items:center; gap:4px;">&#10070; <span style="font-size:12px;">take my quiz :)</span></button>
   <button class="header-btn" id="info-btn" title="Info (I)">&#9432;</button>
 </div>
 
