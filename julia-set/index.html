@@ -841,6 +841,77 @@ canvas {
 
 #itervis-list tr.escaped-row td { color: var(--neon-pink); }
 
+/* DJ Mode indicator */
+#dj-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 60;
+  display: none;
+  text-align: center;
+}
+
+#dj-indicator.visible { display: block; }
+
+#dj-indicator .dj-title {
+  font-size: 24px;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan), var(--neon-green), var(--neon-yellow), var(--neon-pink));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: raveTitle 2s linear infinite;
+  text-shadow: none;
+}
+
+#dj-indicator .dj-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+#canvas-container.dj-active {
+  box-shadow: inset 0 0 60px rgba(255, 0, 255, 0.15), inset 0 0 120px rgba(0, 255, 255, 0.08);
+}
+
+/* DJ crosshair */
+#dj-crosshair {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 55;
+  display: none;
+}
+
+#dj-crosshair.visible { display: block; }
+
+#dj-crosshair::before, #dj-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--neon-pink);
+  box-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-pink);
+}
+
+#dj-crosshair::before {
+  top: 50%; left: 0; right: 0;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+#dj-crosshair::after {
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   :root { --panel-width: 260px; }
@@ -999,6 +1070,22 @@ canvas {
       <div id="morph-info" style="display:none; margin-top:6px; font-size:11px; color:var(--neon-green); text-shadow:0 0 4px var(--neon-green);">
         <span id="morph-waypoint-name"></span>
       </div>
+      <div style="margin-top:8px; border-top:1px solid rgba(255,0,255,0.15); padding-top:8px">
+        <div class="checkbox-row">
+          <input type="checkbox" id="dj-mode-check">
+          <label for="dj-mode-check">DJ Mode</label>
+        </div>
+        <div id="dj-info" style="display:none; font-size:10px; color:var(--neon-yellow); text-shadow:0 0 4px var(--neon-yellow); margin-top:4px;">
+          Drag on canvas to warp c parameter. Music auto-plays.
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="reactive-colors-check">
+          <label for="reactive-colors-check">Reactive colors</label>
+        </div>
+        <div id="reactive-info" style="display:none; font-size:10px; color:var(--neon-cyan); text-shadow:0 0 4px var(--neon-cyan); margin-top:4px;">
+          Colors shift with the beat. Best with music on.
+        </div>
+      </div>
     </div>
 
     <!-- Export -->
@@ -1023,6 +1110,8 @@ canvas {
     <div id="loading"><div class="spinner"></div></div>
     <div id="orbit-panel"></div>
     <!-- Iteration Visualizer Panel -->
+    <div id="dj-indicator"><div class="dj-title">DJ MODE</div><div class="dj-sub">Drag to warp &bull; Press D to exit</div></div>
+    <div id="dj-crosshair"></div>
     <div id="itervis-panel">
       <div id="itervis-header">
         <strong>Iteration Visualizer</strong>
@@ -1064,6 +1153,7 @@ canvas {
     <kbd>S</kbd> Save image &nbsp;
     <kbd>A</kbd> Toggle animation &nbsp;
     <kbd>M</kbd> Cycle animation path &nbsp;
+    <kbd>D</kbd> Toggle DJ mode &nbsp;
     <kbd>I</kbd> Toggle info &nbsp;
     <kbd>+/-</kbd> Zoom &nbsp;
     <kbd>Arrows</kbd> Pan &nbsp;
@@ -1330,6 +1420,12 @@ const state = {
   dragStartY: 0,
   dragCenterX: 0,
   dragCenterY: 0,
+  // DJ mode
+  djMode: false,
+  djDragging: false,
+  // Reactive colors
+  reactiveColors: false,
+  reactiveOffset: 0,
 };
 
 // ==================== CUSTOM GRADIENT ====================
@@ -1377,7 +1473,7 @@ const DRAFT_SCALE = 0.75; // render at 75% during interaction
 // Web Worker for offloading fractal computation
 const workerCode = `
 self.onmessage = function(e) {
-  const { id, w, h, yStart, fullH, fractalType, cr, ci, centerX, centerY, zoom, maxIter, escapeRadius, smooth, colorScheme, customLUT } = e.data;
+  const { id, w, h, yStart, fullH, fractalType, cr, ci, centerX, centerY, zoom, maxIter, escapeRadius, smooth, colorScheme, customLUT, colorOffset } = e.data;
   const buf = new ArrayBuffer(w * h * 4);
   const pixels = new Uint8ClampedArray(buf);
   const minDim = Math.min(w, fullH);
@@ -1482,7 +1578,7 @@ self.onmessage = function(e) {
         } else {
           t = (i % 50) / 50;
         }
-        const ci2 = ((t * 255) | 0) * 3;
+        const ci2 = (((t + colorOffset) % 1.0 * 255) | 0) * 3;
         pixels[idx] = lut[ci2];
         pixels[idx+1] = lut[ci2+1];
         pixels[idx+2] = lut[ci2+2];
@@ -1706,7 +1802,8 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci, draft) {
       escapeRadius: state.escapeRadius,
       smooth: state.smooth,
       colorScheme: state.colorScheme,
-      customLUT: state.colorScheme === 'custom' && state.customLUT ? state.customLUT.buffer.slice(0) : null
+      customLUT: state.colorScheme === 'custom' && state.customLUT ? state.customLUT.buffer.slice(0) : null,
+      colorOffset: state.reactiveOffset
     });
   }
 }
@@ -2172,6 +2269,8 @@ function animStep(timestamp) {
 const music = {
   ctx: null,
   masterGain: null,
+  analyser: null,
+  freqData: null,
   playing: false,
   enabled: true,
   volume: 0.6,
@@ -2191,9 +2290,15 @@ function initAudio() {
   compressor.ratio.value = 4;
   compressor.connect(music.ctx.destination);
 
+  // Analyser for reactive colors
+  music.analyser = music.ctx.createAnalyser();
+  music.analyser.fftSize = 256;
+  music.freqData = new Uint8Array(music.analyser.frequencyBinCount);
+  music.analyser.connect(compressor);
+
   music.masterGain = music.ctx.createGain();
   music.masterGain.gain.value = music.volume;
-  music.masterGain.connect(compressor);
+  music.masterGain.connect(music.analyser);
 }
 
 function startMusic() {
@@ -2401,6 +2506,99 @@ function pauseAnim() {
 function stopAnim() {
   pauseAnim();
   state.animT = 0;
+}
+
+// ==================== REACTIVE COLORS ====================
+let reactiveFrame = null;
+
+function getAudioEnergy() {
+  if (!music.analyser || !music.freqData) return { bass: 0, mid: 0, high: 0, total: 0 };
+  music.analyser.getByteFrequencyData(music.freqData);
+  const bins = music.freqData.length;
+
+  // Split into bass (0-15%), mid (15-40%), high (40-100%)
+  let bass = 0, mid = 0, high = 0;
+  const bassEnd = Math.floor(bins * 0.15);
+  const midEnd = Math.floor(bins * 0.4);
+
+  for (let i = 0; i < bins; i++) {
+    if (i < bassEnd) bass += music.freqData[i];
+    else if (i < midEnd) mid += music.freqData[i];
+    else high += music.freqData[i];
+  }
+
+  bass /= bassEnd * 255;
+  mid /= (midEnd - bassEnd) * 255;
+  high /= (bins - midEnd) * 255;
+  const total = (bass + mid + high) / 3;
+
+  return { bass, mid, high, total };
+}
+
+function reactiveLoop() {
+  if (!state.reactiveColors) { reactiveFrame = null; return; }
+
+  const energy = getAudioEnergy();
+
+  // Shift color offset based on cumulative bass energy
+  state.reactiveOffset += energy.bass * 0.012 + energy.mid * 0.004;
+  if (state.reactiveOffset > 1) state.reactiveOffset -= 1;
+
+  // If animating, the main anim loop handles renders.
+  // If not animating but reactive is on, trigger renders ourselves.
+  if (!state.animating) {
+    queueRender();
+  }
+
+  reactiveFrame = requestAnimationFrame(reactiveLoop);
+}
+
+function startReactive() {
+  state.reactiveColors = true;
+  initAudio();
+  if (music.ctx.state === 'suspended') music.ctx.resume();
+  if (!reactiveFrame) reactiveFrame = requestAnimationFrame(reactiveLoop);
+}
+
+function stopReactive() {
+  state.reactiveColors = false;
+  state.reactiveOffset = 0;
+  if (reactiveFrame) cancelAnimationFrame(reactiveFrame);
+  reactiveFrame = null;
+  queueRender();
+}
+
+// ==================== DJ MODE ====================
+function startDJMode() {
+  state.djMode = true;
+  // Auto-start music if not already playing
+  if (!music.playing && music.enabled) {
+    initAudio();
+    if (music.ctx.state === 'suspended') music.ctx.resume();
+    startMusic();
+  }
+  // Auto-enable reactive colors for full experience
+  if (!state.reactiveColors) {
+    document.getElementById('reactive-colors-check').checked = true;
+    startReactive();
+  }
+  document.getElementById('canvas-container').style.cursor = 'none';
+  document.getElementById('canvas-container').classList.add('dj-active');
+  document.getElementById('dj-indicator').classList.add('visible');
+  document.getElementById('dj-crosshair').classList.add('visible');
+  // Fade out indicator after 3 seconds
+  setTimeout(() => document.getElementById('dj-indicator').classList.remove('visible'), 3000);
+}
+
+function stopDJMode() {
+  state.djMode = false;
+  state.djDragging = false;
+  document.getElementById('canvas-container').style.cursor = 'crosshair';
+  document.getElementById('canvas-container').classList.remove('dj-active');
+  document.getElementById('dj-indicator').classList.remove('visible');
+  document.getElementById('dj-crosshair').classList.remove('visible');
+  // Stop standalone music if not animating
+  if (!state.animating && music.playing) stopMusic();
 }
 
 // ==================== UI BINDINGS ====================
@@ -2679,6 +2877,16 @@ document.querySelectorAll('input[name="animPath"]').forEach(r => {
   });
 });
 
+document.getElementById('dj-mode-check').addEventListener('change', e => {
+  document.getElementById('dj-info').style.display = e.target.checked ? '' : 'none';
+  if (e.target.checked) startDJMode(); else stopDJMode();
+});
+
+document.getElementById('reactive-colors-check').addEventListener('change', e => {
+  document.getElementById('reactive-info').style.display = e.target.checked ? '' : 'none';
+  if (e.target.checked) startReactive(); else stopReactive();
+});
+
 function cycleAnimPath() {
   const paths = ['circle', 'figure8', 'morph', 'star', 'heart'];
   const idx = paths.indexOf(state.animPath);
@@ -2731,6 +2939,25 @@ const container = document.getElementById('canvas-container');
 let dragRenderTimeout = null;
 
 container.addEventListener('mousemove', e => {
+  // DJ Mode: move crosshair and warp c parameter
+  if (state.djMode) {
+    const crosshair = document.getElementById('dj-crosshair');
+    const rect = container.getBoundingClientRect();
+    crosshair.style.left = (e.clientX - rect.left - 15) + 'px';
+    crosshair.style.top = (e.clientY - rect.top - 15) + 'px';
+
+    if (state.djDragging) {
+      const canvasRect = canvas.getBoundingClientRect();
+      const nx = (e.clientX - canvasRect.left) / canvasRect.width;
+      const ny = (e.clientY - canvasRect.top) / canvasRect.height;
+      state.c.real = (nx - 0.5) * 3;
+      state.c.imag = (ny - 0.5) * 3;
+      updateSliders();
+      interactiveRender();
+      return;
+    }
+  }
+
   if (state.showCoords && !state.dragging) {
     const rect = canvas.getBoundingClientRect();
     const dpr = canvas.width / rect.width;
@@ -2759,6 +2986,12 @@ container.addEventListener('mousemove', e => {
 
 container.addEventListener('mousedown', e => {
   if (e.button === 0) {
+    // DJ Mode: start DJ drag
+    if (state.djMode) {
+      state.djDragging = true;
+      container.style.cursor = 'none';
+      return;
+    }
     state.dragging = true;
     state.dragStartX = e.clientX;
     state.dragStartY = e.clientY;
@@ -2770,6 +3003,12 @@ container.addEventListener('mousedown', e => {
 });
 
 window.addEventListener('mouseup', () => {
+  if (state.djDragging) {
+    state.djDragging = false;
+    if (state.djMode) container.style.cursor = 'none';
+    scheduleFullRender();
+    return;
+  }
   if (state.dragging) {
     state.dragging = false;
     container.style.cursor = 'crosshair';
@@ -2846,6 +3085,12 @@ document.addEventListener('keydown', e => {
     case 's': case 'S': document.getElementById('save-btn').click(); break;
     case 'a': case 'A': state.animating ? pauseAnim() : startAnim(); break;
     case 'm': case 'M': cycleAnimPath(); break;
+    case 'd': case 'D': {
+      const cb = document.getElementById('dj-mode-check');
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change'));
+      break;
+    }
     case 'i': case 'I': document.getElementById('info-panel').classList.toggle('visible'); break;
     case '+': case '=': state.zoom *= 1.5; interactiveRender(); break;
     case '-': case '_': state.zoom /= 1.5; interactiveRender(); break;
