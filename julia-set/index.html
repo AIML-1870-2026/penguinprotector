@@ -669,6 +669,121 @@ canvas {
 
 .saved-gradient-item .del-btn:hover { opacity: 1; }
 
+/* Iteration Visualizer */
+#itervis-panel {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 320px;
+  max-height: 50vh;
+  background: rgba(13, 13, 26, 0.95);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  display: none;
+  z-index: 50;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+#itervis-panel.visible { display: flex; flex-direction: column; }
+
+#itervis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+  color: var(--neon-cyan);
+  text-shadow: 0 0 6px var(--neon-cyan);
+}
+
+#itervis-header button {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#itervis-formula {
+  padding: 6px 10px;
+  color: var(--neon-green);
+  font-size: 12px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+  text-shadow: 0 0 4px var(--neon-green);
+}
+
+#itervis-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+}
+
+#itervis-controls .btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  min-width: 28px;
+  text-align: center;
+}
+
+#itervis-stepnum {
+  margin-left: auto;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 4px var(--neon-yellow);
+  font-size: 11px;
+}
+
+#itervis-current {
+  padding: 6px 10px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+#itervis-current .val { color: var(--neon-cyan); text-shadow: 0 0 4px var(--neon-cyan); }
+#itervis-current .escaped { color: var(--neon-pink); }
+#itervis-current .bounded { color: var(--neon-green); }
+
+#itervis-list-wrap {
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-cyan) transparent;
+}
+
+#itervis-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+#itervis-list th {
+  position: sticky;
+  top: 0;
+  background: rgba(13, 13, 26, 0.98);
+  color: var(--neon-cyan);
+  text-align: left;
+  padding: 3px 6px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+}
+
+#itervis-list td {
+  padding: 2px 6px;
+  color: var(--text-dim);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+#itervis-list tr.active td {
+  color: var(--neon-yellow);
+  background: rgba(255, 255, 0, 0.05);
+}
+
+#itervis-list tr.escaped-row td { color: var(--neon-pink); }
+
 /* Responsive */
 @media (max-width: 768px) {
   :root { --panel-width: 260px; }
@@ -791,6 +906,10 @@ canvas {
         <input type="checkbox" id="show-orbit">
         <label for="show-orbit">Show orbit on click</label>
       </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="show-itervis">
+        <label for="show-itervis">Iteration visualizer</label>
+      </div>
     </div>
 
     <!-- Animation -->
@@ -832,6 +951,30 @@ canvas {
     <div class="overlay" id="info-overlay" style="display:none"></div>
     <div id="loading"><div class="spinner"></div></div>
     <div id="orbit-panel"></div>
+    <!-- Iteration Visualizer Panel -->
+    <div id="itervis-panel">
+      <div id="itervis-header">
+        <strong>Iteration Visualizer</strong>
+        <button id="itervis-close">&times;</button>
+      </div>
+      <div id="itervis-formula"></div>
+      <div id="itervis-controls">
+        <button class="btn" id="itervis-reset" title="Reset">&#9209;</button>
+        <button class="btn" id="itervis-step" title="Step">&#9654;|</button>
+        <button class="btn" id="itervis-play" title="Play/Pause">&#9654;</button>
+        <button class="btn" id="itervis-fast" title="Play Fast">&#9654;&#9654;</button>
+        <span id="itervis-stepnum">Step 0</span>
+      </div>
+      <div id="itervis-details">
+        <div id="itervis-current"></div>
+        <div id="itervis-list-wrap">
+          <table id="itervis-list">
+            <thead><tr><th>#</th><th>z</th><th>|z|</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1605,6 +1748,260 @@ function showOrbit(px, py) {
   }
 }
 
+// ==================== ITERATION VISUALIZER ====================
+const iterVis = {
+  active: false,
+  orbit: [],
+  currentStep: 0,
+  playing: false,
+  playTimer: null,
+  speed: 300,
+  z0: { r: 0, i: 0 },
+  cr: 0, ci: 0,
+  escaped: false,
+  escapeStep: -1,
+  maxComputed: 0
+};
+
+function startIterVis(px, py) {
+  const w = canvas.width, h = canvas.height;
+  const p = pixelToComplex(px, py, w, h, state.centerX, state.centerY, state.zoom);
+
+  let zr, zi;
+  if (state.fractalType === 'julia' || state.fractalType === 'split') {
+    zr = p.x; zi = p.y;
+    iterVis.cr = state.c.real; iterVis.ci = state.c.imag;
+  } else {
+    zr = 0; zi = 0;
+    iterVis.cr = p.x; iterVis.ci = p.y;
+  }
+
+  iterVis.z0 = { r: zr, i: zi };
+  iterVis.orbit = [{ r: zr, i: zi, mag: Math.sqrt(zr * zr + zi * zi) }];
+  iterVis.currentStep = 0;
+  iterVis.escaped = false;
+  iterVis.escapeStep = -1;
+  iterVis.playing = false;
+  iterVis.active = true;
+  if (iterVis.playTimer) clearInterval(iterVis.playTimer);
+
+  // Pre-compute full orbit
+  const escR2 = state.escapeRadius * state.escapeRadius;
+  let cr = iterVis.cr, ci = iterVis.ci;
+  for (let n = 0; n < Math.min(state.maxIter, 500); n++) {
+    const tmp = state.fractalType === 'burningship'
+      ? Math.abs(zr) * Math.abs(zr) - Math.abs(zi) * Math.abs(zi) + cr
+      : zr * zr - zi * zi + cr;
+    zi = state.fractalType === 'burningship'
+      ? Math.abs(2 * zr * zi) + ci
+      : 2 * zr * zi + ci;
+    zr = state.fractalType === 'burningship' ? Math.abs(tmp) : tmp;
+    const mag = Math.sqrt(zr * zr + zi * zi);
+    iterVis.orbit.push({ r: zr, i: zi, mag });
+    if (mag * mag > escR2 && iterVis.escapeStep < 0) {
+      iterVis.escapeStep = n + 1;
+      iterVis.escaped = true;
+    }
+    if (iterVis.escaped && n > iterVis.escapeStep + 10) break;
+  }
+  iterVis.maxComputed = iterVis.orbit.length - 1;
+
+  // Show formula
+  const fmtC = `${iterVis.cr >= 0 ? '' : '-'}${Math.abs(iterVis.cr).toFixed(4)} ${iterVis.ci >= 0 ? '+' : '-'} ${Math.abs(iterVis.ci).toFixed(4)}i`;
+  document.getElementById('itervis-formula').innerHTML =
+    state.fractalType === 'burningship'
+      ? `z<sub>n+1</sub> = (|Re(z<sub>n</sub>)| + |Im(z<sub>n</sub>)|i)² + c &nbsp; c = ${fmtC}`
+      : `z<sub>n+1</sub> = z<sub>n</sub>² + c &nbsp;&nbsp; c = ${fmtC}`;
+
+  // Build table
+  const tbody = document.querySelector('#itervis-list tbody');
+  tbody.innerHTML = '';
+  iterVis.orbit.forEach((pt, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.step = idx;
+    const sign = pt.i >= 0 ? '+' : '-';
+    tr.innerHTML = `<td>${idx}</td><td>${pt.r.toFixed(4)} ${sign} ${Math.abs(pt.i).toFixed(4)}i</td><td>${pt.mag.toFixed(4)}</td>`;
+    if (iterVis.escaped && idx === iterVis.escapeStep) tr.className = 'escaped-row';
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('itervis-panel').classList.add('visible');
+  updateIterVisStep();
+  drawIterVis();
+}
+
+function updateIterVisStep() {
+  const step = iterVis.currentStep;
+  const pt = iterVis.orbit[step];
+  const sign = pt.i >= 0 ? '+' : '-';
+  const escR = state.escapeRadius;
+
+  let statusHTML = '';
+  if (iterVis.escaped && step >= iterVis.escapeStep) {
+    statusHTML = `<span class="escaped">Escaped at step ${iterVis.escapeStep} (|z| > ${escR})</span>`;
+  } else if (step >= iterVis.maxComputed && !iterVis.escaped) {
+    statusHTML = `<span class="bounded">Bounded after ${iterVis.maxComputed} iterations</span>`;
+  } else {
+    statusHTML = `|z| = <span class="val">${pt.mag.toFixed(6)}</span> &nbsp; escape radius = ${escR}`;
+  }
+
+  document.getElementById('itervis-current').innerHTML =
+    `z<sub>${step}</sub> = <span class="val">${pt.r.toFixed(6)} ${sign} ${Math.abs(pt.i).toFixed(6)}i</span><br>${statusHTML}`;
+  document.getElementById('itervis-stepnum').textContent = `Step ${step} / ${iterVis.maxComputed}`;
+
+  // Highlight active row
+  document.querySelectorAll('#itervis-list tbody tr').forEach(tr => {
+    tr.classList.toggle('active', parseInt(tr.dataset.step) === step);
+  });
+  // Scroll into view
+  const activeRow = document.querySelector('#itervis-list tbody tr.active');
+  if (activeRow) activeRow.scrollIntoView({ block: 'nearest' });
+}
+
+function drawIterVis() {
+  // Re-render the fractal then draw overlay
+  queueRender();
+  // Use setTimeout to draw after render completes
+  setTimeout(() => {
+    const w = canvas.width, h = canvas.height;
+    const scale = 3 / (Math.min(w, h) * state.zoom);
+
+    // Draw escape radius circle
+    const escPx = state.escapeRadius / scale;
+    const cx = (0 - state.centerX) / scale + w / 2;
+    const cy = (0 - state.centerY) / scale + h / 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, escPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw full path up to current step (faded)
+    if (iterVis.currentStep > 0) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let j = 0; j <= iterVis.currentStep; j++) {
+        const sx = (iterVis.orbit[j].r - state.centerX) / scale + w / 2;
+        const sy = (iterVis.orbit[j].i - state.centerY) / scale + h / 2;
+        if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+
+    // Draw dots for visited steps
+    for (let j = 0; j <= iterVis.currentStep; j++) {
+      const pt = iterVis.orbit[j];
+      const sx = (pt.r - state.centerX) / scale + w / 2;
+      const sy = (pt.i - state.centerY) / scale + h / 2;
+      const isCurrent = j === iterVis.currentStep;
+      const isEscape = iterVis.escaped && j === iterVis.escapeStep;
+
+      ctx.beginPath();
+      ctx.arc(sx, sy, isCurrent ? 5 : 2.5, 0, Math.PI * 2);
+
+      if (isCurrent) {
+        ctx.fillStyle = isEscape ? 'rgba(255, 0, 102, 0.9)' : 'rgba(0, 255, 255, 0.9)';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Label
+        ctx.fillStyle = 'white';
+        ctx.font = '10px monospace';
+        ctx.fillText(`z${j}`, sx + 8, sy - 4);
+      } else {
+        const alpha = 0.3 + (j / iterVis.currentStep) * 0.5;
+        ctx.fillStyle = isEscape ? `rgba(255, 0, 102, ${alpha})` : `rgba(0, 255, 255, ${alpha})`;
+        ctx.fill();
+      }
+    }
+
+    // Draw arrow from previous to current step
+    if (iterVis.currentStep > 0) {
+      const prev = iterVis.orbit[iterVis.currentStep - 1];
+      const curr = iterVis.orbit[iterVis.currentStep];
+      const sx1 = (prev.r - state.centerX) / scale + w / 2;
+      const sy1 = (prev.i - state.centerY) / scale + h / 2;
+      const sx2 = (curr.r - state.centerX) / scale + w / 2;
+      const sy2 = (curr.i - state.centerY) / scale + h / 2;
+      ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+      // Arrowhead
+      const angle = Math.atan2(sy2 - sy1, sx2 - sx1);
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(sx2, sy2);
+      ctx.lineTo(sx2 - 8 * Math.cos(angle - 0.4), sy2 - 8 * Math.sin(angle - 0.4));
+      ctx.lineTo(sx2 - 8 * Math.cos(angle + 0.4), sy2 - 8 * Math.sin(angle + 0.4));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }, 100);
+}
+
+function iterVisStep() {
+  if (iterVis.currentStep < iterVis.maxComputed) {
+    iterVis.currentStep++;
+    updateIterVisStep();
+    drawIterVis();
+  } else {
+    iterVisPause();
+  }
+}
+
+function iterVisPlay(fast) {
+  if (iterVis.playing) { iterVisPause(); return; }
+  iterVis.playing = true;
+  iterVis.speed = fast ? 80 : 300;
+  document.getElementById('itervis-play').innerHTML = '&#9208;';
+  iterVis.playTimer = setInterval(() => {
+    if (iterVis.currentStep < iterVis.maxComputed) {
+      iterVis.currentStep++;
+      updateIterVisStep();
+      drawIterVis();
+    } else {
+      iterVisPause();
+    }
+  }, iterVis.speed);
+}
+
+function iterVisPause() {
+  iterVis.playing = false;
+  if (iterVis.playTimer) clearInterval(iterVis.playTimer);
+  document.getElementById('itervis-play').innerHTML = '&#9654;';
+}
+
+function iterVisReset() {
+  iterVisPause();
+  iterVis.currentStep = 0;
+  updateIterVisStep();
+  drawIterVis();
+}
+
+function closeIterVis() {
+  iterVisPause();
+  iterVis.active = false;
+  document.getElementById('itervis-panel').classList.remove('visible');
+  queueRender();
+}
+
+document.getElementById('itervis-step').addEventListener('click', iterVisStep);
+document.getElementById('itervis-play').addEventListener('click', () => iterVisPlay(false));
+document.getElementById('itervis-fast').addEventListener('click', () => iterVisPlay(true));
+document.getElementById('itervis-reset').addEventListener('click', iterVisReset);
+document.getElementById('itervis-close').addEventListener('click', closeIterVis);
+
+document.getElementById('show-itervis').addEventListener('change', e => {
+  if (!e.target.checked) closeIterVis();
+});
+
 // ==================== ANIMATION ====================
 let animFrame = null;
 
@@ -1998,12 +2395,13 @@ window.addEventListener('mouseup', () => {
 });
 
 container.addEventListener('click', e => {
-  if (state.showOrbit && !state.dragging) {
+  if (!state.dragging) {
     const rect = canvas.getBoundingClientRect();
     const dpr = canvas.width / rect.width;
     const px = (e.clientX - rect.left) * dpr;
     const py = (e.clientY - rect.top) * dpr;
-    showOrbit(px, py);
+    if (state.showOrbit) showOrbit(px, py);
+    if (document.getElementById('show-itervis').checked) startIterVis(px, py);
   }
 
   // Split view: click on mandelbrot side sets julia c value
