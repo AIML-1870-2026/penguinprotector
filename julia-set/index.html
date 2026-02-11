@@ -1129,7 +1129,10 @@ for (let i = 0; i < numWorkers; i++) {
 
 // Track pending tile renders
 let pendingTiles = 0;
+let expectedTiles = 0;
 let currentGeneration = 0;
+const tileMap = new Map();
+const tileResults = new Map();
 
 function handleWorkerResult(e) {
   const { id, buf } = e.data;
@@ -1142,16 +1145,24 @@ function handleWorkerResult(e) {
   const tileInfo = tileMap.get(tileIdx);
   if (!tileInfo) return;
 
-  const { targetCtx, targetCanvas, tx, ty, tw, th } = tileInfo;
-  const pixels = new Uint8ClampedArray(buf);
-  const imgData = new ImageData(pixels, tw, th);
-  targetCtx.putImageData(imgData, tx, ty);
-  tileMap.delete(tileIdx);
-
+  // Buffer the result instead of painting immediately
+  tileResults.set(tileIdx, buf);
   pendingTiles--;
-}
 
-const tileMap = new Map();
+  // Once all tiles for this generation are done, paint them all at once
+  if (pendingTiles <= 0) {
+    for (const [idx, tileBuf] of tileResults) {
+      const info = tileMap.get(idx);
+      if (info) {
+        const px = new Uint8ClampedArray(tileBuf);
+        const imgData = new ImageData(px, info.tw, info.th);
+        info.targetCtx.putImageData(imgData, info.tx, info.ty);
+      }
+    }
+    tileResults.clear();
+    tileMap.clear();
+  }
+}
 
 function resizeCanvas() {
   const container = document.getElementById('canvas-container');
@@ -1308,6 +1319,7 @@ function render() {
   currentGeneration++;
   pendingTiles = 0;
   tileMap.clear();
+  tileResults.clear();
 
   if (state.fractalType === 'split') {
     dispatchRender(splitCtx, splitCanvas, 'mandelbrot', 0, 0);
