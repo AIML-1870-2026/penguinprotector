@@ -8,14 +8,19 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #1a1a2e;
-  --panel-bg: #16213e;
-  --accent: #0f3460;
+  --bg: #0a0a0f;
+  --panel-bg: #0d0d1a;
+  --accent: #1a0a2e;
   --highlight: #e94560;
   --text: #eee;
   --text-dim: #aaa;
-  --border: #2a2a4a;
+  --border: #2a1a3a;
   --panel-width: 300px;
+  --neon-pink: #ff00ff;
+  --neon-cyan: #00ffff;
+  --neon-green: #39ff14;
+  --neon-yellow: #ffff00;
+  --neon-blue: #4444ff;
 }
 
 body {
@@ -30,11 +35,12 @@ body {
 /* Header */
 #header {
   height: 40px;
-  background: var(--panel-bg);
+  background: linear-gradient(90deg, #0d0d1a, #1a0a2e, #0d0d1a);
   display: flex;
   align-items: center;
   padding: 0 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--neon-pink);
+  box-shadow: 0 2px 12px rgba(255, 0, 255, 0.3);
   z-index: 100;
   position: relative;
 }
@@ -44,20 +50,36 @@ body {
   font-weight: 600;
   margin-left: 8px;
   flex: 1;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan), var(--neon-green), var(--neon-yellow), var(--neon-pink));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: raveTitle 4s linear infinite;
+}
+
+@keyframes raveTitle {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
 }
 
 .header-btn {
   background: none;
-  border: none;
-  color: var(--text);
+  border: 1px solid transparent;
+  color: var(--neon-cyan);
   font-size: 18px;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: all 0.3s;
+  text-shadow: 0 0 8px var(--neon-cyan);
 }
 
-.header-btn:hover { background: var(--accent); }
+.header-btn:hover {
+  background: rgba(0, 255, 255, 0.1);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+}
 
 /* Layout */
 #app {
@@ -69,14 +91,37 @@ body {
 #controls {
   width: var(--panel-width);
   min-width: var(--panel-width);
-  background: var(--panel-bg);
-  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, #0d0d1a 0%, #120826 30%, #0d0d1a 60%, #0a1628 100%);
+  border-right: 1px solid;
+  border-image: linear-gradient(180deg, var(--neon-pink), var(--neon-cyan), var(--neon-green), var(--neon-pink)) 1;
   overflow-y: auto;
   overflow-x: hidden;
   transition: margin-left 0.3s ease, opacity 0.3s ease;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
+  scrollbar-color: var(--neon-pink) transparent;
+  position: relative;
 }
+
+#controls::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(255, 0, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 60%, rgba(0, 255, 255, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 40% 90%, rgba(57, 255, 20, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+  animation: raveGlow 6s ease-in-out infinite alternate;
+}
+
+@keyframes raveGlow {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+#controls > * { position: relative; z-index: 1; }
 
 #controls.collapsed {
   margin-left: calc(-1 * var(--panel-width));
@@ -86,20 +131,35 @@ body {
 
 #controls::-webkit-scrollbar { width: 6px; }
 #controls::-webkit-scrollbar-track { background: transparent; }
-#controls::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+#controls::-webkit-scrollbar-thumb { background: var(--neon-pink); border-radius: 3px; box-shadow: 0 0 6px var(--neon-pink); }
 
 .section {
   padding: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 0, 255, 0.2);
 }
 
 .section-title {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--highlight);
+  letter-spacing: 2px;
   margin-bottom: 10px;
-  font-weight: 600;
+  font-weight: 700;
+  animation: neonPulse 3s ease-in-out infinite;
+  text-shadow: 0 0 6px currentColor;
+}
+
+.section:nth-child(1) .section-title { color: var(--neon-pink); }
+.section:nth-child(2) .section-title { color: var(--neon-cyan); animation-delay: 0.4s; }
+.section:nth-child(3) .section-title { color: var(--neon-green); animation-delay: 0.8s; }
+.section:nth-child(4) .section-title { color: var(--neon-yellow); animation-delay: 1.2s; }
+.section:nth-child(5) .section-title { color: var(--neon-pink); animation-delay: 1.6s; }
+.section:nth-child(6) .section-title { color: var(--neon-cyan); animation-delay: 2.0s; }
+.section:nth-child(7) .section-title { color: var(--neon-green); animation-delay: 2.4s; }
+.section:nth-child(8) .section-title { color: var(--neon-yellow); animation-delay: 2.8s; }
+
+@keyframes neonPulse {
+  0%, 100% { text-shadow: 0 0 4px currentColor, 0 0 8px currentColor; opacity: 0.9; }
+  50% { text-shadow: 0 0 8px currentColor, 0 0 20px currentColor, 0 0 40px currentColor; opacity: 1; }
 }
 
 /* Controls Styling */
@@ -116,9 +176,10 @@ label {
 
 .slider-row .value {
   font-size: 12px;
-  color: var(--highlight);
+  color: var(--neon-cyan);
   font-weight: 600;
   float: right;
+  text-shadow: 0 0 6px var(--neon-cyan);
 }
 
 input[type="range"] {
@@ -126,39 +187,49 @@ input[type="range"] {
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan), var(--neon-green));
   border-radius: 2px;
   outline: none;
   margin: 6px 0;
+  box-shadow: 0 0 6px rgba(255, 0, 255, 0.3);
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  background: var(--highlight);
+  width: 16px;
+  height: 16px;
+  background: var(--neon-pink);
   border-radius: 50%;
   cursor: pointer;
+  box-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-pink);
+  transition: box-shadow 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 12px var(--neon-pink), 0 0 24px var(--neon-pink), 0 0 36px var(--neon-pink);
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  background: var(--highlight);
+  width: 16px;
+  height: 16px;
+  background: var(--neon-pink);
   border-radius: 50%;
   cursor: pointer;
   border: none;
+  box-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-pink);
 }
 
 select {
   width: 100%;
   padding: 6px 8px;
-  background: var(--accent);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: rgba(26, 10, 46, 0.8);
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-pink);
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
+  box-shadow: 0 0 6px rgba(255, 0, 255, 0.2), inset 0 0 6px rgba(0, 255, 255, 0.1);
+  text-shadow: 0 0 4px var(--neon-cyan);
 }
 
 /* Radio buttons */
@@ -174,21 +245,27 @@ select {
   font-size: 13px;
 }
 
-input[type="radio"] { accent-color: var(--highlight); }
+input[type="radio"] { accent-color: var(--neon-pink); }
 
 /* Buttons */
 .btn {
   padding: 6px 12px;
-  background: var(--accent);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: rgba(26, 10, 46, 0.6);
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-pink);
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.2s;
+  transition: all 0.3s;
+  text-shadow: 0 0 4px var(--neon-cyan);
+  box-shadow: 0 0 4px rgba(255, 0, 255, 0.2);
 }
 
-.btn:hover { background: var(--highlight); }
+.btn:hover {
+  background: rgba(255, 0, 255, 0.2);
+  box-shadow: 0 0 12px var(--neon-pink), 0 0 24px rgba(255, 0, 255, 0.3);
+  text-shadow: 0 0 8px var(--neon-cyan);
+}
 
 .btn-row {
   display: flex;
@@ -199,18 +276,21 @@ input[type="radio"] { accent-color: var(--highlight); }
 
 .preset-btn {
   padding: 4px 10px;
-  background: var(--accent);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: rgba(26, 10, 46, 0.6);
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
   border-radius: 12px;
   cursor: pointer;
   font-size: 11px;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  text-shadow: 0 0 4px var(--neon-green);
+  box-shadow: 0 0 4px rgba(57, 255, 20, 0.15);
 }
 
 .preset-btn:hover, .preset-btn.active {
-  background: var(--highlight);
-  border-color: var(--highlight);
+  background: rgba(57, 255, 20, 0.15);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green), 0 0 20px rgba(57, 255, 20, 0.3);
 }
 
 /* Checkboxes */
@@ -222,7 +302,7 @@ input[type="radio"] { accent-color: var(--highlight); }
   font-size: 13px;
 }
 
-input[type="checkbox"] { accent-color: var(--highlight); }
+input[type="checkbox"] { accent-color: var(--neon-pink); }
 
 /* Canvas Area */
 #canvas-container {
@@ -919,9 +999,162 @@ let imageData, pixels;
 let splitImageData, splitPixels;
 let renderQueued = false;
 
+// Web Worker for offloading fractal computation
+const workerCode = `
+self.onmessage = function(e) {
+  const { id, w, h, yStart, fullH, fractalType, cr, ci, centerX, centerY, zoom, maxIter, escapeRadius, smooth, colorScheme } = e.data;
+  const buf = new ArrayBuffer(w * h * 4);
+  const pixels = new Uint8ClampedArray(buf);
+  const minDim = Math.min(w, fullH);
+  const scale = 3 / (minDim * zoom);
+  const halfW = w / 2;
+  const halfH = fullH / 2;
+  const escR2 = escapeRadius * escapeRadius;
+  const log2 = Math.log(2);
+
+  // Color scheme LUT (256 entries)
+  const lut = new Uint8Array(768);
+  for (let n = 0; n < 256; n++) {
+    const t = n / 255;
+    let r, g, b;
+    switch (colorScheme) {
+      case 'classic':
+        if (t < 0.25) { const s = t / 0.25; r = 0; g = s * 128; b = 128 + s * 127; }
+        else if (t < 0.5) { const s = (t - 0.25) / 0.25; r = s * 255; g = 128 + s * 127; b = 255 - s * 128; }
+        else if (t < 0.75) { const s = (t - 0.5) / 0.25; r = 255; g = 255 - s * 128; b = 127 - s * 127; }
+        else { const s = (t - 0.75) / 0.25; r = 255 - s * 200; g = 127 - s * 127; b = 0; }
+        break;
+      case 'fire':
+        if (t < 0.33) { const s = t / 0.33; r = s * 200; g = 0; b = 0; }
+        else if (t < 0.66) { const s = (t - 0.33) / 0.33; r = 200 + s * 55; g = s * 165; b = 0; }
+        else { const s = (t - 0.66) / 0.34; r = 255; g = 165 + s * 90; b = s * 200; }
+        break;
+      case 'ocean':
+        if (t < 0.33) { const s = t / 0.33; r = 0; g = s * 100; b = 80 + s * 120; }
+        else if (t < 0.66) { const s = (t - 0.33) / 0.33; r = 0; g = 100 + s * 155; b = 200 + s * 55; }
+        else { const s = (t - 0.66) / 0.34; r = s * 180; g = 255; b = 255; }
+        break;
+      case 'electric':
+        if (t < 0.25) { const s = t / 0.25; r = 80 + s * 80; g = 0; b = 160 + s * 95; }
+        else if (t < 0.5) { const s = (t - 0.25) / 0.25; r = 160 - s * 160; g = s * 100; b = 255; }
+        else if (t < 0.75) { const s = (t - 0.5) / 0.25; r = 0; g = 100 + s * 155; b = 255 - s * 55; }
+        else { const s = (t - 0.75) / 0.25; r = s * 255; g = 255; b = 200 - s * 100; }
+        break;
+      case 'grayscale':
+        r = g = b = t * 255; break;
+      case 'rainbow': {
+        const hue = t * 360;
+        const c2 = 1 - Math.abs((hue / 60) % 2 - 1);
+        if (hue < 60) { r = 255; g = c2 * 255; b = 0; }
+        else if (hue < 120) { r = c2 * 255; g = 255; b = 0; }
+        else if (hue < 180) { r = 0; g = 255; b = c2 * 255; }
+        else if (hue < 240) { r = 0; g = c2 * 255; b = 255; }
+        else if (hue < 300) { r = c2 * 255; g = 0; b = 255; }
+        else { r = 255; g = 0; b = c2 * 255; }
+        break;
+      }
+      default: r = g = b = t * 255;
+    }
+    lut[n * 3] = r;
+    lut[n * 3 + 1] = g;
+    lut[n * 3 + 2] = b;
+  }
+
+  for (let py = 0; py < h; py++) {
+    const cy_px = (py + yStart - halfH) * scale + centerY;
+    for (let px = 0; px < w; px++) {
+      const cx_px = (px - halfW) * scale + centerX;
+      let zr, zi, pcr, pci;
+      if (fractalType === 'julia') {
+        zr = cx_px; zi = cy_px; pcr = cr; pci = ci;
+      } else {
+        zr = 0; zi = 0; pcr = cx_px; pci = cy_px;
+      }
+
+      let i = 0;
+      let zr2 = zr * zr, zi2 = zi * zi;
+      if (fractalType === 'burningship') {
+        while (i < maxIter && zr2 + zi2 <= escR2) {
+          const tmp = zr2 - zi2 + pcr;
+          zi = Math.abs(2 * zr * zi) + pci;
+          zr = Math.abs(tmp);
+          zr2 = zr * zr; zi2 = zi * zi;
+          i++;
+        }
+      } else {
+        while (i < maxIter && zr2 + zi2 <= escR2) {
+          zi = 2 * zr * zi + pci;
+          zr = zr2 - zi2 + pcr;
+          zr2 = zr * zr; zi2 = zi * zi;
+          i++;
+        }
+      }
+
+      const idx = (py * w + px) * 4;
+      if (i >= maxIter) {
+        pixels[idx] = 0; pixels[idx+1] = 0; pixels[idx+2] = 0;
+      } else {
+        let t;
+        if (smooth) {
+          const log_zn = Math.log(zr2 + zi2) / 2;
+          const nu = Math.log(log_zn / log2) / log2;
+          t = ((i + 1 - nu) % 50) / 50;
+        } else {
+          t = (i % 50) / 50;
+        }
+        const ci2 = ((t * 255) | 0) * 3;
+        pixels[idx] = lut[ci2];
+        pixels[idx+1] = lut[ci2+1];
+        pixels[idx+2] = lut[ci2+2];
+      }
+      pixels[idx+3] = 255;
+    }
+  }
+
+  self.postMessage({ id, buf }, [buf]);
+};
+`;
+const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+const workerUrl = URL.createObjectURL(workerBlob);
+const numWorkers = Math.min(navigator.hardwareConcurrency || 4, 8);
+const workers = [];
+let workerBusy = new Array(numWorkers).fill(false);
+let renderGeneration = 0;
+
+for (let i = 0; i < numWorkers; i++) {
+  const w = new Worker(workerUrl);
+  w.onmessage = handleWorkerResult;
+  workers.push(w);
+}
+
+// Track pending tile renders
+let pendingTiles = 0;
+let currentGeneration = 0;
+
+function handleWorkerResult(e) {
+  const { id, buf } = e.data;
+  const gen = id >> 16;
+  const tileIdx = id & 0xFFFF;
+
+  // Ignore results from old render generations
+  if (gen !== currentGeneration) return;
+
+  const tileInfo = tileMap.get(tileIdx);
+  if (!tileInfo) return;
+
+  const { targetCtx, targetCanvas, tx, ty, tw, th } = tileInfo;
+  const pixels = new Uint8ClampedArray(buf);
+  const imgData = new ImageData(pixels, tw, th);
+  targetCtx.putImageData(imgData, tx, ty);
+  tileMap.delete(tileIdx);
+
+  pendingTiles--;
+}
+
+const tileMap = new Map();
+
 function resizeCanvas() {
   const container = document.getElementById('canvas-container');
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   if (state.fractalType === 'split') {
     canvas.style.position = 'absolute';
@@ -935,10 +1168,10 @@ function resizeCanvas() {
     const halfW = Math.floor(container.clientWidth / 2);
     const h = container.clientHeight;
 
-    canvas.width = halfW * dpr;
-    canvas.height = h * dpr;
-    splitCanvas.width = halfW * dpr;
-    splitCanvas.height = h * dpr;
+    canvas.width = halfW;
+    canvas.height = h;
+    splitCanvas.width = halfW;
+    splitCanvas.height = h;
     splitCanvas.style.width = halfW + 'px';
     splitCanvas.style.height = h + 'px';
 
@@ -952,8 +1185,8 @@ function resizeCanvas() {
     canvas.style.height = '100%';
     splitCanvas.style.display = 'none';
 
-    canvas.width = container.clientWidth * dpr;
-    canvas.height = container.clientHeight * dpr;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
   }
 
   imageData = ctx.createImageData(canvas.width, canvas.height);
@@ -1032,94 +1265,55 @@ function pixelToComplex(px, py, w, h, cx, cy, zoom) {
   };
 }
 
-function computeJulia(px, py, w, h, cx, cy, zoom, cr, ci, maxIter, escR) {
-  const p = pixelToComplex(px, py, w, h, cx, cy, zoom);
-  let zr = p.x, zi = p.y;
-  const escR2 = escR * escR;
-  let i = 0;
-  while (i < maxIter && zr * zr + zi * zi <= escR2) {
-    const tmp = zr * zr - zi * zi + cr;
-    zi = 2 * zr * zi + ci;
-    zr = tmp;
-    i++;
-  }
-  return { iter: i, zr, zi };
-}
-
-function computeMandelbrot(px, py, w, h, cx, cy, zoom, maxIter, escR) {
-  const p = pixelToComplex(px, py, w, h, cx, cy, zoom);
-  const cr = p.x, ci = p.y;
-  let zr = 0, zi = 0;
-  const escR2 = escR * escR;
-  let i = 0;
-  while (i < maxIter && zr * zr + zi * zi <= escR2) {
-    const tmp = zr * zr - zi * zi + cr;
-    zi = 2 * zr * zi + ci;
-    zr = tmp;
-    i++;
-  }
-  return { iter: i, zr, zi };
-}
-
-function computeBurningShip(px, py, w, h, cx, cy, zoom, maxIter, escR) {
-  const p = pixelToComplex(px, py, w, h, cx, cy, zoom);
-  const cr = p.x, ci = p.y;
-  let zr = 0, zi = 0;
-  const escR2 = escR * escR;
-  let i = 0;
-  while (i < maxIter && zr * zr + zi * zi <= escR2) {
-    const tmp = zr * zr - zi * zi + cr;
-    zi = Math.abs(2 * zr * zi) + ci;
-    zr = Math.abs(tmp);
-    i++;
-  }
-  return { iter: i, zr, zi };
-}
-
-// ==================== RENDERING ====================
-function renderFractal(targetPixels, targetImageData, targetCtx, targetCanvas, fractalType, cr, ci) {
+// ==================== RENDERING (Web Worker tiled) ====================
+function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci) {
   const w = targetCanvas.width;
   const h = targetCanvas.height;
-  const { maxIter, escapeRadius, centerX, centerY, zoom } = state;
+  const tileH = Math.ceil(h / numWorkers);
 
-  for (let py = 0; py < h; py++) {
-    for (let px = 0; px < w; px++) {
-      let result;
-      switch (fractalType) {
-        case 'julia':
-          result = computeJulia(px, py, w, h, centerX, centerY, zoom, cr, ci, maxIter, escapeRadius);
-          break;
-        case 'mandelbrot':
-          result = computeMandelbrot(px, py, w, h, centerX, centerY, zoom, maxIter, escapeRadius);
-          break;
-        case 'burningship':
-          result = computeBurningShip(px, py, w, h, centerX, centerY, zoom, maxIter, escapeRadius);
-          break;
-      }
+  for (let i = 0; i < numWorkers; i++) {
+    const ty = i * tileH;
+    const th = Math.min(tileH, h - ty);
+    if (th <= 0) continue;
 
-      const color = getColor(result.iter, result.zr, result.zi, maxIter);
-      const idx = (py * w + px) * 4;
-      targetPixels[idx] = color[0];
-      targetPixels[idx + 1] = color[1];
-      targetPixels[idx + 2] = color[2];
-      targetPixels[idx + 3] = 255;
-    }
+    const tileIdx = pendingTiles;
+    const id = (currentGeneration << 16) | tileIdx;
+
+    tileMap.set(tileIdx, {
+      targetCtx, targetCanvas,
+      tx: 0, ty, tw: w, th
+    });
+    pendingTiles++;
+
+    workers[i % numWorkers].postMessage({
+      id,
+      w, h: th,
+      yStart: ty,
+      fullH: h,
+      fractalType,
+      cr, ci,
+      centerX: state.centerX,
+      centerY: state.centerY,
+      zoom: state.zoom,
+      maxIter: state.maxIter,
+      escapeRadius: state.escapeRadius,
+      smooth: state.smooth,
+      colorScheme: state.colorScheme
+    });
   }
-
-  targetCtx.putImageData(targetImageData, 0, 0);
 }
 
 function render() {
   renderQueued = false;
+  currentGeneration++;
+  pendingTiles = 0;
+  tileMap.clear();
 
   if (state.fractalType === 'split') {
-    // Left side: Mandelbrot
-    renderFractal(splitPixels, splitImageData, splitCtx, splitCanvas, 'mandelbrot', 0, 0);
-    // Right side: Julia with current c
-    renderFractal(pixels, imageData, ctx, canvas, 'julia', state.c.real, state.c.imag);
+    dispatchRender(splitCtx, splitCanvas, 'mandelbrot', 0, 0);
+    dispatchRender(ctx, canvas, 'julia', state.c.real, state.c.imag);
   } else {
-    renderFractal(pixels, imageData, ctx, canvas,
-      state.fractalType, state.c.real, state.c.imag);
+    dispatchRender(ctx, canvas, state.fractalType, state.c.real, state.c.imag);
   }
 
   updateOverlays();
