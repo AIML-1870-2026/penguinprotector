@@ -567,6 +567,108 @@ canvas {
 
 .quiz-close-btn:hover { opacity: 0.8; }
 
+/* Gradient Editor */
+#gradient-preview {
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--neon-pink);
+  box-shadow: 0 0 6px rgba(255, 0, 255, 0.2);
+}
+
+#gradient-stops {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gradient-stop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.gradient-stop-row input[type="color"] {
+  width: 32px;
+  height: 24px;
+  border: 1px solid var(--neon-pink);
+  border-radius: 3px;
+  background: var(--accent);
+  cursor: pointer;
+  padding: 0;
+}
+
+.gradient-stop-row input[type="range"] {
+  flex: 1;
+  height: 3px;
+  margin: 0;
+}
+
+.gradient-stop-row .stop-pos {
+  font-size: 10px;
+  color: var(--neon-cyan);
+  width: 32px;
+  text-align: right;
+  text-shadow: 0 0 4px var(--neon-cyan);
+}
+
+.gradient-stop-row .stop-del {
+  background: none;
+  border: none;
+  color: var(--neon-pink);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.gradient-stop-row .stop-del:hover { opacity: 1; }
+
+.saved-gradient-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.saved-gradient-item .saved-preview {
+  width: 60px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.saved-gradient-item .saved-name {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-gradient-item button {
+  background: none;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.saved-gradient-item .load-btn {
+  color: var(--neon-cyan);
+}
+
+.saved-gradient-item .del-btn {
+  color: var(--neon-pink);
+  opacity: 0.6;
+}
+
+.saved-gradient-item .del-btn:hover { opacity: 1; }
+
 /* Responsive */
 @media (max-width: 768px) {
   :root { --panel-width: 260px; }
@@ -634,7 +736,26 @@ canvas {
         <option value="electric">Electric</option>
         <option value="grayscale">Grayscale</option>
         <option value="rainbow">Rainbow</option>
+        <option value="custom">Custom...</option>
       </select>
+    </div>
+
+    <!-- Custom Gradient Editor -->
+    <div class="section" id="gradient-editor" style="display:none">
+      <div class="section-title">Gradient Editor</div>
+      <div id="gradient-preview"></div>
+      <div id="gradient-stops"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" id="add-stop-btn">+ Add Stop</button>
+      </div>
+      <div style="margin-top:10px; border-top:1px solid rgba(255,0,255,0.15); padding-top:10px">
+        <label style="font-size:11px; color:var(--text-dim)">Save Gradient</label>
+        <div style="display:flex; gap:6px; margin-top:4px">
+          <input type="text" id="gradient-name" placeholder="My Gradient" style="flex:1; padding:4px 8px; background:rgba(26,10,46,0.8); color:var(--neon-cyan); border:1px solid var(--neon-pink); border-radius:4px; font-size:12px;">
+          <button class="btn" id="save-gradient-btn">Save</button>
+        </div>
+        <div id="saved-gradients" style="margin-top:8px"></div>
+      </div>
     </div>
 
     <!-- Rendering Options -->
@@ -969,6 +1090,12 @@ const state = {
   escapeRadius: 4,
   smooth: true,
   colorScheme: 'ocean',
+  customGradientStops: [
+    { pos: 0, color: '#000066' },
+    { pos: 0.5, color: '#ff0066' },
+    { pos: 1, color: '#ffff00' }
+  ],
+  customLUT: null,
   // View
   centerX: 0,
   centerY: 0,
@@ -990,6 +1117,36 @@ const state = {
   dragCenterY: 0,
 };
 
+// ==================== CUSTOM GRADIENT ====================
+function hexToRGB(hex) {
+  const v = parseInt(hex.slice(1), 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+
+function buildCustomLUT(stops) {
+  const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+  const lut = new Uint8Array(768);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    // Find surrounding stops
+    let lo = sorted[0], hi = sorted[sorted.length - 1];
+    for (let s = 0; s < sorted.length - 1; s++) {
+      if (t >= sorted[s].pos && t <= sorted[s + 1].pos) {
+        lo = sorted[s]; hi = sorted[s + 1]; break;
+      }
+    }
+    const range = hi.pos - lo.pos;
+    const f = range > 0 ? (t - lo.pos) / range : 0;
+    const c0 = hexToRGB(lo.color), c1 = hexToRGB(hi.color);
+    lut[i * 3]     = Math.round(c0[0] + (c1[0] - c0[0]) * f);
+    lut[i * 3 + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * f);
+    lut[i * 3 + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * f);
+  }
+  return lut;
+}
+
+state.customLUT = buildCustomLUT(state.customGradientStops);
+
 // ==================== CANVAS SETUP ====================
 const canvas = document.getElementById('fractal-canvas');
 const ctx = canvas.getContext('2d');
@@ -1005,7 +1162,7 @@ const DRAFT_SCALE = 0.75; // render at 75% during interaction
 // Web Worker for offloading fractal computation
 const workerCode = `
 self.onmessage = function(e) {
-  const { id, w, h, yStart, fullH, fractalType, cr, ci, centerX, centerY, zoom, maxIter, escapeRadius, smooth, colorScheme } = e.data;
+  const { id, w, h, yStart, fullH, fractalType, cr, ci, centerX, centerY, zoom, maxIter, escapeRadius, smooth, colorScheme, customLUT } = e.data;
   const buf = new ArrayBuffer(w * h * 4);
   const pixels = new Uint8ClampedArray(buf);
   const minDim = Math.min(w, fullH);
@@ -1016,7 +1173,11 @@ self.onmessage = function(e) {
   const log2 = Math.log(2);
 
   // Color scheme LUT (256 entries)
-  const lut = new Uint8Array(768);
+  let lut;
+  if (customLUT) {
+    lut = new Uint8Array(customLUT);
+  } else {
+  lut = new Uint8Array(768);
   for (let n = 0; n < 256; n++) {
     const t = n / 255;
     let r, g, b;
@@ -1062,6 +1223,7 @@ self.onmessage = function(e) {
     lut[n * 3 + 1] = g;
     lut[n * 3 + 2] = b;
   }
+  } // end else (not customLUT)
 
   for (let py = 0; py < h; py++) {
     const cy_px = (py + yStart - halfH) * scale + centerY;
@@ -1276,6 +1438,10 @@ function getColor(iterations, zr, zi, maxIter) {
     t = (iterations % 50) / 50;
   }
 
+  if (state.colorScheme === 'custom' && state.customLUT) {
+    const ci = ((t * 255) | 0) * 3;
+    return [state.customLUT[ci], state.customLUT[ci + 1], state.customLUT[ci + 2]];
+  }
   return colorSchemes[state.colorScheme](t);
 }
 
@@ -1324,7 +1490,8 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci, draft) {
       maxIter: draft ? Math.min(state.maxIter, 250) : state.maxIter,
       escapeRadius: state.escapeRadius,
       smooth: state.smooth,
-      colorScheme: state.colorScheme
+      colorScheme: state.colorScheme,
+      customLUT: state.colorScheme === 'custom' && state.customLUT ? state.customLUT.buffer.slice(0) : null
     });
   }
 }
@@ -1533,8 +1700,154 @@ document.getElementById('smooth-check').addEventListener('change', e => {
 
 document.getElementById('color-scheme').addEventListener('change', e => {
   state.colorScheme = e.target.value;
+  document.getElementById('gradient-editor').style.display = e.target.value === 'custom' ? '' : 'none';
+  if (e.target.value === 'custom') {
+    state.customLUT = buildCustomLUT(state.customGradientStops);
+    renderGradientEditor();
+  }
   queueRender();
 });
+
+// ==================== GRADIENT EDITOR ====================
+function stopsToCSS(stops) {
+  const sorted = [...stops].sort((a, b) => a.pos - b.pos);
+  return `linear-gradient(90deg, ${sorted.map(s => `${s.color} ${(s.pos * 100).toFixed(0)}%`).join(', ')})`;
+}
+
+function renderGradientEditor() {
+  // Preview bar
+  document.getElementById('gradient-preview').style.background = stopsToCSS(state.customGradientStops);
+
+  // Stop rows
+  const container = document.getElementById('gradient-stops');
+  container.innerHTML = '';
+  const sorted = [...state.customGradientStops].sort((a, b) => a.pos - b.pos);
+
+  sorted.forEach((stop, i) => {
+    const origIdx = state.customGradientStops.indexOf(stop);
+    const row = document.createElement('div');
+    row.className = 'gradient-stop-row';
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = stop.color;
+    colorInput.addEventListener('input', () => {
+      state.customGradientStops[origIdx].color = colorInput.value;
+      updateGradient();
+    });
+
+    const posSlider = document.createElement('input');
+    posSlider.type = 'range';
+    posSlider.min = '0';
+    posSlider.max = '1';
+    posSlider.step = '0.01';
+    posSlider.value = stop.pos;
+    const posLabel = document.createElement('span');
+    posLabel.className = 'stop-pos';
+    posLabel.textContent = (stop.pos * 100).toFixed(0) + '%';
+
+    posSlider.addEventListener('input', () => {
+      state.customGradientStops[origIdx].pos = parseFloat(posSlider.value);
+      posLabel.textContent = (posSlider.value * 100).toFixed(0) + '%';
+      updateGradient();
+    });
+
+    row.appendChild(colorInput);
+    row.appendChild(posSlider);
+    row.appendChild(posLabel);
+
+    if (state.customGradientStops.length > 2) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'stop-del';
+      delBtn.textContent = '\u00d7';
+      delBtn.addEventListener('click', () => {
+        state.customGradientStops.splice(origIdx, 1);
+        updateGradient();
+        renderGradientEditor();
+      });
+      row.appendChild(delBtn);
+    }
+
+    container.appendChild(row);
+  });
+
+  renderSavedGradients();
+}
+
+function updateGradient() {
+  state.customLUT = buildCustomLUT(state.customGradientStops);
+  document.getElementById('gradient-preview').style.background = stopsToCSS(state.customGradientStops);
+  if (state.colorScheme === 'custom') queueRender();
+}
+
+document.getElementById('add-stop-btn').addEventListener('click', () => {
+  // Add a stop at midpoint with a blended color
+  const sorted = [...state.customGradientStops].sort((a, b) => a.pos - b.pos);
+  let maxGap = 0, gapIdx = 0;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const gap = sorted[i + 1].pos - sorted[i].pos;
+    if (gap > maxGap) { maxGap = gap; gapIdx = i; }
+  }
+  const midPos = (sorted[gapIdx].pos + sorted[gapIdx + 1].pos) / 2;
+  const c0 = hexToRGB(sorted[gapIdx].color), c1 = hexToRGB(sorted[gapIdx + 1].color);
+  const midColor = '#' + [0,1,2].map(j => Math.round((c0[j] + c1[j]) / 2).toString(16).padStart(2, '0')).join('');
+  state.customGradientStops.push({ pos: midPos, color: midColor });
+  updateGradient();
+  renderGradientEditor();
+});
+
+// Save/Load gradients
+document.getElementById('save-gradient-btn').addEventListener('click', () => {
+  const name = document.getElementById('gradient-name').value.trim() || 'Untitled';
+  const saved = JSON.parse(localStorage.getItem('juliaCustomSchemes') || '[]');
+  saved.push({ name, stops: JSON.parse(JSON.stringify(state.customGradientStops)) });
+  localStorage.setItem('juliaCustomSchemes', JSON.stringify(saved));
+  document.getElementById('gradient-name').value = '';
+  renderSavedGradients();
+});
+
+function renderSavedGradients() {
+  const container = document.getElementById('saved-gradients');
+  const saved = JSON.parse(localStorage.getItem('juliaCustomSchemes') || '[]');
+  container.innerHTML = '';
+
+  saved.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'saved-gradient-item';
+
+    const preview = document.createElement('div');
+    preview.className = 'saved-preview';
+    preview.style.background = stopsToCSS(item.stops);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'saved-name';
+    nameSpan.textContent = item.name;
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'load-btn';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', () => {
+      state.customGradientStops = JSON.parse(JSON.stringify(item.stops));
+      updateGradient();
+      renderGradientEditor();
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-btn';
+    delBtn.textContent = '\u00d7';
+    delBtn.addEventListener('click', () => {
+      saved.splice(i, 1);
+      localStorage.setItem('juliaCustomSchemes', JSON.stringify(saved));
+      renderSavedGradients();
+    });
+
+    row.appendChild(preview);
+    row.appendChild(nameSpan);
+    row.appendChild(loadBtn);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
 
 // Presets
 document.querySelectorAll('.preset-btn[data-real]').forEach(btn => {
