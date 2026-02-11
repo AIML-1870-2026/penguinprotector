@@ -998,6 +998,9 @@ const splitCtx = splitCanvas.getContext('2d');
 let imageData, pixels;
 let splitImageData, splitPixels;
 let renderQueued = false;
+let interacting = false;
+let fullResTimeout = null;
+const DRAFT_SCALE = 0.35; // render at 35% during interaction
 
 // Web Worker for offloading fractal computation
 const workerCode = `
@@ -1156,7 +1159,16 @@ function handleWorkerResult(e) {
       if (info) {
         const px = new Uint8ClampedArray(tileBuf);
         const imgData = new ImageData(px, info.tw, info.th);
-        info.targetCtx.putImageData(imgData, info.tx, info.ty);
+        if (info.draft) {
+          // Draft mode: draw to offscreen then scale up
+          const off = new OffscreenCanvas(info.tw, info.th);
+          const offCtx = off.getContext('2d');
+          offCtx.putImageData(imgData, 0, 0);
+          info.targetCtx.imageSmoothingEnabled = true;
+          info.targetCtx.drawImage(off, 0, info.ty * info.invScale, info.targetCanvas.width, info.th * info.invScale);
+        } else {
+          info.targetCtx.putImageData(imgData, info.tx, info.ty);
+        }
       }
     }
     tileResults.clear();
@@ -1277,10 +1289,12 @@ function pixelToComplex(px, py, w, h, cx, cy, zoom) {
 }
 
 // ==================== RENDERING (Web Worker tiled) ====================
-function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci) {
-  const w = targetCanvas.width;
-  const h = targetCanvas.height;
+function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci, draft) {
+  const scale = draft ? DRAFT_SCALE : 1;
+  const w = Math.round(targetCanvas.width * scale);
+  const h = Math.round(targetCanvas.height * scale);
   const tileH = Math.ceil(h / numWorkers);
+  const invScale = 1 / scale;
 
   for (let i = 0; i < numWorkers; i++) {
     const ty = i * tileH;
@@ -1292,7 +1306,8 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci) {
 
     tileMap.set(tileIdx, {
       targetCtx, targetCanvas,
-      tx: 0, ty, tw: w, th
+      tx: 0, ty, tw: w, th,
+      draft, invScale
     });
     pendingTiles++;
 
@@ -1306,7 +1321,7 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci) {
       centerX: state.centerX,
       centerY: state.centerY,
       zoom: state.zoom,
-      maxIter: state.maxIter,
+      maxIter: draft ? Math.min(state.maxIter, 150) : state.maxIter,
       escapeRadius: state.escapeRadius,
       smooth: state.smooth,
       colorScheme: state.colorScheme
@@ -1314,18 +1329,20 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci) {
   }
 }
 
-function render() {
+function render(forceFull) {
   renderQueued = false;
   currentGeneration++;
   pendingTiles = 0;
   tileMap.clear();
   tileResults.clear();
 
+  const draft = !forceFull && (interacting || state.animating);
+
   if (state.fractalType === 'split') {
-    dispatchRender(splitCtx, splitCanvas, 'mandelbrot', 0, 0);
-    dispatchRender(ctx, canvas, 'julia', state.c.real, state.c.imag);
+    dispatchRender(splitCtx, splitCanvas, 'mandelbrot', 0, 0, draft);
+    dispatchRender(ctx, canvas, 'julia', state.c.real, state.c.imag, draft);
   } else {
-    dispatchRender(ctx, canvas, state.fractalType, state.c.real, state.c.imag);
+    dispatchRender(ctx, canvas, state.fractalType, state.c.real, state.c.imag, draft);
   }
 
   updateOverlays();
@@ -1334,8 +1351,23 @@ function render() {
 function queueRender() {
   if (!renderQueued) {
     renderQueued = true;
-    requestAnimationFrame(render);
+    requestAnimationFrame(() => render(false));
   }
+}
+
+function scheduleFullRender() {
+  if (fullResTimeout) clearTimeout(fullResTimeout);
+  fullResTimeout = setTimeout(() => {
+    interacting = false;
+    renderQueued = true;
+    requestAnimationFrame(() => render(true));
+  }, 200);
+}
+
+function interactiveRender() {
+  interacting = true;
+  queueRender();
+  scheduleFullRender();
 }
 
 // ==================== OVERLAYS ====================
@@ -1439,6 +1471,9 @@ function startAnim() {
 function pauseAnim() {
   state.animating = false;
   if (animFrame) cancelAnimationFrame(animFrame);
+  // Render full quality when animation stops
+  renderQueued = true;
+  requestAnimationFrame(() => render(true));
 }
 
 function stopAnim() {
@@ -1470,25 +1505,25 @@ document.querySelectorAll('input[name="fractalType"]').forEach(r => {
 document.getElementById('real-slider').addEventListener('input', e => {
   state.c.real = parseFloat(e.target.value);
   document.getElementById('real-val').textContent = state.c.real.toFixed(4);
-  queueRender();
+  interactiveRender();
 });
 
 document.getElementById('imag-slider').addEventListener('input', e => {
   state.c.imag = parseFloat(e.target.value);
   document.getElementById('imag-val').textContent = state.c.imag.toFixed(4);
-  queueRender();
+  interactiveRender();
 });
 
 document.getElementById('iter-slider').addEventListener('input', e => {
   state.maxIter = parseInt(e.target.value);
   document.getElementById('iter-val').textContent = state.maxIter;
-  queueRender();
+  interactiveRender();
 });
 
 document.getElementById('escape-slider').addEventListener('input', e => {
   state.escapeRadius = parseFloat(e.target.value);
   document.getElementById('escape-val').textContent = state.escapeRadius;
-  queueRender();
+  interactiveRender();
 });
 
 document.getElementById('smooth-check').addEventListener('change', e => {
@@ -1522,8 +1557,8 @@ document.getElementById('random-preset').addEventListener('click', () => {
 });
 
 // View controls
-document.getElementById('zoom-in-btn').addEventListener('click', () => { state.zoom *= 1.5; queueRender(); });
-document.getElementById('zoom-out-btn').addEventListener('click', () => { state.zoom /= 1.5; queueRender(); });
+document.getElementById('zoom-in-btn').addEventListener('click', () => { state.zoom *= 1.5; interactiveRender(); });
+document.getElementById('zoom-out-btn').addEventListener('click', () => { state.zoom /= 1.5; interactiveRender(); });
 document.getElementById('reset-view-btn').addEventListener('click', resetView);
 
 function resetView() {
@@ -1600,9 +1635,10 @@ document.getElementById('copy-params-btn').addEventListener('click', () => {
 
 // ==================== MOUSE INTERACTION ====================
 const container = document.getElementById('canvas-container');
+let dragRenderTimeout = null;
 
 container.addEventListener('mousemove', e => {
-  if (state.showCoords) {
+  if (state.showCoords && !state.dragging) {
     const rect = canvas.getBoundingClientRect();
     const dpr = canvas.width / rect.width;
     const px = (e.clientX - rect.left) * dpr;
@@ -1613,14 +1649,17 @@ container.addEventListener('mousemove', e => {
   }
 
   if (state.dragging) {
+    // Use CSS transform for instant visual feedback (no re-render)
+    const dx = e.clientX - state.dragStartX;
+    const dy = e.clientY - state.dragStartY;
+    canvas.style.transform = `translate(${dx}px, ${dy}px)`;
+
+    // Update state for when we do re-render
     const rect = canvas.getBoundingClientRect();
-    const dpr = canvas.width / rect.width;
+    const dpr = canvas.width / (rect.width);
     const scale = 3 / (Math.min(canvas.width, canvas.height) * state.zoom);
-    const dx = (e.clientX - state.dragStartX) * dpr * scale;
-    const dy = (e.clientY - state.dragStartY) * dpr * scale;
-    state.centerX = state.dragCenterX - dx;
-    state.centerY = state.dragCenterY - dy;
-    queueRender();
+    state.centerX = state.dragCenterX - dx * dpr * scale;
+    state.centerY = state.dragCenterY - dy * dpr * scale;
   }
 });
 
@@ -1632,12 +1671,17 @@ container.addEventListener('mousedown', e => {
     state.dragCenterX = state.centerX;
     state.dragCenterY = state.centerY;
     container.style.cursor = 'grabbing';
+    if (dragRenderTimeout) clearTimeout(dragRenderTimeout);
   }
 });
 
 window.addEventListener('mouseup', () => {
-  state.dragging = false;
-  container.style.cursor = 'crosshair';
+  if (state.dragging) {
+    state.dragging = false;
+    container.style.cursor = 'crosshair';
+    canvas.style.transform = '';
+    queueRender();
+  }
 });
 
 container.addEventListener('click', e => {
@@ -1695,7 +1739,7 @@ container.addEventListener('wheel', e => {
   state.centerX += p.x - newP.x;
   state.centerY += p.y - newP.y;
 
-  queueRender();
+  interactiveRender();
 }, { passive: false });
 
 // ==================== KEYBOARD SHORTCUTS ====================
@@ -1708,12 +1752,12 @@ document.addEventListener('keydown', e => {
     case 's': case 'S': document.getElementById('save-btn').click(); break;
     case 'a': case 'A': state.animating ? pauseAnim() : startAnim(); break;
     case 'i': case 'I': document.getElementById('info-panel').classList.toggle('visible'); break;
-    case '+': case '=': state.zoom *= 1.5; queueRender(); break;
-    case '-': case '_': state.zoom /= 1.5; queueRender(); break;
-    case 'ArrowUp': state.centerY -= 0.1 / state.zoom; queueRender(); break;
-    case 'ArrowDown': state.centerY += 0.1 / state.zoom; queueRender(); break;
-    case 'ArrowLeft': state.centerX -= 0.1 / state.zoom; queueRender(); break;
-    case 'ArrowRight': state.centerX += 0.1 / state.zoom; queueRender(); break;
+    case '+': case '=': state.zoom *= 1.5; interactiveRender(); break;
+    case '-': case '_': state.zoom /= 1.5; interactiveRender(); break;
+    case 'ArrowUp': state.centerY -= 0.1 / state.zoom; interactiveRender(); break;
+    case 'ArrowDown': state.centerY += 0.1 / state.zoom; interactiveRender(); break;
+    case 'ArrowLeft': state.centerX -= 0.1 / state.zoom; interactiveRender(); break;
+    case 'ArrowRight': state.centerX += 0.1 / state.zoom; interactiveRender(); break;
     case '1': selectPreset(0); break;
     case '2': selectPreset(1); break;
     case '3': selectPreset(2); break;
