@@ -977,6 +977,14 @@ canvas {
         <button class="btn" id="anim-pause">&#9208; Pause</button>
         <button class="btn" id="anim-stop">&#9209; Stop</button>
       </div>
+      <div class="checkbox-row" style="margin-top:8px">
+        <input type="checkbox" id="music-check" checked>
+        <label for="music-check">House music</label>
+      </div>
+      <div class="slider-row">
+        <label>Volume: <span class="value" id="vol-val">60%</span></label>
+        <input type="range" id="vol-slider" min="0" max="100" step="1" value="60">
+      </div>
       <div class="slider-row" style="margin-top:8px">
         <label>Speed: <span class="value" id="speed-val">0.50</span></label>
         <input type="range" id="speed-slider" min="0.05" max="2" step="0.05" value="0.5">
@@ -2160,14 +2168,231 @@ function animStep(timestamp) {
   animFrame = requestAnimationFrame(animStep);
 }
 
+// ==================== HOUSE MUSIC ENGINE ====================
+const music = {
+  ctx: null,
+  masterGain: null,
+  playing: false,
+  enabled: true,
+  volume: 0.6,
+  bpm: 128,
+  step: 0,
+  timer: null,
+  nodes: []
+};
+
+function initAudio() {
+  if (music.ctx) return;
+  music.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Master gain + compressor for clean output
+  const compressor = music.ctx.createDynamicsCompressor();
+  compressor.threshold.value = -12;
+  compressor.ratio.value = 4;
+  compressor.connect(music.ctx.destination);
+
+  music.masterGain = music.ctx.createGain();
+  music.masterGain.gain.value = music.volume;
+  music.masterGain.connect(compressor);
+}
+
+function startMusic() {
+  if (!music.enabled) return;
+  initAudio();
+  if (music.ctx.state === 'suspended') music.ctx.resume();
+  music.playing = true;
+  music.step = 0;
+  const stepTime = 60 / music.bpm / 4; // 16th notes
+  music.timer = setInterval(() => musicStep(stepTime), stepTime * 1000);
+}
+
+function stopMusic() {
+  music.playing = false;
+  if (music.timer) clearInterval(music.timer);
+  music.nodes.forEach(n => { try { n.stop(); } catch(e) {} });
+  music.nodes = [];
+}
+
+function musicStep(stepTime) {
+  if (!music.playing || !music.ctx) return;
+  const now = music.ctx.currentTime;
+  const s = music.step % 16; // 16-step pattern
+
+  // --- KICK on beats 0, 4, 8, 12 ---
+  if (s % 4 === 0) {
+    const osc = music.ctx.createOscillator();
+    const gain = music.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+    gain.gain.setValueAtTime(0.9, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc.connect(gain);
+    gain.connect(music.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.3);
+    music.nodes.push(osc);
+  }
+
+  // --- HI-HAT on every step, accented on off-beats ---
+  {
+    const bufSize = music.ctx.sampleRate * 0.05;
+    const buf = music.ctx.createBuffer(1, bufSize, music.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = music.ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const hiFilter = music.ctx.createBiquadFilter();
+    hiFilter.type = 'highpass';
+    hiFilter.frequency.value = 8000;
+
+    const gain = music.ctx.createGain();
+    const accent = (s % 2 === 1) ? 0.25 : 0.1;
+    gain.gain.setValueAtTime(accent, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    noise.connect(hiFilter);
+    hiFilter.connect(gain);
+    gain.connect(music.masterGain);
+    noise.start(now);
+    noise.stop(now + 0.06);
+    music.nodes.push(noise);
+  }
+
+  // --- CLAP on beats 4, 12 ---
+  if (s === 4 || s === 12) {
+    const bufSize = music.ctx.sampleRate * 0.1;
+    const buf = music.ctx.createBuffer(1, bufSize, music.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const noise = music.ctx.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = music.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1200;
+    filter.Q.value = 2;
+
+    const gain = music.ctx.createGain();
+    gain.gain.setValueAtTime(0.5, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(music.masterGain);
+    noise.start(now);
+    noise.stop(now + 0.15);
+    music.nodes.push(noise);
+  }
+
+  // --- BASS SYNTH - 4 note pattern, plays on beats 0, 4, 8, 12 ---
+  if (s % 4 === 0) {
+    const bassNotes = [55, 55, 73.42, 65.41]; // A1, A1, D2, C2
+    const noteIdx = Math.floor((music.step % 64) / 16);
+    const freq = bassNotes[noteIdx];
+
+    const osc = music.ctx.createOscillator();
+    const osc2 = music.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc2.type = 'square';
+    osc.frequency.value = freq;
+    osc2.frequency.value = freq * 1.002; // slight detune
+
+    const filter = music.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(400, now);
+    filter.frequency.exponentialRampToValueAtTime(120, now + 0.2);
+    filter.Q.value = 8;
+
+    const gain = music.ctx.createGain();
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.setValueAtTime(0.35, now + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(filter);
+    osc2.connect(filter);
+    filter.connect(gain);
+    gain.connect(music.masterGain);
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now + 0.28);
+    osc2.stop(now + 0.28);
+    music.nodes.push(osc, osc2);
+  }
+
+  // --- SYNTH PAD - chord, plays every 16 steps, sustained ---
+  if (music.step % 32 === 0) {
+    const chords = [
+      [220, 277.18, 329.63],     // Am
+      [196, 246.94, 293.66],     // Gm
+      [174.61, 220, 261.63],     // F
+      [164.81, 207.65, 261.63],  // Em
+    ];
+    const chordIdx = Math.floor((music.step % 128) / 32);
+    const chord = chords[chordIdx];
+
+    chord.forEach(freq => {
+      const osc = music.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+
+      const osc2 = music.ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.value = freq * 2.001;
+
+      const gain = music.ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.3);
+      gain.gain.setValueAtTime(0.08, now + 0.6);
+      gain.gain.linearRampToValueAtTime(0, now + 1.2);
+
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(music.masterGain);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 1.3);
+      osc2.stop(now + 1.3);
+      music.nodes.push(osc, osc2);
+    });
+  }
+
+  // --- RAVE STAB - every 8 bars, quick chord hit ---
+  if (music.step % 128 === 0 && music.step > 0) {
+    [523.25, 659.25, 783.99].forEach(freq => {
+      const osc = music.ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      const gain = music.ctx.createGain();
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain);
+      gain.connect(music.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.18);
+      music.nodes.push(osc);
+    });
+  }
+
+  // Cleanup old nodes
+  if (music.nodes.length > 100) {
+    music.nodes = music.nodes.slice(-50);
+  }
+
+  music.step++;
+}
+
 function startAnim() {
   state.animating = true;
   animFrame = requestAnimationFrame(animStep);
+  if (music.enabled) startMusic();
 }
 
 function pauseAnim() {
   state.animating = false;
   if (animFrame) cancelAnimationFrame(animFrame);
+  stopMusic();
   // Render full quality when animation stops
   renderQueued = true;
   requestAnimationFrame(() => render(true));
@@ -2433,6 +2658,18 @@ document.getElementById('anim-stop').addEventListener('click', stopAnim);
 document.getElementById('speed-slider').addEventListener('input', e => {
   state.animSpeed = parseFloat(e.target.value);
   document.getElementById('speed-val').textContent = state.animSpeed.toFixed(2);
+});
+
+document.getElementById('music-check').addEventListener('change', e => {
+  music.enabled = e.target.checked;
+  if (!e.target.checked && music.playing) stopMusic();
+  if (e.target.checked && state.animating) startMusic();
+});
+
+document.getElementById('vol-slider').addEventListener('input', e => {
+  music.volume = parseInt(e.target.value) / 100;
+  document.getElementById('vol-val').textContent = e.target.value + '%';
+  if (music.masterGain) music.masterGain.gain.value = music.volume;
 });
 
 document.querySelectorAll('input[name="animPath"]').forEach(r => {
