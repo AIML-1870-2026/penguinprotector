@@ -1649,17 +1649,18 @@ container.addEventListener('mousemove', e => {
   }
 
   if (state.dragging) {
-    // Use CSS transform for instant visual feedback (no re-render)
     const dx = e.clientX - state.dragStartX;
     const dy = e.clientY - state.dragStartY;
-    canvas.style.transform = `translate(${dx}px, ${dy}px)`;
 
-    // Update state for when we do re-render
+    // Update center based on drag delta
     const rect = canvas.getBoundingClientRect();
-    const dpr = canvas.width / (rect.width);
+    const dpr = canvas.width / rect.width;
     const scale = 3 / (Math.min(canvas.width, canvas.height) * state.zoom);
     state.centerX = state.dragCenterX - dx * dpr * scale;
     state.centerY = state.dragCenterY - dy * dpr * scale;
+
+    // Live draft render during drag
+    interactiveRender();
   }
 });
 
@@ -1679,8 +1680,7 @@ window.addEventListener('mouseup', () => {
   if (state.dragging) {
     state.dragging = false;
     container.style.cursor = 'crosshair';
-    canvas.style.transform = '';
-    queueRender();
+    scheduleFullRender();
   }
 });
 
