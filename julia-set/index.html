@@ -1000,7 +1000,7 @@ let splitImageData, splitPixels;
 let renderQueued = false;
 let interacting = false;
 let fullResTimeout = null;
-const DRAFT_SCALE = 0.35; // render at 35% during interaction
+const DRAFT_SCALE = 0.55; // render at 55% during interaction
 
 // Web Worker for offloading fractal computation
 const workerCode = `
@@ -1321,7 +1321,7 @@ function dispatchRender(targetCtx, targetCanvas, fractalType, cr, ci, draft) {
       centerX: state.centerX,
       centerY: state.centerY,
       zoom: state.zoom,
-      maxIter: draft ? Math.min(state.maxIter, 150) : state.maxIter,
+      maxIter: draft ? Math.min(state.maxIter, 250) : state.maxIter,
       escapeRadius: state.escapeRadius,
       smooth: state.smooth,
       colorScheme: state.colorScheme
