@@ -216,7 +216,7 @@
         }
 
         /* Rave mode */
-        body.rave { animation: rave-bg 0.8s infinite; }
+        body.rave { animation: rave-bg 8s ease-in-out infinite; }
 
         @keyframes rave-bg {
             0%   { background: #0a001a; }
@@ -227,7 +227,7 @@
         }
 
         body.rave h1 {
-            animation: rave-text 0.3s infinite;
+            animation: rave-text 6s ease-in-out infinite;
         }
 
         @keyframes rave-text {
@@ -238,47 +238,49 @@
         }
 
         body.rave .project-card {
-            animation: rave-card 0.5s infinite;
-            border-color: rgba(255, 255, 255, 0.4);
+            animation: rave-card 4s ease-in-out infinite;
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
-        body.rave .project-card:nth-child(odd)  { animation-delay: 0.1s; }
-        body.rave .project-card:nth-child(even) { animation-delay: 0.25s; }
+        body.rave .project-card:nth-child(odd)  { animation-delay: 0.5s; }
+        body.rave .project-card:nth-child(even) { animation-delay: 1.5s; }
 
         @keyframes rave-card {
-            0%   { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4), inset 0 0 15px rgba(255, 0, 255, 0.1); transform: scale(1); }
-            50%  { box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.15); transform: scale(1.02); }
-            100% { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4), inset 0 0 15px rgba(255, 0, 255, 0.1); transform: scale(1); }
+            0%   { box-shadow: 0 0 15px rgba(255, 0, 255, 0.3), inset 0 0 10px rgba(255, 0, 255, 0.05); transform: scale(1); }
+            50%  { box-shadow: 0 0 25px rgba(0, 255, 255, 0.35), inset 0 0 15px rgba(0, 255, 255, 0.08); transform: scale(1.01); }
+            100% { box-shadow: 0 0 15px rgba(255, 0, 255, 0.3), inset 0 0 10px rgba(255, 0, 255, 0.05); transform: scale(1); }
         }
 
         body.rave .project-card h2 {
-            animation: rave-h2 0.4s infinite;
+            animation: rave-h2 5s ease-in-out infinite;
         }
 
         @keyframes rave-h2 {
             0%   { color: #ff0080; }
-            50%  { color: #80ff00; }
+            33%  { color: #80ff00; }
+            66%  { color: #00ccff; }
             100% { color: #ff0080; }
         }
 
         body.rave .tag {
-            animation: rave-tag 0.6s infinite;
+            animation: rave-tag 7s ease-in-out infinite;
         }
 
         @keyframes rave-tag {
             0%   { border-color: #ff00ff; color: #ff00ff; }
-            50%  { border-color: #00ffff; color: #00ffff; }
+            33%  { border-color: #00ffff; color: #00ffff; }
+            66%  { border-color: #ffff00; color: #ffff00; }
             100% { border-color: #ff00ff; color: #ff00ff; }
         }
 
         body.rave .subtitle {
-            animation: rave-text 0.5s infinite;
+            animation: rave-text 8s ease-in-out infinite;
         }
 
         body.rave .rave-toggle {
             border-color: #ff00ff;
             color: #ff00ff;
-            animation: rave-card 0.5s infinite;
+            animation: rave-card 4s ease-in-out infinite;
         }
 
         footer {
