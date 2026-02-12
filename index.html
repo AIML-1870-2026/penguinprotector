@@ -48,27 +48,37 @@
         }
 
         .project-card {
+            --glow: 0, 243, 255;
             display: block;
-            border: 1px solid rgba(0, 243, 255, 0.2);
+            border: 1px solid rgba(var(--glow), 0.2);
             border-radius: 6px;
             padding: 28px 24px;
             text-decoration: none;
             color: inherit;
-            background: rgba(0, 243, 255, 0.02);
-            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+            background: rgba(var(--glow), 0.02);
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s, background 0.3s;
         }
 
         .project-card:hover {
-            border-color: rgba(0, 243, 255, 0.6);
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            border-color: rgba(var(--glow), 0.6);
+            box-shadow: 0 0 20px rgba(var(--glow), 0.2), inset 0 0 20px rgba(var(--glow), 0.05);
             transform: translateY(-4px);
         }
+
+        .project-card:nth-child(1) { --glow: 0, 255, 100; }
+        .project-card:nth-child(2) { --glow: 180, 0, 255; }
+        .project-card:nth-child(3) { --glow: 0, 180, 255; }
+        .project-card:nth-child(4) { --glow: 255, 200, 0; }
+        .project-card:nth-child(5) { --glow: 255, 0, 150; }
+        .project-card:nth-child(6) { --glow: 0, 255, 200; }
+        .project-card:nth-child(7) { --glow: 255, 100, 50; }
 
         .project-card h2 {
             font-size: 18px;
             letter-spacing: 3px;
-            color: #00f3ff;
+            color: rgb(var(--glow));
             margin-bottom: 10px;
+            transition: color 0.3s;
         }
 
         .project-card p {
@@ -87,6 +97,97 @@
             border: 1px solid rgba(179, 0, 255, 0.3);
             border-radius: 3px;
             color: rgba(179, 0, 255, 0.7);
+        }
+
+        /* Rave toggle button */
+        .rave-toggle {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.5);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            padding: 10px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 100;
+            text-transform: uppercase;
+        }
+
+        .rave-toggle:hover {
+            border-color: rgba(255, 0, 200, 0.6);
+            color: #ff00c8;
+            box-shadow: 0 0 12px rgba(255, 0, 200, 0.3);
+        }
+
+        /* Rave mode */
+        body.rave { animation: rave-bg 0.8s infinite; }
+
+        @keyframes rave-bg {
+            0%   { background: #0a001a; }
+            25%  { background: #1a000a; }
+            50%  { background: #000a1a; }
+            75%  { background: #0a1a00; }
+            100% { background: #0a001a; }
+        }
+
+        body.rave h1 {
+            animation: rave-text 0.3s infinite;
+        }
+
+        @keyframes rave-text {
+            0%   { color: #ff00ff; text-shadow: 0 0 30px #ff00ff, 0 0 60px #ff00ff; }
+            33%  { color: #00ffff; text-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff; }
+            66%  { color: #ffff00; text-shadow: 0 0 30px #ffff00, 0 0 60px #ffff00; }
+            100% { color: #ff00ff; text-shadow: 0 0 30px #ff00ff, 0 0 60px #ff00ff; }
+        }
+
+        body.rave .project-card {
+            animation: rave-card 0.5s infinite;
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        body.rave .project-card:nth-child(odd)  { animation-delay: 0.1s; }
+        body.rave .project-card:nth-child(even) { animation-delay: 0.25s; }
+
+        @keyframes rave-card {
+            0%   { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4), inset 0 0 15px rgba(255, 0, 255, 0.1); transform: scale(1); }
+            50%  { box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.15); transform: scale(1.02); }
+            100% { box-shadow: 0 0 20px rgba(255, 0, 255, 0.4), inset 0 0 15px rgba(255, 0, 255, 0.1); transform: scale(1); }
+        }
+
+        body.rave .project-card h2 {
+            animation: rave-h2 0.4s infinite;
+        }
+
+        @keyframes rave-h2 {
+            0%   { color: #ff0080; }
+            50%  { color: #80ff00; }
+            100% { color: #ff0080; }
+        }
+
+        body.rave .tag {
+            animation: rave-tag 0.6s infinite;
+        }
+
+        @keyframes rave-tag {
+            0%   { border-color: #ff00ff; color: #ff00ff; }
+            50%  { border-color: #00ffff; color: #00ffff; }
+            100% { border-color: #ff00ff; color: #ff00ff; }
+        }
+
+        body.rave .subtitle {
+            animation: rave-text 0.5s infinite;
+        }
+
+        body.rave .rave-toggle {
+            border-color: #ff00ff;
+            color: #ff00ff;
+            animation: rave-card 0.5s infinite;
         }
 
         footer {
@@ -151,6 +252,8 @@
             <span class="tag">INTRO</span>
         </a>
     </div>
+
+    <button class="rave-toggle" onclick="document.body.classList.toggle('rave'); this.textContent = document.body.classList.contains('rave') ? '🔇 Chill' : '🔊 Rave';">🔊 Rave</button>
 
     <footer>AIML-1870-2026</footer>
 </body>
