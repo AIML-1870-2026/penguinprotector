@@ -206,7 +206,7 @@
         }
     </style>
 </head>
-<body>
+<body class="rave">
     <header>
         <h1>penguinprotector</h1>
         <p class="subtitle">AIML 1870 Portfolio</p>
@@ -256,7 +256,7 @@
         </a>
     </div>
 
-    <button class="rave-toggle" onclick="toggleRave()">🔊 Rave</button>
+    <button class="rave-toggle" onclick="toggleRave()">🔇 Chill</button>
 
     <footer>AIML-1870-2026</footer>
 
@@ -410,6 +410,15 @@
         btn.textContent = isRave ? '🔇 Chill' : '🔊 Rave';
         if (isRave) { startMusic(); } else { stopMusic(); }
     }
+
+    // Start music on first user interaction (browsers require a gesture for audio)
+    function startOnInteraction() {
+        if (document.body.classList.contains('rave')) startMusic();
+        document.removeEventListener('click', startOnInteraction);
+        document.removeEventListener('keydown', startOnInteraction);
+    }
+    document.addEventListener('click', startOnInteraction);
+    document.addEventListener('keydown', startOnInteraction);
     </script>
 </body>
 </html>
