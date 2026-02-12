@@ -31,6 +31,48 @@
             text-transform: uppercase;
             color: #00f3ff;
             text-shadow: 0 0 20px rgba(0, 243, 255, 0.6), 0 0 40px rgba(0, 243, 255, 0.3);
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::before, h1::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        h1::before {
+            color: #ff00ff;
+            text-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+            animation: glitch-top 3s infinite;
+            clip-path: inset(0 0 65% 0);
+        }
+
+        h1::after {
+            color: #00ff41;
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.6);
+            animation: glitch-bottom 2.5s infinite;
+            clip-path: inset(60% 0 0 0);
+        }
+
+        @keyframes glitch-top {
+            0%, 92%  { transform: translate(0); opacity: 0; }
+            93%      { transform: translate(-3px, -1px); opacity: 1; }
+            94%      { transform: translate(3px, 1px); opacity: 1; }
+            95%      { transform: translate(-2px, 0); opacity: 1; }
+            96%, 100% { transform: translate(0); opacity: 0; }
+        }
+
+        @keyframes glitch-bottom {
+            0%, 88%  { transform: translate(0); opacity: 0; }
+            89%      { transform: translate(3px, 1px); opacity: 1; }
+            90%      { transform: translate(-3px, -1px); opacity: 1; }
+            91%      { transform: translate(2px, 0); opacity: 1; }
+            92%      { transform: translate(-1px, 1px); opacity: 1; }
+            93%, 100% { transform: translate(0); opacity: 0; }
         }
 
         .subtitle {
@@ -41,6 +83,25 @@
             text-transform: uppercase;
         }
 
+        /* Scan line under header */
+        header::after {
+            content: '';
+            display: block;
+            margin: 20px auto 0;
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00f3ff, #ff00ff, #00f3ff, transparent);
+            background-size: 200% 100%;
+            animation: scan-line 2s linear infinite;
+            border-radius: 1px;
+            box-shadow: 0 0 8px rgba(0, 243, 255, 0.4), 0 0 16px rgba(255, 0, 255, 0.2);
+        }
+
+        @keyframes scan-line {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
         .projects {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -48,6 +109,33 @@
             max-width: 900px;
             width: 100%;
             padding: 20px 24px 60px;
+            position: relative;
+        }
+
+        .projects::before {
+            content: '';
+            position: absolute;
+            inset: -40px -60px;
+            border-radius: 20px;
+            background: linear-gradient(135deg,
+                rgba(0, 243, 255, 0.04),
+                rgba(180, 0, 255, 0.06),
+                rgba(255, 0, 150, 0.04),
+                rgba(0, 255, 100, 0.05),
+                rgba(0, 243, 255, 0.04)
+            );
+            background-size: 400% 400%;
+            animation: gradient-shift 12s ease infinite;
+            z-index: -1;
+            filter: blur(30px);
+        }
+
+        @keyframes gradient-shift {
+            0%   { background-position: 0% 50%; }
+            25%  { background-position: 100% 0%; }
+            50%  { background-position: 100% 100%; }
+            75%  { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
         }
 
         .project-card {
@@ -208,7 +296,7 @@
 </head>
 <body class="rave">
     <header>
-        <h1>penguinprotector</h1>
+        <h1 data-text="penguinprotector">penguinprotector</h1>
         <p class="subtitle">AIML 1870 Portfolio</p>
     </header>
 
