@@ -198,17 +198,26 @@ function updateOutputCard() {
   const pct = Math.round(prob * 100);
   const isNap = state.decision === 'Nap';
 
-  document.getElementById('output-probability').textContent = pct + '%';
-  document.getElementById('output-probability').style.color = isNap ? '#6366f1' : '#d97706';
-  document.getElementById('output-decision').textContent = isNap ? 'Nap' : 'Grind';
-  document.getElementById('output-decision').style.color = isNap ? '#6366f1' : '#d97706';
+  // Update neuron circle
+  const circle = document.getElementById('neuron-circle');
+  const pctEl = document.getElementById('neuron-pct');
+  pctEl.textContent = pct + '%';
 
-  const card = document.getElementById('output-card');
-  card.className = 'output-card ' + (isNap ? 'nap' : 'grind');
+  if (isNap) {
+    circle.classList.remove('grind');
+    pctEl.classList.remove('grind');
+  } else {
+    circle.classList.add('grind');
+    pctEl.classList.add('grind');
+  }
+
+  const decision = document.getElementById('neuron-decision');
+  decision.textContent = isNap ? 'Nap' : 'Grind';
+  decision.style.color = isNap ? '#6366f1' : '#d97706';
 
   // Flavor text
   const flavor = FLAVOR_TEXT.find(f => pct >= f.min && pct <= f.max);
-  document.getElementById('output-flavor').textContent = flavor ? flavor.text : '';
+  document.getElementById('neuron-flavor').textContent = flavor ? flavor.text : '';
 }
 
 function updateMathPanel(result) {
@@ -263,12 +272,12 @@ function flashWeightBadges() {
 }
 
 function flashOutputCard(correct) {
-  const card = document.getElementById('output-card');
+  const circle = document.getElementById('neuron-circle');
   const cls = correct ? 'flash-correct' : 'flash-incorrect';
-  card.classList.remove('flash-correct', 'flash-incorrect');
-  void card.offsetWidth;
-  card.classList.add(cls);
-  setTimeout(() => card.classList.remove(cls), 500);
+  circle.classList.remove('flash-correct', 'flash-incorrect');
+  void circle.offsetWidth;
+  circle.classList.add(cls);
+  setTimeout(() => circle.classList.remove(cls), 500);
 }
 
 function checkMilestones() {

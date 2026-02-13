@@ -298,57 +298,62 @@ body {
   border-color: var(--nap-light);
 }
 
-/* === Output Card === */
-.output-card {
-  text-align: center;
-  padding: 28px 32px;
-  border-radius: 24px;
-  border: 1px solid var(--card-border);
+/* === Neuron Hero === */
+.neuron-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.neuron-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
   background: var(--card);
-  width: 100%;
-  margin: 8px 0 16px;
-  transition: all 0.3s;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  border: 3px solid var(--nap-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08), 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.4s, box-shadow 0.4s;
+  animation: neuronPulse 3s ease-in-out infinite;
 }
 
-.output-card.nap {
-  border-color: rgba(99, 102, 241, 0.25);
-  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.08);
+.neuron-circle.grind {
+  border-color: var(--grind-color);
+  box-shadow: 0 0 0 8px rgba(217, 119, 6, 0.08), 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 
-.output-card.grind {
-  border-color: rgba(217, 119, 6, 0.25);
-  box-shadow: 0 4px 24px rgba(217, 119, 6, 0.06);
+@keyframes neuronPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
 }
 
-.output-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--text-light);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-.output-probability {
+.neuron-pct {
   font-family: 'Inter', sans-serif;
-  font-size: 3.2rem;
+  font-size: 2.4rem;
   font-weight: 700;
-  line-height: 1;
-  margin-bottom: 4px;
+  color: var(--nap-color);
+  transition: color 0.4s;
+}
+
+.neuron-pct.grind {
+  color: var(--grind-color);
+}
+
+.neuron-decision {
+  font-size: 1.1rem;
+  font-weight: 600;
   transition: color 0.3s;
 }
 
-.output-decision {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.output-flavor {
+.neuron-flavor {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-style: italic;
+  text-align: center;
 }
 
 /* === Toggle Sections === */
@@ -663,23 +668,23 @@ body {
   z-index: 999;
 }
 
-/* === Output card flash === */
-.output-card.flash-correct {
+/* === Neuron circle flash === */
+.neuron-circle.flash-correct {
   animation: flashCorrect 0.4s ease;
 }
 
-.output-card.flash-incorrect {
+.neuron-circle.flash-incorrect {
   animation: flashIncorrect 0.4s ease;
 }
 
 @keyframes flashCorrect {
-  0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-  50% { box-shadow: 0 0 24px rgba(34, 197, 94, 0.25); }
+  0%, 100% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08), 0 4px 20px rgba(0,0,0,0.06); }
+  50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.2), 0 0 24px rgba(34, 197, 94, 0.25); }
 }
 
 @keyframes flashIncorrect {
-  0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-  50% { box-shadow: 0 0 24px rgba(239, 68, 68, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.08), 0 4px 20px rgba(0,0,0,0.06); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.15), 0 0 24px rgba(239, 68, 68, 0.2); }
 }
 
 /* === Responsive === */
