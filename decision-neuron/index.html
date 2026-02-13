@@ -6,7 +6,7 @@
   <title>Nap or Grind? - Decision Neuron</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +15,6 @@
     <h1 class="header-title">Nap or Grind?</h1>
     <div class="header-actions">
       <button id="mission-btn" class="header-btn" title="Mission">Mission</button>
-      <button id="help-btn" class="header-btn" title="Help">?</button>
       <button id="mute-btn" class="header-btn" title="Toggle Sound">&#x1f50a;</button>
     </div>
   </header>
@@ -31,11 +30,11 @@
     </div>
   </div>
 
-  <!-- Main Layout -->
+  <!-- Main Layout — single column -->
   <main class="layout">
-    <!-- Left Panel: Inputs -->
+    <!-- Inputs -->
     <section class="panel panel-inputs">
-      <h2 class="panel-title">YOUR STATE RIGHT NOW</h2>
+      <h2 class="panel-title">Your state right now</h2>
 
       <div class="input-group" data-input="tiredness">
         <div class="input-header">
@@ -112,83 +111,102 @@
       </div>
     </section>
 
-    <!-- Center Panel: Visualization -->
-    <section class="panel panel-center">
-      <!-- Neural Network Diagram -->
-      <div class="viz-container">
-        <canvas id="nn-canvas" width="460" height="260"></canvas>
-      </div>
+    <!-- Bias slider -->
+    <div class="bias-bar">
+      <label class="bias-label">Baseline Sleepiness</label>
+      <input type="range" min="-100" max="100" value="25" class="slider bias-slider" id="slider-bias">
+      <span class="bias-value" id="value-bias">+0.25</span>
+    </div>
 
-      <!-- Output Card -->
-      <div class="output-card" id="output-card">
-        <div class="output-label">NAP PROBABILITY</div>
-        <div class="output-probability" id="output-probability">50%</div>
-        <div class="output-decision" id="output-decision">Nap</div>
-        <div class="output-flavor" id="output-flavor">It's honestly 50/50</div>
-      </div>
+    <!-- Output Card -->
+    <div class="output-card" id="output-card">
+      <div class="output-label">NAP PROBABILITY</div>
+      <div class="output-probability" id="output-probability">50%</div>
+      <div class="output-decision" id="output-decision">Nap</div>
+      <div class="output-flavor" id="output-flavor">It's honestly 50/50</div>
+    </div>
 
-      <!-- Decision Boundary Plot -->
-      <div class="boundary-section">
-        <h3 class="boundary-title">Decision Boundary</h3>
-        <div class="boundary-axes-labels">
-          <span class="axis-label-y">Stress: Zen &uarr; Spiraling</span>
-        </div>
-        <div class="boundary-wrapper">
-          <canvas id="boundary-canvas" width="400" height="400"></canvas>
-        </div>
-        <div class="axis-label-x">Just woke up &larr; Hours Since Sleep &rarr; Running on fumes</div>
-        <div class="held-inputs" id="held-inputs"></div>
-      </div>
-
-      <!-- Training Controls -->
-      <div class="training-controls">
-        <div class="label-toggle">
-          <button class="label-btn active" id="label-nap" data-label="1">Nap</button>
-          <button class="label-btn" id="label-grind" data-label="0">Grind</button>
-        </div>
-        <div class="train-buttons">
-          <button class="train-btn" id="btn-step">Step</button>
-          <button class="train-btn" id="btn-train">Train</button>
-          <button class="train-btn" id="btn-reset">Reset</button>
+    <!-- Toggle: Neural Network Diagram -->
+    <div class="toggle-section" id="toggle-viz">
+      <button class="toggle-btn" onclick="toggleSection('toggle-viz')">
+        Network Diagram
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <div class="viz-container">
+          <canvas id="nn-canvas" width="460" height="260"></canvas>
         </div>
       </div>
+    </div>
 
-      <!-- Training Stats -->
-      <div class="training-stats" id="training-stats">
-        <span>Steps: <strong id="stat-steps">0</strong></span>
-        <span>Accuracy: <strong id="stat-accuracy">--</strong></span>
-        <span>Points: <strong id="stat-points">0</strong></span>
-      </div>
+    <!-- Toggle: Decision Boundary + Training -->
+    <div class="toggle-section" id="toggle-boundary">
+      <button class="toggle-btn" onclick="toggleSection('toggle-boundary')">
+        Decision Boundary &amp; Training
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <section class="panel panel-center">
+          <div class="boundary-section">
+            <div class="boundary-axes-labels">
+              <span class="axis-label-y">Stress: Zen &uarr; Spiraling</span>
+            </div>
+            <div class="boundary-wrapper">
+              <canvas id="boundary-canvas" width="400" height="400"></canvas>
+            </div>
+            <div class="axis-label-x">Just woke up &larr; Hours Since Sleep &rarr; Running on fumes</div>
+            <div class="held-inputs" id="held-inputs"></div>
+          </div>
 
-      <!-- Milestone Banner -->
-      <div class="milestone-banner hidden" id="milestone-banner"></div>
-    </section>
+          <!-- Training Controls -->
+          <div class="training-controls">
+            <div class="label-toggle">
+              <button class="label-btn active" id="label-nap" data-label="1">Nap</button>
+              <button class="label-btn" id="label-grind" data-label="0">Grind</button>
+            </div>
+            <div class="train-buttons">
+              <button class="train-btn" id="btn-step">Step</button>
+              <button class="train-btn" id="btn-train">Train</button>
+              <button class="train-btn" id="btn-reset">Reset</button>
+            </div>
+          </div>
 
-    <!-- Right Panel: Math -->
-    <section class="panel panel-math">
-      <h2 class="panel-title">THE MATH</h2>
-      <div class="math-formula">
-        <div class="formula-line">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
-        <div class="formula-line">output = &sigma;(z) = 1/(1 + e<sup>-z</sup>)</div>
+          <!-- Training Stats -->
+          <div class="training-stats" id="training-stats">
+            <span>Steps: <strong id="stat-steps">0</strong></span>
+            <span>Accuracy: <strong id="stat-accuracy">--</strong></span>
+            <span>Points: <strong id="stat-points">0</strong></span>
+          </div>
+
+          <!-- Milestone Banner -->
+          <div class="milestone-banner hidden" id="milestone-banner"></div>
+        </section>
       </div>
-      <div class="math-separator"></div>
-      <div class="math-terms" id="math-terms">
-        <!-- Filled by JS -->
+    </div>
+
+    <!-- Toggle: Math Panel -->
+    <div class="toggle-section" id="toggle-math">
+      <button class="toggle-btn" onclick="toggleSection('toggle-math')">
+        The Math
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <section class="panel panel-math">
+          <div class="math-formula">
+            <div class="formula-line">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
+            <div class="formula-line">output = &sigma;(z) = 1/(1 + e<sup>-z</sup>)</div>
+          </div>
+          <div class="math-separator"></div>
+          <div class="math-terms" id="math-terms"></div>
+          <div class="math-separator"></div>
+          <div class="math-result">
+            <div class="math-z">z = <span id="math-z">0.000</span></div>
+            <div class="math-sigma">&sigma;(z) = <span id="math-sigma">0.500</span></div>
+          </div>
+        </section>
       </div>
-      <div class="math-separator"></div>
-      <div class="math-result">
-        <div class="math-z">z = <span id="math-z">0.000</span></div>
-        <div class="math-sigma">&sigma;(z) = <span id="math-sigma">0.500</span></div>
-      </div>
-    </section>
+    </div>
   </main>
-
-  <!-- Bias Bar -->
-  <footer class="bias-bar">
-    <label class="bias-label">Baseline Sleepiness (Bias)</label>
-    <input type="range" min="-100" max="100" value="25" class="slider bias-slider" id="slider-bias">
-    <span class="bias-value" id="value-bias">+0.25</span>
-  </footer>
 
   <!-- Confetti Canvas -->
   <canvas id="confetti-canvas"></canvas>

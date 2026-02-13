@@ -1,3 +1,24 @@
+// === Toggle Sections ===
+function toggleSection(id) {
+  const section = document.getElementById(id);
+  const wasOpen = section.classList.contains('open');
+  section.classList.toggle('open');
+
+  // Resize canvases when opening (they need layout to measure)
+  if (!wasOpen) {
+    setTimeout(() => {
+      if (id === 'toggle-viz') {
+        VIZ.resize();
+        VIZ.draw(state);
+      }
+      if (id === 'toggle-boundary') {
+        BOUNDARY.resize();
+        BOUNDARY.draw(state);
+      }
+    }, 50);
+  }
+}
+
 // === Main Application ===
 
 const INITIAL_WEIGHTS = {
@@ -178,9 +199,9 @@ function updateOutputCard() {
   const isNap = state.decision === 'Nap';
 
   document.getElementById('output-probability').textContent = pct + '%';
-  document.getElementById('output-probability').style.color = isNap ? '#a5b4fc' : '#fbbf24';
+  document.getElementById('output-probability').style.color = isNap ? '#6366f1' : '#d97706';
   document.getElementById('output-decision').textContent = isNap ? 'Nap' : 'Grind';
-  document.getElementById('output-decision').style.color = isNap ? '#a5b4fc' : '#fbbf24';
+  document.getElementById('output-decision').style.color = isNap ? '#6366f1' : '#d97706';
 
   const card = document.getElementById('output-card');
   card.className = 'output-card ' + (isNap ? 'nap' : 'grind');
@@ -409,10 +430,6 @@ function init() {
 
   // Mission modal
   document.getElementById('mission-btn').addEventListener('click', () => {
-    document.getElementById('mission-modal').classList.remove('hidden');
-  });
-
-  document.getElementById('help-btn').addEventListener('click', () => {
     document.getElementById('mission-modal').classList.remove('hidden');
   });
 

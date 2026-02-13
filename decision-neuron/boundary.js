@@ -14,6 +14,7 @@ const BOUNDARY = {
 
   resize() {
     const rect = this.canvas.getBoundingClientRect();
+    if (rect.width === 0) return; // hidden
     const dpr = window.devicePixelRatio || 1;
     this.canvas.width = rect.width * dpr;
     this.canvas.height = rect.height * dpr;
@@ -23,6 +24,7 @@ const BOUNDARY = {
   },
 
   draw(state) {
+    if (!this.size || this.size === 0) return;
     const ctx = this.ctx;
     const s = this.size;
     const p = this.padding;
@@ -30,14 +32,14 @@ const BOUNDARY = {
 
     ctx.clearRect(0, 0, s, s);
 
-    // Draw region colors by sampling the neuron
+    // Draw region colors — soft tints for light theme
     const resolution = 50;
     const cellSize = plotSize / resolution;
 
     for (let i = 0; i < resolution; i++) {
       for (let j = 0; j < resolution; j++) {
-        const xNorm = (i + 0.5) / resolution; // timeSinceSlept
-        const yNorm = 1 - (j + 0.5) / resolution; // stress (inverted for canvas)
+        const xNorm = (i + 0.5) / resolution;
+        const yNorm = 1 - (j + 0.5) / resolution;
 
         const fullInput = {
           tiredness: state.inputs.tiredness,
@@ -50,22 +52,20 @@ const BOUNDARY = {
         const result = forwardPass(fullInput, state.weights, state.bias);
         const prob = result.probability;
 
-        // Nap region: indigo, Grind region: amber
+        // Nap region: soft indigo, Grind region: soft amber
         if (prob >= 0.5) {
           const intensity = (prob - 0.5) * 2;
-          ctx.fillStyle = `rgba(30, 27, 75, ${0.3 + intensity * 0.5})`;
+          ctx.fillStyle = `rgba(99, 102, 241, ${0.06 + intensity * 0.18})`;
         } else {
           const intensity = (0.5 - prob) * 2;
-          ctx.fillStyle = `rgba(28, 18, 0, ${0.3 + intensity * 0.5})`;
+          ctx.fillStyle = `rgba(217, 119, 6, ${0.06 + intensity * 0.18})`;
         }
 
         ctx.fillRect(p + i * cellSize, p + j * cellSize, cellSize + 0.5, cellSize + 0.5);
       }
     }
 
-    // Draw decision boundary line (where sigmoid = 0.5, i.e., z = 0)
-    // z = w_tired*tired + w_urg*urg + w_work*work + w_sleep*sleepX + w_stress*stressY + b = 0
-    // Solve for stressY: stressY = -(w_tired*tired + w_urg*urg + w_work*work + w_sleep*sleepX + b) / w_stress
+    // Draw decision boundary line
     const wStress = state.weights.stress;
     if (Math.abs(wStress) > 0.001) {
       const constant = state.weights.tiredness * state.inputs.tiredness
@@ -74,14 +74,14 @@ const BOUNDARY = {
         + state.bias;
 
       ctx.beginPath();
-      ctx.strokeStyle = '#c4b5fd';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#c4b5fd';
-      ctx.shadowBlur = 6;
+      ctx.strokeStyle = '#7c3aed';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#7c3aed';
+      ctx.shadowBlur = 4;
 
       let started = false;
       for (let px = 0; px <= plotSize; px++) {
-        const xNorm = px / plotSize; // timeSinceSlept
+        const xNorm = px / plotSize;
         const stressVal = -(constant + state.weights.timeSinceSlept * xNorm) / wStress;
 
         if (stressVal >= 0 && stressVal <= 1) {
@@ -100,7 +100,7 @@ const BOUNDARY = {
     }
 
     // Draw axes
-    ctx.strokeStyle = '#2d2b50';
+    ctx.strokeStyle = '#c5d3e8';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(p, p);
@@ -109,7 +109,7 @@ const BOUNDARY = {
     ctx.stroke();
 
     // Tick marks
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#64748b';
     ctx.font = '9px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -119,7 +119,7 @@ const BOUNDARY = {
       ctx.beginPath();
       ctx.moveTo(x, s - p);
       ctx.lineTo(x, s - p + 4);
-      ctx.strokeStyle = '#94a3b8';
+      ctx.strokeStyle = '#64748b';
       ctx.stroke();
       ctx.fillText(val.toFixed(2), x, s - p + 6);
     }
@@ -132,7 +132,7 @@ const BOUNDARY = {
       ctx.beginPath();
       ctx.moveTo(p, y);
       ctx.lineTo(p - 4, y);
-      ctx.strokeStyle = '#94a3b8';
+      ctx.strokeStyle = '#64748b';
       ctx.stroke();
       ctx.fillText(val.toFixed(2), p - 6, y);
     }
@@ -145,17 +145,17 @@ const BOUNDARY = {
 
       ctx.beginPath();
       ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-      ctx.fillStyle = isNap ? 'rgba(165, 180, 252, 0.7)' : 'rgba(251, 191, 36, 0.7)';
+      ctx.fillStyle = isNap ? 'rgba(99, 102, 241, 0.6)' : 'rgba(217, 119, 6, 0.6)';
       ctx.fill();
-      ctx.strokeStyle = isNap ? '#a5b4fc' : '#fbbf24';
+      ctx.strokeStyle = isNap ? '#6366f1' : '#d97706';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Flash effect for triggered point
+      // Flash effect
       if (point.flash) {
         ctx.beginPath();
         ctx.arc(cx, cy, 10, 0, Math.PI * 2);
-        ctx.strokeStyle = isNap ? '#a5b4fc' : '#fbbf24';
+        ctx.strokeStyle = isNap ? '#6366f1' : '#d97706';
         ctx.lineWidth = 2;
         ctx.globalAlpha = point.flash;
         ctx.stroke();
@@ -173,19 +173,22 @@ const BOUNDARY = {
     ctx.beginPath();
     ctx.arc(youX, youY, 10, 0, Math.PI * 2);
     const glow = ctx.createRadialGradient(youX, youY, 2, youX, youY, 12);
-    glow.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
-    glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    glow.addColorStop(0, 'rgba(30, 41, 59, 0.5)');
+    glow.addColorStop(1, 'rgba(30, 41, 59, 0)');
     ctx.fillStyle = glow;
     ctx.fill();
 
     // Dot
     ctx.beginPath();
     ctx.arc(youX, youY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#1e293b';
     ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
     // Label
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = '#1e293b';
     ctx.font = '9px "Fira Code", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
@@ -194,8 +197,6 @@ const BOUNDARY = {
 
   getPlotCoords(event) {
     const rect = this.canvas.getBoundingClientRect();
-    const scaleX = rect.width;
-    const scaleY = rect.height;
     const plotSize = this.size - this.padding * 2;
 
     const mouseX = (event.clientX - rect.left);
