@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nap or Grind? - Decision Neuron</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1 class="header-title">Nap or Grind?</h1>
+    <div class="header-actions">
+      <button id="mission-btn" class="header-btn" title="Mission">Mission</button>
+      <button id="help-btn" class="header-btn" title="Help">?</button>
+      <button id="mute-btn" class="header-btn" title="Toggle Sound">&#x1f50a;</button>
+    </div>
+  </header>
+
+  <!-- Mission Modal -->
+  <div id="mission-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Mission</h2>
+      <p>This single neuron decides: <strong>should you nap or grind?</strong></p>
+      <p>Adjust your current state with the sliders. The neuron computes a weighted sum, passes it through a sigmoid, and outputs a probability.</p>
+      <p>In <strong>Training Mode</strong>, click the boundary plot to place labeled points, then train the neuron to learn your decision style!</p>
+      <button class="modal-close" onclick="document.getElementById('mission-modal').classList.add('hidden')">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <main class="layout">
+    <!-- Left Panel: Inputs -->
+    <section class="panel panel-inputs">
+      <h2 class="panel-title">YOUR STATE RIGHT NOW</h2>
+
+      <div class="input-group" data-input="tiredness">
+        <div class="input-header">
+          <label>Tiredness Level</label>
+          <span class="weight-badge positive">w: +0.85</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">Fresh</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-tiredness">
+          <span class="slider-label-right">Exhausted</span>
+        </div>
+        <div class="input-value" id="value-tiredness">0.50</div>
+      </div>
+
+      <div class="input-group" data-input="urgency">
+        <div class="input-header">
+          <label>Deadline Pressure</label>
+          <span class="weight-badge negative">w: -0.90</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">No rush</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-urgency">
+          <span class="slider-label-right">Due now!</span>
+        </div>
+        <div class="input-value" id="value-urgency">0.50</div>
+      </div>
+
+      <div class="input-group" data-input="workLength">
+        <div class="input-header">
+          <label>Work Length</label>
+          <span class="weight-badge negative">w: -0.40</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">15 min</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-workLength">
+          <span class="slider-label-right">All night</span>
+        </div>
+        <div class="input-value" id="value-workLength">0.50</div>
+      </div>
+
+      <div class="input-group" data-input="timeSinceSlept">
+        <div class="input-header">
+          <label>Hours Since Sleep</label>
+          <span class="weight-badge positive">w: +0.75</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">Just woke up</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-timeSinceSlept">
+          <span class="slider-label-right">24h+ ago</span>
+        </div>
+        <div class="input-value" id="value-timeSinceSlept">0.50</div>
+      </div>
+
+      <div class="input-group" data-input="stress">
+        <div class="input-header">
+          <label>Stress Level</label>
+          <span class="weight-badge positive">w: +0.50</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">Zen</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-stress">
+          <span class="slider-label-right">Spiraling</span>
+        </div>
+        <div class="input-value" id="value-stress">0.50</div>
+      </div>
+
+      <!-- Presets -->
+      <div class="presets">
+        <h3 class="presets-title">Presets</h3>
+        <button class="preset-btn" data-preset="exam">2am before exam</button>
+        <button class="preset-btn" data-preset="sunday">Sunday afternoon</button>
+        <button class="preset-btn" data-preset="postlunch">Post-lunch slump</button>
+        <button class="preset-btn" data-preset="coffee">Coffee just hit</button>
+      </div>
+    </section>
+
+    <!-- Center Panel: Visualization -->
+    <section class="panel panel-center">
+      <!-- Neural Network Diagram -->
+      <div class="viz-container">
+        <canvas id="nn-canvas" width="460" height="260"></canvas>
+      </div>
+
+      <!-- Output Card -->
+      <div class="output-card" id="output-card">
+        <div class="output-label">NAP PROBABILITY</div>
+        <div class="output-probability" id="output-probability">50%</div>
+        <div class="output-decision" id="output-decision">Nap</div>
+        <div class="output-flavor" id="output-flavor">It's honestly 50/50</div>
+      </div>
+
+      <!-- Decision Boundary Plot -->
+      <div class="boundary-section">
+        <h3 class="boundary-title">Decision Boundary</h3>
+        <div class="boundary-axes-labels">
+          <span class="axis-label-y">Stress: Zen &uarr; Spiraling</span>
+        </div>
+        <div class="boundary-wrapper">
+          <canvas id="boundary-canvas" width="400" height="400"></canvas>
+        </div>
+        <div class="axis-label-x">Just woke up &larr; Hours Since Sleep &rarr; Running on fumes</div>
+        <div class="held-inputs" id="held-inputs"></div>
+      </div>
+
+      <!-- Training Controls -->
+      <div class="training-controls">
+        <div class="label-toggle">
+          <button class="label-btn active" id="label-nap" data-label="1">Nap</button>
+          <button class="label-btn" id="label-grind" data-label="0">Grind</button>
+        </div>
+        <div class="train-buttons">
+          <button class="train-btn" id="btn-step">Step</button>
+          <button class="train-btn" id="btn-train">Train</button>
+          <button class="train-btn" id="btn-reset">Reset</button>
+        </div>
+      </div>
+
+      <!-- Training Stats -->
+      <div class="training-stats" id="training-stats">
+        <span>Steps: <strong id="stat-steps">0</strong></span>
+        <span>Accuracy: <strong id="stat-accuracy">--</strong></span>
+        <span>Points: <strong id="stat-points">0</strong></span>
+      </div>
+
+      <!-- Milestone Banner -->
+      <div class="milestone-banner hidden" id="milestone-banner"></div>
+    </section>
+
+    <!-- Right Panel: Math -->
+    <section class="panel panel-math">
+      <h2 class="panel-title">THE MATH</h2>
+      <div class="math-formula">
+        <div class="formula-line">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
+        <div class="formula-line">output = &sigma;(z) = 1/(1 + e<sup>-z</sup>)</div>
+      </div>
+      <div class="math-separator"></div>
+      <div class="math-terms" id="math-terms">
+        <!-- Filled by JS -->
+      </div>
+      <div class="math-separator"></div>
+      <div class="math-result">
+        <div class="math-z">z = <span id="math-z">0.000</span></div>
+        <div class="math-sigma">&sigma;(z) = <span id="math-sigma">0.500</span></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bias Bar -->
+  <footer class="bias-bar">
+    <label class="bias-label">Baseline Sleepiness (Bias)</label>
+    <input type="range" min="-100" max="100" value="25" class="slider bias-slider" id="slider-bias">
+    <span class="bias-value" id="value-bias">+0.25</span>
+  </footer>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <script src="neuron.js"></script>
+  <script src="viz.js"></script>
+  <script src="boundary.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

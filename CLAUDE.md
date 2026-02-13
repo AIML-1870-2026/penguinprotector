@@ -49,7 +49,7 @@ When I say "Show my URLs" or "Where's my stuff?":
 2. For each, show the live URL pattern
 
 ## Coding Standards
-- Single HTML file projects preferred (unless specified otherwise)
+- Each project should be broken into separate files: `index.html`, `style.css`, and `script.js`
 - No personally identifiable information in code or comments
 - Use descriptive folder names (e.g., "Julia-Set-Explorer" not "assignment3")
 
