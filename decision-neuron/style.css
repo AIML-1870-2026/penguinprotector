@@ -339,9 +339,9 @@ body {
 
 .neuron-ring {
   position: absolute;
-  top: 0;
+  top: -7px;
   left: 50%;
-  transform: translateX(-50%);
+  margin-left: -107px;
   width: 214px;
   height: 214px;
   border-radius: 50%;
@@ -353,7 +353,6 @@ body {
   );
   animation: neuronPulse 3s ease-in-out infinite, ringRotate 6s linear infinite;
   z-index: 1;
-  margin-top: -7px;
 }
 
 .neuron-ring.grind {
@@ -832,6 +831,7 @@ body {
   .neuron-ring {
     width: 174px;
     height: 174px;
+    margin-left: -87px;
   }
 
   .neuron-pct {
