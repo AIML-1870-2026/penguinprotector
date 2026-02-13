@@ -180,6 +180,91 @@ function fireConfetti() {
   animate();
 }
 
+// === Slider Fill ===
+function updateSliderFills() {
+  const inputKeys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
+  for (const key of inputKeys) {
+    const slider = document.getElementById(`slider-${key}`);
+    const pct = ((slider.value - slider.min) / (slider.max - slider.min)) * 100;
+    slider.style.setProperty('--fill', pct + '%');
+  }
+}
+
+// === Contribution Labels ===
+function updateContributionLabels() {
+  const inputKeys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
+  for (const key of inputKeys) {
+    const contrib = state.inputs[key] * state.weights[key];
+    const el = document.getElementById(`contrib-${key}`);
+    if (el) {
+      el.textContent = (contrib >= 0 ? '+' : '') + contrib.toFixed(3);
+    }
+  }
+}
+
+// === Connection Lines ===
+const connectionCanvas = document.getElementById('connection-canvas');
+const connectionCtx = connectionCanvas ? connectionCanvas.getContext('2d') : null;
+let connectionAnimFrame = null;
+let connectionPhase = 0;
+
+function drawConnections() {
+  if (!connectionCtx) return;
+  const canvas = connectionCanvas;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const neuronEl = document.getElementById('neuron-circle');
+  const neuronRect = neuronEl.getBoundingClientRect();
+  const neuronCX = neuronRect.left + neuronRect.width / 2;
+  const neuronCY = neuronRect.top + neuronRect.height / 2;
+
+  const inputKeys = ['tiredness', 'timeSinceSlept', 'stress', 'urgency', 'workLength'];
+  connectionPhase += 0.02;
+
+  connectionCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (const key of inputKeys) {
+    const slider = document.getElementById(`slider-${key}`);
+    if (!slider) continue;
+    const sliderRect = slider.getBoundingClientRect();
+    const sx = sliderRect.left + sliderRect.width / 2;
+    const sy = sliderRect.top + sliderRect.height / 2;
+
+    const w = state.weights[key];
+    const contribution = Math.abs(state.inputs[key] * w);
+    const isPositive = w >= 0;
+
+    // Line color
+    const color = isPositive ? 'rgba(99, 102, 241,' : 'rgba(217, 119, 6,';
+    const alpha = 0.1 + contribution * 0.5;
+
+    connectionCtx.beginPath();
+    connectionCtx.moveTo(sx, sy);
+
+    // Curved line
+    const cpx = (sx + neuronCX) / 2;
+    const cpy = (sy + neuronCY) / 2 - 20;
+    connectionCtx.quadraticCurveTo(cpx, cpy, neuronCX, neuronCY);
+
+    connectionCtx.strokeStyle = color + alpha.toFixed(2) + ')';
+    connectionCtx.lineWidth = 1 + contribution * 3;
+    connectionCtx.stroke();
+
+    // Animated dot traveling along the line
+    const t = ((connectionPhase + inputKeys.indexOf(key) * 0.15) % 1);
+    const dotX = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cpx + t * t * neuronCX;
+    const dotY = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cpy + t * t * neuronCY;
+
+    connectionCtx.beginPath();
+    connectionCtx.arc(dotX, dotY, 2.5 + contribution * 2, 0, Math.PI * 2);
+    connectionCtx.fillStyle = color + Math.min(alpha + 0.3, 0.8).toFixed(2) + ')';
+    connectionCtx.fill();
+  }
+
+  connectionAnimFrame = requestAnimationFrame(drawConnections);
+}
+
 // === Update Logic ===
 function updateNeuron() {
   const result = forwardPass(state.inputs, state.weights, state.bias);
@@ -190,6 +275,8 @@ function updateNeuron() {
   updateOutputCard();
   updateMathPanel(result);
   updateHeldInputs();
+  updateSliderFills();
+  updateContributionLabels();
   BOUNDARY.draw(state);
 }
 
@@ -198,16 +285,19 @@ function updateOutputCard() {
   const pct = Math.round(prob * 100);
   const isNap = state.decision === 'Nap';
 
-  // Update neuron circle
+  // Update neuron circle + ring
   const circle = document.getElementById('neuron-circle');
+  const ring = document.getElementById('neuron-ring');
   const pctEl = document.getElementById('neuron-pct');
   pctEl.textContent = pct + '%';
 
   if (isNap) {
     circle.classList.remove('grind');
+    ring.classList.remove('grind');
     pctEl.classList.remove('grind');
   } else {
     circle.classList.add('grind');
+    ring.classList.add('grind');
     pctEl.classList.add('grind');
   }
 
@@ -508,7 +598,12 @@ function init() {
   // Initial render
   updateWeightBadges();
   updateTrainingStats();
+  updateSliderFills();
+  updateContributionLabels();
   updateNeuron();
+
+  // Start connection line animation
+  drawConnections();
 }
 
 document.addEventListener('DOMContentLoaded', init);

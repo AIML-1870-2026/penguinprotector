@@ -131,6 +131,7 @@ body {
   max-width: 960px;
   margin: 0 auto;
   padding: 24px 32px 16px;
+  position: relative;
 }
 
 .side-inputs {
@@ -240,6 +241,18 @@ body {
   outline: none;
 }
 
+.side-left .slider {
+  background: linear-gradient(to right, var(--nap-color), var(--nap-color)) no-repeat,
+              var(--slider-track);
+  background-size: var(--fill, 50%) 100%;
+}
+
+.side-right .slider {
+  background: linear-gradient(to right, var(--grind-color), var(--grind-color)) no-repeat,
+              var(--slider-track);
+  background-size: var(--fill, 50%) 100%;
+}
+
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -266,31 +279,97 @@ body {
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
+.side-right .slider::-webkit-slider-thumb {
+  background: var(--grind-color);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+.side-right .slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 2px 14px rgba(217, 119, 6, 0.45);
+}
+
+.side-right .slider::-moz-range-thumb {
+  background: var(--grind-color);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* === Contribution Label === */
+.contribution-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
+  text-align: center;
+  margin-top: 2px;
+  transition: color 0.3s;
+}
+
+.side-left .contribution-label {
+  color: var(--nap-light);
+}
+
+.side-right .contribution-label {
+  color: var(--grind-light);
+}
+
 /* === Neuron Hero (center column) === */
 .neuron-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  position: relative;
 }
 
 .neuron-circle {
-  width: 160px;
-  height: 160px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   background: var(--card);
-  border: 3px solid var(--nap-color);
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.06), 0 8px 32px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.4s, box-shadow 0.4s;
+  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.08),
+              0 0 0 12px rgba(99, 102, 241, 0.04),
+              0 8px 32px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.4s;
   animation: neuronPulse 3s ease-in-out infinite;
+  position: relative;
+  z-index: 2;
+}
+
+.neuron-ring {
+  position: absolute;
+  width: 214px;
+  height: 214px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--nap-color),
+    var(--nap-light),
+    var(--boundary),
+    var(--nap-color)
+  );
+  animation: neuronPulse 3s ease-in-out infinite, ringRotate 6s linear infinite;
+  z-index: 1;
+}
+
+.neuron-ring.grind {
+  background: conic-gradient(
+    var(--grind-color),
+    var(--grind-light),
+    #ef4444,
+    var(--grind-color)
+  );
+}
+
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .neuron-circle.grind {
-  border-color: var(--grind-color);
-  box-shadow: 0 0 0 10px rgba(217, 119, 6, 0.06), 0 8px 32px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 0 5px rgba(217, 119, 6, 0.08),
+              0 0 0 12px rgba(217, 119, 6, 0.04),
+              0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes neuronPulse {
@@ -688,6 +767,17 @@ body {
   color: var(--text-primary);
 }
 
+/* === Connection Lines Canvas === */
+#connection-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* === Confetti Canvas === */
 #confetti-canvas {
   position: fixed;
@@ -709,13 +799,13 @@ body {
 }
 
 @keyframes flashCorrect {
-  0%, 100% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.06), 0 8px 32px rgba(0,0,0,0.06); }
-  50% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.2), 0 0 24px rgba(34, 197, 94, 0.25); }
+  0%, 100% { box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.08), 0 0 0 12px rgba(99, 102, 241, 0.04), 0 8px 32px rgba(0,0,0,0.08); }
+  50% { box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.2), 0 0 24px rgba(34, 197, 94, 0.25); }
 }
 
 @keyframes flashIncorrect {
-  0%, 100% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0.06), 0 8px 32px rgba(0,0,0,0.06); }
-  50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.15), 0 0 24px rgba(239, 68, 68, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.08), 0 0 0 12px rgba(99, 102, 241, 0.04), 0 8px 32px rgba(0,0,0,0.08); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.15), 0 0 24px rgba(239, 68, 68, 0.2); }
 }
 
 /* === Responsive === */
@@ -731,8 +821,13 @@ body {
   }
 
   .neuron-circle {
-    width: 130px;
-    height: 130px;
+    width: 160px;
+    height: 160px;
+  }
+
+  .neuron-ring {
+    width: 174px;
+    height: 174px;
   }
 
   .neuron-pct {

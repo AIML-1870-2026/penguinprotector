@@ -30,8 +30,11 @@
     </div>
   </div>
 
+  <!-- Connection Lines Canvas -->
+  <canvas id="connection-canvas"></canvas>
+
   <!-- 3-Column Hero: Left inputs | Neuron | Right inputs -->
-  <section class="hero-grid">
+  <section class="hero-grid" id="hero-grid">
     <!-- Left: Nap-leaning inputs (positive weights) -->
     <div class="side-inputs side-left">
       <h3 class="side-title">Nap factors</h3>
@@ -47,6 +50,7 @@
           <span class="slider-label-right">Exhausted</span>
         </div>
         <div class="input-value" id="value-tiredness">0.50</div>
+        <div class="contribution-label" id="contrib-tiredness">+0.425</div>
       </div>
 
       <div class="input-group" data-input="timeSinceSlept">
@@ -60,6 +64,7 @@
           <span class="slider-label-right">24h+ ago</span>
         </div>
         <div class="input-value" id="value-timeSinceSlept">0.50</div>
+        <div class="contribution-label" id="contrib-timeSinceSlept">+0.375</div>
       </div>
 
       <div class="input-group" data-input="stress">
@@ -73,11 +78,13 @@
           <span class="slider-label-right">Spiraling</span>
         </div>
         <div class="input-value" id="value-stress">0.50</div>
+        <div class="contribution-label" id="contrib-stress">+0.250</div>
       </div>
     </div>
 
     <!-- Center: Neuron -->
     <div class="neuron-hero" id="neuron-hero">
+      <div class="neuron-ring" id="neuron-ring"></div>
       <div class="neuron-circle" id="neuron-circle">
         <span class="neuron-pct" id="neuron-pct">50%</span>
       </div>
@@ -100,6 +107,7 @@
           <span class="slider-label-right">Due now!</span>
         </div>
         <div class="input-value" id="value-urgency">0.50</div>
+        <div class="contribution-label" id="contrib-urgency">-0.450</div>
       </div>
 
       <div class="input-group" data-input="workLength">
@@ -113,6 +121,7 @@
           <span class="slider-label-right">All night</span>
         </div>
         <div class="input-value" id="value-workLength">0.50</div>
+        <div class="contribution-label" id="contrib-workLength">-0.200</div>
       </div>
     </div>
   </section>
