@@ -30,15 +30,15 @@
     </div>
   </div>
 
-  <!-- Main Layout — single column -->
-  <main class="layout">
-    <!-- Inputs -->
-    <section class="panel panel-inputs">
-      <h2 class="panel-title">Your state right now</h2>
+  <!-- 3-Column Hero: Left inputs | Neuron | Right inputs -->
+  <section class="hero-grid">
+    <!-- Left: Nap-leaning inputs (positive weights) -->
+    <div class="side-inputs side-left">
+      <h3 class="side-title">Nap factors</h3>
 
       <div class="input-group" data-input="tiredness">
         <div class="input-header">
-          <label>Tiredness Level</label>
+          <label>Tiredness</label>
           <span class="weight-badge positive">w: +0.85</span>
         </div>
         <div class="slider-row">
@@ -47,32 +47,6 @@
           <span class="slider-label-right">Exhausted</span>
         </div>
         <div class="input-value" id="value-tiredness">0.50</div>
-      </div>
-
-      <div class="input-group" data-input="urgency">
-        <div class="input-header">
-          <label>Deadline Pressure</label>
-          <span class="weight-badge negative">w: -0.90</span>
-        </div>
-        <div class="slider-row">
-          <span class="slider-label-left">No rush</span>
-          <input type="range" min="0" max="100" value="50" class="slider" id="slider-urgency">
-          <span class="slider-label-right">Due now!</span>
-        </div>
-        <div class="input-value" id="value-urgency">0.50</div>
-      </div>
-
-      <div class="input-group" data-input="workLength">
-        <div class="input-header">
-          <label>Work Length</label>
-          <span class="weight-badge negative">w: -0.40</span>
-        </div>
-        <div class="slider-row">
-          <span class="slider-label-left">15 min</span>
-          <input type="range" min="0" max="100" value="50" class="slider" id="slider-workLength">
-          <span class="slider-label-right">All night</span>
-        </div>
-        <div class="input-value" id="value-workLength">0.50</div>
       </div>
 
       <div class="input-group" data-input="timeSinceSlept">
@@ -100,25 +74,9 @@
         </div>
         <div class="input-value" id="value-stress">0.50</div>
       </div>
-
-      <!-- Presets -->
-      <div class="presets">
-        <h3 class="presets-title">Presets</h3>
-        <button class="preset-btn" data-preset="exam">2am before exam</button>
-        <button class="preset-btn" data-preset="sunday">Sunday afternoon</button>
-        <button class="preset-btn" data-preset="postlunch">Post-lunch slump</button>
-        <button class="preset-btn" data-preset="coffee">Coffee just hit</button>
-      </div>
-    </section>
-
-    <!-- Bias slider -->
-    <div class="bias-bar">
-      <label class="bias-label">Baseline Sleepiness</label>
-      <input type="range" min="-100" max="100" value="25" class="slider bias-slider" id="slider-bias">
-      <span class="bias-value" id="value-bias">+0.25</span>
     </div>
 
-    <!-- Neuron Circle -->
+    <!-- Center: Neuron -->
     <div class="neuron-hero" id="neuron-hero">
       <div class="neuron-circle" id="neuron-circle">
         <span class="neuron-pct" id="neuron-pct">50%</span>
@@ -127,7 +85,57 @@
       <div class="neuron-flavor" id="neuron-flavor">It's honestly 50/50</div>
     </div>
 
-    <!-- Toggle: Neural Network Diagram -->
+    <!-- Right: Grind-leaning inputs (negative weights) -->
+    <div class="side-inputs side-right">
+      <h3 class="side-title">Grind factors</h3>
+
+      <div class="input-group" data-input="urgency">
+        <div class="input-header">
+          <label>Deadline Pressure</label>
+          <span class="weight-badge negative">w: -0.90</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">No rush</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-urgency">
+          <span class="slider-label-right">Due now!</span>
+        </div>
+        <div class="input-value" id="value-urgency">0.50</div>
+      </div>
+
+      <div class="input-group" data-input="workLength">
+        <div class="input-header">
+          <label>Work Length</label>
+          <span class="weight-badge negative">w: -0.40</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label-left">15 min</span>
+          <input type="range" min="0" max="100" value="50" class="slider" id="slider-workLength">
+          <span class="slider-label-right">All night</span>
+        </div>
+        <div class="input-value" id="value-workLength">0.50</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bias + Presets row -->
+  <section class="below-hero">
+    <div class="bias-bar">
+      <label class="bias-label">Baseline Sleepiness</label>
+      <input type="range" min="-100" max="100" value="25" class="slider bias-slider" id="slider-bias">
+      <span class="bias-value" id="value-bias">+0.25</span>
+    </div>
+
+    <div class="presets">
+      <button class="preset-btn" data-preset="exam">2am before exam</button>
+      <button class="preset-btn" data-preset="sunday">Sunday afternoon</button>
+      <button class="preset-btn" data-preset="postlunch">Post-lunch slump</button>
+      <button class="preset-btn" data-preset="coffee">Coffee just hit</button>
+    </div>
+  </section>
+
+  <!-- Toggles row -->
+  <section class="toggles-row">
+    <!-- Toggle: Network Diagram -->
     <div class="toggle-section" id="toggle-viz">
       <button class="toggle-btn" onclick="toggleSection('toggle-viz')">
         Network Diagram
@@ -159,7 +167,6 @@
             <div class="held-inputs" id="held-inputs"></div>
           </div>
 
-          <!-- Training Controls -->
           <div class="training-controls">
             <div class="label-toggle">
               <button class="label-btn active" id="label-nap" data-label="1">Nap</button>
@@ -172,16 +179,29 @@
             </div>
           </div>
 
-          <!-- Training Stats -->
           <div class="training-stats" id="training-stats">
             <span>Steps: <strong id="stat-steps">0</strong></span>
             <span>Accuracy: <strong id="stat-accuracy">--</strong></span>
             <span>Points: <strong id="stat-points">0</strong></span>
           </div>
 
-          <!-- Milestone Banner -->
           <div class="milestone-banner hidden" id="milestone-banner"></div>
         </section>
+      </div>
+    </div>
+
+    <!-- Toggle: About This Project -->
+    <div class="toggle-section" id="toggle-about">
+      <button class="toggle-btn" onclick="toggleSection('toggle-about')">
+        About This Project
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <div class="about-card">
+          <p>This was built for my vibe coding class. The assignment was to create a single-neuron classifier that takes real inputs and makes a binary decision using a sigmoid activation function.</p>
+          <p>I chose the most relatable decision in student life: <strong>should I nap or actually do my work?</strong></p>
+          <p>The neuron takes 5 inputs about your current state, multiplies each by a learned weight, adds a bias, and passes the sum through a sigmoid to get a probability. You can also train it by placing points on the decision boundary plot and watching the weights update in real time.</p>
+        </div>
       </div>
     </div>
 
@@ -207,7 +227,7 @@
         </section>
       </div>
     </div>
-  </main>
+  </section>
 
   <!-- Confetti Canvas -->
   <canvas id="confetti-canvas"></canvas>
