@@ -244,6 +244,100 @@
       </div>
     </div>
 
+    <!-- Toggle: Two-Neuron Chain -->
+    <div class="toggle-section" id="toggle-chain">
+      <button class="toggle-btn" onclick="toggleSection('toggle-chain')">
+        Two-Neuron Chain
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <div class="chain-container">
+          <!-- Neuron 1 Summary -->
+          <div class="chain-n1">
+            <div class="chain-neuron-label">Neuron 1</div>
+            <div class="chain-n1-inputs" id="chain-n1-inputs"></div>
+            <div class="chain-n1-output">
+              <div class="chain-mini-neuron nap" id="chain-n1-circle">
+                <span id="chain-n1-pct">50%</span>
+              </div>
+              <div class="chain-val-label">a<sub>1</sub> = <span id="chain-n1-a">0.500</span></div>
+            </div>
+          </div>
+
+          <!-- Chain Synapse -->
+          <div class="chain-synapse">
+            <canvas id="chain-canvas" width="200" height="200"></canvas>
+            <div class="chain-weight-control">
+              <label class="chain-weight-label">Chain Weight</label>
+              <input type="range" min="-100" max="100" value="80" class="slider chain-slider" id="slider-chainWeight">
+              <span class="chain-weight-value" id="value-chainWeight">+0.80</span>
+            </div>
+          </div>
+
+          <!-- Neuron 2 -->
+          <div class="chain-n2">
+            <div class="chain-neuron-label">Neuron 2</div>
+            <div class="chain-n2-inputs">
+              <div class="chain-input-group">
+                <div class="chain-input-header">
+                  <label>Budget Available</label>
+                  <span class="weight-badge negative">w: -0.60</span>
+                </div>
+                <div class="slider-row">
+                  <span class="slider-label-left">Broke</span>
+                  <input type="range" min="0" max="100" value="50" class="slider chain-grind-slider" id="slider-budget">
+                  <span class="slider-label-right">Loaded</span>
+                </div>
+                <div class="input-value" id="value-budget">0.50</div>
+              </div>
+
+              <div class="chain-input-group">
+                <div class="chain-input-header">
+                  <label>Partner Approval</label>
+                  <span class="weight-badge negative">w: -0.70</span>
+                </div>
+                <div class="slider-row">
+                  <span class="slider-label-left">Solo</span>
+                  <input type="range" min="0" max="100" value="50" class="slider chain-grind-slider" id="slider-partner">
+                  <span class="slider-label-right">Team ready</span>
+                </div>
+                <div class="input-value" id="value-partner">0.50</div>
+              </div>
+
+              <div class="chain-bias-row">
+                <label class="bias-label">Bias b<sub>2</sub></label>
+                <input type="range" min="-100" max="100" value="10" class="slider chain-slider" id="slider-n2Bias">
+                <span class="bias-value" id="value-n2Bias">+0.10</span>
+              </div>
+            </div>
+
+            <div class="chain-n2-output">
+              <div class="chain-mini-neuron nap" id="chain-n2-circle">
+                <span id="chain-n2-pct">50%</span>
+              </div>
+              <div class="chain-decision" id="chain-n2-decision">Nap</div>
+              <div class="chain-flavor" id="chain-n2-flavor">Final output</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chain Math -->
+        <div class="chain-math">
+          <div class="chain-math-stage">
+            <div class="chain-math-title">Neuron 1</div>
+            <div class="chain-math-line">z<sub>1</sub> = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b<sub>1</sub> = <span class="chain-math-val" id="chain-math-z1">0.000</span></div>
+            <div class="chain-math-line">a<sub>1</sub> = &sigma;(z<sub>1</sub>) = <span class="chain-math-val" id="chain-math-a1">0.500</span></div>
+          </div>
+          <div class="chain-math-arrow">&rarr;</div>
+          <div class="chain-math-stage">
+            <div class="chain-math-title">Neuron 2</div>
+            <div class="chain-math-line">z<sub>2</sub> = w<sub>chain</sub>&middot;a<sub>1</sub> + w<sub>6</sub>&middot;x<sub>6</sub> + w<sub>7</sub>&middot;x<sub>7</sub> + b<sub>2</sub> = <span class="chain-math-val" id="chain-math-z2">0.000</span></div>
+            <div class="chain-math-line">output = &sigma;(z<sub>2</sub>) = <span class="chain-math-val" id="chain-math-a2">0.500</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toggle: About This Project -->
     <div class="toggle-section" id="toggle-about">
       <button class="toggle-btn" onclick="toggleSection('toggle-about')">
@@ -290,6 +384,7 @@
   <script src="viz.js"></script>
   <script src="heatmap.js"></script>
   <script src="boundary.js"></script>
+  <script src="chain.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

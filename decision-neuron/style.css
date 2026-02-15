@@ -995,6 +995,275 @@ body {
   }
 }
 
+/* === Two-Neuron Chain === */
+.chain-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.chain-n1,
+.chain-n2 {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.chain-neuron-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+.chain-n1-inputs {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+  text-align: center;
+  width: 100%;
+}
+
+.chain-n1-input-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.chain-n1-input-line .chain-input-name {
+  color: var(--text-muted);
+}
+
+.chain-n1-input-line .chain-input-val {
+  font-weight: 600;
+}
+
+.chain-n1-input-line.positive .chain-input-val {
+  color: var(--nap-color);
+}
+
+.chain-n1-input-line.negative .chain-input-val {
+  color: var(--grind-color);
+}
+
+.chain-n1-output,
+.chain-n2-output {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chain-mini-neuron {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08),
+              0 0 0 8px rgba(99, 102, 241, 0.04),
+              0 4px 16px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.4s;
+  animation: neuronPulse 3s ease-in-out infinite;
+}
+
+.chain-mini-neuron.nap {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08),
+              0 0 0 8px rgba(99, 102, 241, 0.04),
+              0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.chain-mini-neuron.grind {
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.08),
+              0 0 0 8px rgba(217, 119, 6, 0.04),
+              0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.chain-mini-neuron span {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--nap-color);
+  transition: color 0.4s;
+}
+
+.chain-mini-neuron.grind span {
+  color: var(--grind-color);
+}
+
+.chain-val-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.chain-val-label span {
+  color: var(--boundary);
+  font-weight: 600;
+}
+
+.chain-decision {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--nap-color);
+  transition: color 0.3s;
+}
+
+.chain-flavor {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Chain Synapse */
+.chain-synapse {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+#chain-canvas {
+  width: 140px;
+  height: 200px;
+  display: block;
+}
+
+.chain-weight-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.chain-weight-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chain-slider {
+  width: 120px;
+}
+
+.chain-grind-slider {
+  background: linear-gradient(to right, var(--grind-color), var(--grind-color)) no-repeat,
+              var(--slider-track);
+  background-size: var(--fill, 50%) 100%;
+}
+
+.chain-grind-slider::-webkit-slider-thumb {
+  background: var(--grind-color) !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3) !important;
+}
+
+.chain-grind-slider::-moz-range-thumb {
+  background: var(--grind-color) !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3) !important;
+}
+
+.chain-weight-value {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.72rem;
+  color: var(--boundary);
+}
+
+/* Chain N2 Inputs */
+.chain-n2-inputs {
+  width: 100%;
+}
+
+.chain-input-group {
+  margin-bottom: 12px;
+}
+
+.chain-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.chain-input-header label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.chain-bias-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chain-bias-row .bias-label {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.chain-bias-row .slider {
+  flex: 1;
+}
+
+/* Chain Math */
+.chain-math {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 14px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-family: 'Fira Code', monospace;
+}
+
+.chain-math-stage {
+  flex: 1;
+}
+
+.chain-math-title {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.chain-math-line {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 2;
+}
+
+.chain-math-val {
+  color: var(--boundary);
+  font-weight: 600;
+}
+
+.chain-math-arrow {
+  font-size: 1.2rem;
+  color: var(--text-light);
+  padding-top: 20px;
+  flex-shrink: 0;
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .hero-grid {
@@ -1032,6 +1301,32 @@ body {
 
   .toggles-row {
     padding: 0 20px 24px;
+  }
+
+  .chain-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chain-synapse {
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+  }
+
+  #chain-canvas {
+    width: 100px;
+    height: 80px;
+  }
+
+  .chain-math {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chain-math-arrow {
+    text-align: center;
+    padding-top: 0;
   }
 }
 

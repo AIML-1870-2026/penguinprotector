@@ -19,6 +19,10 @@ function toggleSection(id) {
         BOUNDARY.resize();
         BOUNDARY.draw(state);
       }
+      if (id === 'toggle-chain') {
+        CHAIN.resize();
+        CHAIN.draw(state);
+      }
     }, 50);
   }
 }
@@ -125,6 +129,14 @@ const state = {
   accuracy: null,
   isTraining: false,
   muted: false,
+  // Two-Neuron Chain
+  chainWeight: 0.80,
+  n2Inputs: { budget: 0.5, partner: 0.5 },
+  n2Weights: { budget: -0.60, partner: -0.70 },
+  n2Bias: 0.10,
+  n2Z: 0,
+  n2Probability: 0.5,
+  n2Decision: 'Nap',
 };
 
 // Expose state globally for viz
@@ -330,6 +342,7 @@ function updateNeuron() {
   HEATMAP.draw(state);
   updateHeatmapHeld();
   BOUNDARY.draw(state);
+  updateChainPanel();
 }
 
 function updateHeatmapHeld() {
@@ -390,6 +403,83 @@ function updateMathPanel(result) {
 function updateHeldInputs() {
   const held = document.getElementById('held-inputs');
   held.textContent = `Held: tired=${state.inputs.tiredness.toFixed(2)} urge=${state.inputs.urgency.toFixed(2)} work=${state.inputs.workLength.toFixed(2)}`;
+}
+
+// === Two-Neuron Chain ===
+function updateChainPanel() {
+  const a1 = state.probability;
+
+  // Compute Neuron 2
+  const z2 = state.chainWeight * a1
+    + state.n2Weights.budget * state.n2Inputs.budget
+    + state.n2Weights.partner * state.n2Inputs.partner
+    + state.n2Bias;
+  const a2 = sigmoid(z2);
+  const isNap2 = a2 >= 0.5;
+
+  state.n2Z = z2;
+  state.n2Probability = a2;
+  state.n2Decision = isNap2 ? 'Nap' : 'Grind';
+
+  // Update N1 summary inputs
+  const n1InputsEl = document.getElementById('chain-n1-inputs');
+  if (n1InputsEl) {
+    const inputKeys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
+    const labels = { tiredness: 'Tired', urgency: 'Urgency', workLength: 'Work', timeSinceSlept: 'Sleep', stress: 'Stress' };
+    n1InputsEl.innerHTML = '';
+    for (const key of inputKeys) {
+      const w = state.weights[key];
+      const contrib = (state.inputs[key] * w);
+      const div = document.createElement('div');
+      div.className = 'chain-n1-input-line ' + (w >= 0 ? 'positive' : 'negative');
+      div.innerHTML = `<span class="chain-input-name">${labels[key]}</span><span class="chain-input-val">${(contrib >= 0 ? '+' : '')}${contrib.toFixed(2)}</span>`;
+      n1InputsEl.appendChild(div);
+    }
+  }
+
+  // Update N1 circle
+  const n1Circle = document.getElementById('chain-n1-circle');
+  const n1Pct = document.getElementById('chain-n1-pct');
+  const n1A = document.getElementById('chain-n1-a');
+  if (n1Circle) {
+    const isNap1 = state.decision === 'Nap';
+    n1Circle.className = 'chain-mini-neuron ' + (isNap1 ? 'nap' : 'grind');
+    n1Pct.textContent = Math.round(a1 * 100) + '%';
+    n1A.textContent = a1.toFixed(3);
+  }
+
+  // Update N2 circle
+  const n2Circle = document.getElementById('chain-n2-circle');
+  const n2Pct = document.getElementById('chain-n2-pct');
+  if (n2Circle) {
+    n2Circle.className = 'chain-mini-neuron ' + (isNap2 ? 'nap' : 'grind');
+    n2Pct.textContent = Math.round(a2 * 100) + '%';
+  }
+
+  // Update N2 decision
+  const decisionEl = document.getElementById('chain-n2-decision');
+  if (decisionEl) {
+    decisionEl.textContent = isNap2 ? 'Nap' : 'Grind';
+    decisionEl.style.color = isNap2 ? '#6366f1' : '#d97706';
+  }
+
+  // Update N2 flavor
+  const flavorEl = document.getElementById('chain-n2-flavor');
+  if (flavorEl) {
+    const pct2 = Math.round(a2 * 100);
+    const flavor = FLAVOR_TEXT.find(f => pct2 >= f.min && pct2 <= f.max);
+    flavorEl.textContent = flavor ? flavor.text : 'Final output';
+  }
+
+  // Update chain math
+  const z1El = document.getElementById('chain-math-z1');
+  const a1El = document.getElementById('chain-math-a1');
+  const z2El = document.getElementById('chain-math-z2');
+  const a2El = document.getElementById('chain-math-a2');
+  if (z1El) z1El.textContent = state.z.toFixed(3);
+  if (a1El) a1El.textContent = a1.toFixed(3);
+  if (z2El) z2El.textContent = z2.toFixed(3);
+  if (a2El) a2El.textContent = a2.toFixed(3);
 }
 
 function updateWeightBadges() {
@@ -547,6 +637,7 @@ function init() {
   VIZ.init();
   HEATMAP.init();
   BOUNDARY.init();
+  CHAIN.init();
 
   // Heatmap axis selector
   document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
@@ -587,6 +678,47 @@ function init() {
 
     updateNeuron();
   });
+
+  // Chain sliders
+  const chainSliderBudget = document.getElementById('slider-budget');
+  if (chainSliderBudget) {
+    chainSliderBudget.addEventListener('input', () => {
+      state.n2Inputs.budget = chainSliderBudget.value / 100;
+      document.getElementById('value-budget').textContent = state.n2Inputs.budget.toFixed(2);
+      const pct = chainSliderBudget.value;
+      chainSliderBudget.style.setProperty('--fill', pct + '%');
+      updateChainPanel();
+    });
+  }
+
+  const chainSliderPartner = document.getElementById('slider-partner');
+  if (chainSliderPartner) {
+    chainSliderPartner.addEventListener('input', () => {
+      state.n2Inputs.partner = chainSliderPartner.value / 100;
+      document.getElementById('value-partner').textContent = state.n2Inputs.partner.toFixed(2);
+      const pct = chainSliderPartner.value;
+      chainSliderPartner.style.setProperty('--fill', pct + '%');
+      updateChainPanel();
+    });
+  }
+
+  const chainWeightSlider = document.getElementById('slider-chainWeight');
+  if (chainWeightSlider) {
+    chainWeightSlider.addEventListener('input', () => {
+      state.chainWeight = chainWeightSlider.value / 100;
+      document.getElementById('value-chainWeight').textContent = (state.chainWeight >= 0 ? '+' : '') + state.chainWeight.toFixed(2);
+      updateChainPanel();
+    });
+  }
+
+  const n2BiasSlider = document.getElementById('slider-n2Bias');
+  if (n2BiasSlider) {
+    n2BiasSlider.addEventListener('input', () => {
+      state.n2Bias = n2BiasSlider.value / 100;
+      document.getElementById('value-n2Bias').textContent = (state.n2Bias >= 0 ? '+' : '') + state.n2Bias.toFixed(2);
+      updateChainPanel();
+    });
+  }
 
   // Mute button
   document.getElementById('mute-btn').addEventListener('click', () => {
@@ -690,6 +822,7 @@ function init() {
     VIZ.resize();
     HEATMAP.resize();
     BOUNDARY.resize();
+    CHAIN.resize();
     updateNeuron();
   });
 
