@@ -41,12 +41,58 @@ const FLAVOR_TEXT = [
   { min: 0, max: 24, text: "No nap. Only grind." },
 ];
 
-const PRESETS = {
-  exam: { tiredness: 0.9, urgency: 1.0, workLength: 0.8, timeSinceSlept: 0.9, stress: 0.95 },
-  sunday: { tiredness: 0.5, urgency: 0.15, workLength: 0.3, timeSinceSlept: 0.4, stress: 0.2 },
-  postlunch: { tiredness: 0.8, urgency: 0.2, workLength: 0.4, timeSinceSlept: 0.35, stress: 0.3 },
-  coffee: { tiredness: 0.2, urgency: 0.4, workLength: 0.5, timeSinceSlept: 0.3, stress: 0.45 },
-};
+const SCENARIOS = [
+  {
+    title: "2am Before the Exam",
+    desc: "You've been studying all day. The exam is in 6 hours.",
+    inputs: { tiredness: 0.9, urgency: 1.0, workLength: 0.8, timeSinceSlept: 0.9, stress: 0.95 },
+  },
+  {
+    title: "Sunday Afternoon",
+    desc: "Nothing due, couch is comfy, rain outside.",
+    inputs: { tiredness: 0.5, urgency: 0.15, workLength: 0.3, timeSinceSlept: 0.4, stress: 0.2 },
+  },
+  {
+    title: "Post-Lunch Slump",
+    desc: "Big lunch, warm office, eyelids heavy.",
+    inputs: { tiredness: 0.8, urgency: 0.2, workLength: 0.4, timeSinceSlept: 0.35, stress: 0.3 },
+  },
+  {
+    title: "Coffee Just Hit",
+    desc: "Fresh espresso kicking in. You feel unstoppable.",
+    inputs: { tiredness: 0.2, urgency: 0.4, workLength: 0.5, timeSinceSlept: 0.3, stress: 0.45 },
+  },
+  {
+    title: "Finals Week",
+    desc: "Three exams in two days. You slept 3 hours last night.",
+    inputs: { tiredness: 0.95, urgency: 0.95, workLength: 1.0, timeSinceSlept: 0.85, stress: 1.0 },
+  },
+  {
+    title: "3am Side Project",
+    desc: "No deadline, but you're in the zone and the code is flowing.",
+    inputs: { tiredness: 0.7, urgency: 0.05, workLength: 0.6, timeSinceSlept: 0.8, stress: 0.15 },
+  },
+  {
+    title: "Monday Morning",
+    desc: "Alarm went off 10 minutes ago. The week stretches ahead.",
+    inputs: { tiredness: 0.6, urgency: 0.55, workLength: 0.7, timeSinceSlept: 0.1, stress: 0.5 },
+  },
+  {
+    title: "Gym Just Hit",
+    desc: "Post-workout glow. Body tired, mind clear.",
+    inputs: { tiredness: 0.65, urgency: 0.3, workLength: 0.35, timeSinceSlept: 0.25, stress: 0.1 },
+  },
+  {
+    title: "Group Project Due",
+    desc: "Your part is done but your teammate ghosted. Presentation in 2 hours.",
+    inputs: { tiredness: 0.4, urgency: 0.85, workLength: 0.5, timeSinceSlept: 0.5, stress: 0.8 },
+  },
+  {
+    title: "Netflix & Procrastinate",
+    desc: "Assignment due tomorrow but you just started a new show.",
+    inputs: { tiredness: 0.35, urgency: 0.6, workLength: 0.65, timeSinceSlept: 0.3, stress: 0.4 },
+  },
+];
 
 const MILESTONES = [
   { threshold: 50, text: "Your neuron is waking up...", shown: false },
@@ -567,16 +613,29 @@ function init() {
     }
   });
 
-  // Presets
-  document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const preset = PRESETS[btn.dataset.preset];
-      if (!preset) return;
+  // Scenarios modal
+  const scenariosModal = document.getElementById('scenarios-modal');
+  const scenariosGrid = document.getElementById('scenarios-grid');
 
+  // Build scenario cards
+  for (const scenario of SCENARIOS) {
+    const result = forwardPass(scenario.inputs, state.weights, state.bias);
+    const isNap = result.decision === 'Nap';
+    const pct = Math.round(result.probability * 100);
+
+    const card = document.createElement('div');
+    card.className = 'scenario-card';
+    card.innerHTML = `
+      <div class="scenario-card-title">${scenario.title}</div>
+      <div class="scenario-card-desc">${scenario.desc}</div>
+      <span class="scenario-card-verdict ${isNap ? 'nap' : 'grind'}">${isNap ? 'Nap' : 'Grind'} ${pct}%</span>
+    `;
+
+    card.addEventListener('click', () => {
       for (const key of inputKeys) {
-        state.inputs[key] = preset[key];
-        document.getElementById(`slider-${key}`).value = Math.round(preset[key] * 100);
-        document.getElementById(`value-${key}`).textContent = preset[key].toFixed(2);
+        state.inputs[key] = scenario.inputs[key];
+        document.getElementById(`slider-${key}`).value = Math.round(scenario.inputs[key] * 100);
+        document.getElementById(`value-${key}`).textContent = scenario.inputs[key].toFixed(2);
       }
 
       if (state.trainingPoints.length > 0) {
@@ -585,7 +644,24 @@ function init() {
       }
 
       updateNeuron();
+      scenariosModal.classList.add('hidden');
     });
+
+    scenariosGrid.appendChild(card);
+  }
+
+  document.getElementById('scenarios-btn').addEventListener('click', () => {
+    scenariosModal.classList.remove('hidden');
+  });
+
+  document.getElementById('scenarios-close').addEventListener('click', () => {
+    scenariosModal.classList.add('hidden');
+  });
+
+  scenariosModal.addEventListener('click', (e) => {
+    if (e.target === scenariosModal) {
+      scenariosModal.classList.add('hidden');
+    }
   });
 
   // Handle window resize

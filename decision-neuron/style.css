@@ -811,6 +811,117 @@ body {
   50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.15), 0 0 24px rgba(239, 68, 68, 0.2); }
 }
 
+/* === Scenarios Modal === */
+.scenarios-modal {
+  max-width: 560px;
+  width: 92%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+.scenarios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.scenarios-header h2 {
+  color: var(--nap-color);
+  font-size: 1.1rem;
+}
+
+.scenarios-close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.scenarios-close:hover {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.scenarios-subtitle {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-bottom: 18px;
+}
+
+.scenarios-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.scenario-card {
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.scenario-card:hover {
+  border-color: var(--nap-light);
+  background: var(--bg-warm);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.scenario-card-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.scenario-card-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.scenario-card-verdict {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+}
+
+.scenario-card-verdict.nap {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--nap-color);
+}
+
+.scenario-card-verdict.grind {
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--grind-color);
+}
+
+@media (max-width: 480px) {
+  .scenarios-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarios-modal {
+    width: 95%;
+    padding: 20px;
+  }
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .hero-grid {

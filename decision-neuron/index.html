@@ -135,12 +135,21 @@
     </div>
 
     <div class="presets">
-      <button class="preset-btn" data-preset="exam">2am before exam</button>
-      <button class="preset-btn" data-preset="sunday">Sunday afternoon</button>
-      <button class="preset-btn" data-preset="postlunch">Post-lunch slump</button>
-      <button class="preset-btn" data-preset="coffee">Coffee just hit</button>
+      <button class="preset-btn" id="scenarios-btn">Try a Scenario</button>
     </div>
   </section>
+
+  <!-- Scenarios Modal -->
+  <div id="scenarios-modal" class="modal-overlay hidden">
+    <div class="modal scenarios-modal">
+      <div class="scenarios-header">
+        <h2>Pick a Scenario</h2>
+        <button class="scenarios-close" id="scenarios-close">&times;</button>
+      </div>
+      <p class="scenarios-subtitle">Choose a situation and see what the neuron decides.</p>
+      <div class="scenarios-grid" id="scenarios-grid"></div>
+    </div>
+  </div>
 
   <!-- Toggles row -->
   <section class="toggles-row">
