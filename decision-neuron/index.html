@@ -166,6 +166,42 @@
       </div>
     </div>
 
+    <!-- Toggle: Decision Boundary Visualizer (Heatmap) -->
+    <div class="toggle-section" id="toggle-heatmap">
+      <button class="toggle-btn" onclick="toggleSection('toggle-heatmap')">
+        Decision Boundary Visualizer
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <section class="panel panel-center">
+          <div class="heatmap-section">
+            <div class="heatmap-controls">
+              <label class="heatmap-label">Axes:</label>
+              <select id="heatmap-axis-select" class="heatmap-select">
+                <option value="timeSinceSlept,stress">Hours Since Sleep vs Stress</option>
+                <option value="tiredness,stress">Tiredness vs Stress</option>
+                <option value="tiredness,urgency">Tiredness vs Deadline Pressure</option>
+                <option value="timeSinceSlept,urgency">Hours Since Sleep vs Deadline Pressure</option>
+                <option value="tiredness,workLength">Tiredness vs Work Length</option>
+                <option value="stress,urgency">Stress vs Deadline Pressure</option>
+                <option value="timeSinceSlept,workLength">Hours Since Sleep vs Work Length</option>
+                <option value="stress,workLength">Stress vs Work Length</option>
+                <option value="tiredness,timeSinceSlept">Tiredness vs Hours Since Sleep</option>
+                <option value="urgency,workLength">Deadline Pressure vs Work Length</option>
+              </select>
+            </div>
+            <div class="heatmap-wrapper">
+              <canvas id="heatmap-canvas" width="400" height="400"></canvas>
+            </div>
+            <div class="heatmap-axis-labels">
+              <span class="heatmap-x-label" id="heatmap-x-label">Hours Since Sleep</span>
+            </div>
+            <div class="heatmap-held" id="heatmap-held"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
     <!-- Toggle: Decision Boundary + Training -->
     <div class="toggle-section" id="toggle-boundary">
       <button class="toggle-btn" onclick="toggleSection('toggle-boundary')">
@@ -252,6 +288,7 @@
 
   <script src="neuron.js"></script>
   <script src="viz.js"></script>
+  <script src="heatmap.js"></script>
   <script src="boundary.js"></script>
   <script src="main.js"></script>
 </body>

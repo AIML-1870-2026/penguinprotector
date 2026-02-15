@@ -547,6 +547,79 @@ body {
   display: block;
 }
 
+/* === Heatmap Visualizer === */
+.heatmap-section {
+  width: 100%;
+  max-width: 440px;
+}
+
+.heatmap-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.heatmap-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.heatmap-select {
+  flex: 1;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.72rem;
+  padding: 6px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.heatmap-select:hover,
+.heatmap-select:focus {
+  border-color: var(--nap-light);
+}
+
+.heatmap-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+#heatmap-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  display: block;
+}
+
+.heatmap-axis-labels {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.heatmap-x-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
+  color: var(--text-light);
+}
+
+.heatmap-held {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
+  color: var(--text-light);
+  margin-top: 6px;
+  text-align: center;
+}
+
 /* === Boundary Section === */
 .boundary-section {
   width: 100%;

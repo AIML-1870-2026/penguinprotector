@@ -11,6 +11,10 @@ function toggleSection(id) {
         VIZ.resize();
         VIZ.draw(state);
       }
+      if (id === 'toggle-heatmap') {
+        HEATMAP.resize();
+        HEATMAP.draw(state);
+      }
       if (id === 'toggle-boundary') {
         BOUNDARY.resize();
         BOUNDARY.draw(state);
@@ -323,7 +327,14 @@ function updateNeuron() {
   updateHeldInputs();
   updateSliderFills();
   updateContributionLabels();
+  HEATMAP.draw(state);
+  updateHeatmapHeld();
   BOUNDARY.draw(state);
+}
+
+function updateHeatmapHeld() {
+  const el = document.getElementById('heatmap-held');
+  if (el) el.textContent = HEATMAP.getHeldInputsText(state);
 }
 
 function updateOutputCard() {
@@ -534,7 +545,17 @@ function doReset() {
 function init() {
   // Init canvases
   VIZ.init();
+  HEATMAP.init();
   BOUNDARY.init();
+
+  // Heatmap axis selector
+  document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
+    const [xKey, yKey] = e.target.value.split(',');
+    HEATMAP.setAxes(xKey, yKey);
+    document.getElementById('heatmap-x-label').textContent = INPUT_LABELS[xKey];
+    updateHeatmapHeld();
+    HEATMAP.draw(state);
+  });
 
   // Slider event listeners
   const inputKeys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
@@ -667,6 +688,7 @@ function init() {
   // Handle window resize
   window.addEventListener('resize', () => {
     VIZ.resize();
+    HEATMAP.resize();
     BOUNDARY.resize();
     updateNeuron();
   });
