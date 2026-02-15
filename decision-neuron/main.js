@@ -1,38 +1,28 @@
-// === Toggle Sections ===
-function toggleSection(id) {
-  const section = document.getElementById(id);
-  const wasOpen = section.classList.contains('open');
-  section.classList.toggle('open');
+// === Tab Navigation ===
+function switchTab(tabId) {
+  // Update pills
+  document.querySelectorAll('.tab-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.tab === tabId);
+  });
 
-  // Resize canvases when opening (they need layout to measure)
-  if (!wasOpen) {
-    setTimeout(() => {
-      if (id === 'toggle-viz') {
-        VIZ.resize();
-        VIZ.draw(state);
-      }
-      if (id === 'toggle-heatmap') {
-        HEATMAP.resize();
-        HEATMAP.draw(state);
-      }
-      if (id === 'toggle-boundary') {
-        BOUNDARY.resize();
-        BOUNDARY.draw(state);
-      }
-      if (id === 'toggle-chain') {
-        CHAIN.resize();
-        CHAIN.draw(state);
-      }
-      if (id === 'toggle-activation') {
-        ACTIVATION.resize();
-        ACTIVATION.draw(state);
-      }
-      if (id === 'toggle-sensitivity') {
-        SENSITIVITY.resize();
-        SENSITIVITY.draw(state);
-      }
-    }, 50);
-  }
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === tabId);
+  });
+
+  // Resize canvases after switching (they need layout to measure)
+  setTimeout(() => {
+    const resizeMap = {
+      'tab-viz': () => { VIZ.resize(); VIZ.draw(state); },
+      'tab-heatmap': () => { HEATMAP.resize(); HEATMAP.draw(state); },
+      'tab-boundary': () => { BOUNDARY.resize(); BOUNDARY.draw(state); },
+      'tab-chain': () => { CHAIN.resize(); CHAIN.draw(state); },
+      'tab-activation': () => { ACTIVATION.resize(); ACTIVATION.draw(state); },
+      'tab-sensitivity': () => { SENSITIVITY.resize(); SENSITIVITY.draw(state); },
+      'tab-battle': () => { BATTLE.resize(); BATTLE.draw(state); updateBattleWeights(); },
+    };
+    if (resizeMap[tabId]) resizeMap[tabId]();
+  }, 50);
 }
 
 // === Main Application ===
@@ -355,6 +345,7 @@ function updateNeuron() {
   updateChainPanel();
   ACTIVATION.draw(state);
   SENSITIVITY.draw(state);
+  BATTLE.draw(state);
 }
 
 function updateHeatmapHeld() {
@@ -524,6 +515,37 @@ function updateChainPanel() {
   if (a2El) a2El.textContent = a2.toFixed(3);
 }
 
+function updateBattleWeights() {
+  const el = document.getElementById('battle-weights');
+  if (!el) return;
+
+  const keys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
+  const labels = { tiredness: 'Tired', urgency: 'Deadline', workLength: 'Work', timeSinceSlept: 'Sleep', stress: 'Stress' };
+
+  el.innerHTML = '';
+  for (let slot = 0; slot < 2; slot++) {
+    const p = BATTLE.PERSONALITIES[BATTLE.activePersonalities[slot]];
+    const col = document.createElement('div');
+    col.className = 'battle-weight-col';
+    col.innerHTML = `<div class="battle-weight-col-title" style="color:${p.color}">${p.emoji} ${p.name}</div>`;
+    for (const key of keys) {
+      const w = p.weights[key];
+      const row = document.createElement('div');
+      row.className = 'battle-weight-row';
+      row.innerHTML = `<span>${labels[key]}</span><span style="color:${w >= 0 ? '#6366f1' : '#d97706'}">${w >= 0 ? '+' : ''}${w.toFixed(2)}</span>`;
+      col.appendChild(row);
+    }
+    const biasRow = document.createElement('div');
+    biasRow.className = 'battle-weight-row';
+    biasRow.style.marginTop = '4px';
+    biasRow.style.borderTop = '1px solid var(--card-border)';
+    biasRow.style.paddingTop = '4px';
+    biasRow.innerHTML = `<span>bias</span><span style="color:#7c3aed">${p.bias >= 0 ? '+' : ''}${p.bias.toFixed(2)}</span>`;
+    col.appendChild(biasRow);
+    el.appendChild(col);
+  }
+}
+
 function updateWeightBadges() {
   const keys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
   for (const key of keys) {
@@ -682,6 +704,7 @@ function init() {
   CHAIN.init();
   ACTIVATION.init();
   SENSITIVITY.init();
+  BATTLE.init();
 
   // Heatmap axis selector
   document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
@@ -799,6 +822,42 @@ function init() {
     });
   }
 
+  // Tab navigation
+  document.querySelectorAll('.tab-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      switchTab(pill.dataset.tab);
+    });
+  });
+
+  // Battle personality selectors
+  const battleSelectLeft = document.getElementById('battle-select-left');
+  const battleSelectRight = document.getElementById('battle-select-right');
+  if (battleSelectLeft && battleSelectRight) {
+    BATTLE.PERSONALITIES.forEach((p, i) => {
+      const optL = document.createElement('option');
+      optL.value = i;
+      optL.textContent = p.emoji + ' ' + p.name;
+      battleSelectLeft.appendChild(optL);
+
+      const optR = document.createElement('option');
+      optR.value = i;
+      optR.textContent = p.emoji + ' ' + p.name;
+      battleSelectRight.appendChild(optR);
+    });
+    battleSelectRight.value = 1;
+
+    battleSelectLeft.addEventListener('change', () => {
+      BATTLE.setPersonality(0, parseInt(battleSelectLeft.value));
+      BATTLE.draw(state);
+      updateBattleWeights();
+    });
+    battleSelectRight.addEventListener('change', () => {
+      BATTLE.setPersonality(1, parseInt(battleSelectRight.value));
+      BATTLE.draw(state);
+      updateBattleWeights();
+    });
+  }
+
   // Mission modal
   document.getElementById('mission-btn').addEventListener('click', () => {
     document.getElementById('mission-modal').classList.remove('hidden');
@@ -898,6 +957,7 @@ function init() {
     CHAIN.resize();
     ACTIVATION.resize();
     SENSITIVITY.resize();
+    BATTLE.resize();
     updateNeuron();
   });
 
@@ -907,6 +967,12 @@ function init() {
   updateSliderFills();
   updateContributionLabels();
   updateNeuron();
+
+  // Initialize first tab canvas
+  setTimeout(() => {
+    VIZ.resize();
+    VIZ.draw(state);
+  }, 100);
 
   // Start connection line animation
   drawConnections();

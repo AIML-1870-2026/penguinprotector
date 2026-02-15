@@ -151,28 +151,33 @@
     </div>
   </div>
 
-  <!-- Toggles row -->
-  <section class="toggles-row">
-    <!-- Toggle: Network Diagram -->
-    <div class="toggle-section" id="toggle-viz">
-      <button class="toggle-btn" onclick="toggleSection('toggle-viz')">
-        Network Diagram
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+  <!-- Tabbed Explore Section -->
+  <section class="explore-section">
+    <!-- Tab Navigation -->
+    <nav class="tab-nav" id="tab-nav">
+      <button class="tab-pill active" data-tab="tab-viz">Network</button>
+      <button class="tab-pill" data-tab="tab-heatmap">Heatmap</button>
+      <button class="tab-pill" data-tab="tab-boundary">Training</button>
+      <button class="tab-pill" data-tab="tab-sensitivity">Sensitivity</button>
+      <button class="tab-pill" data-tab="tab-battle">Battle</button>
+      <button class="tab-pill" data-tab="tab-chain">Chain</button>
+      <button class="tab-pill" data-tab="tab-activation">Activations</button>
+      <button class="tab-pill" data-tab="tab-math">Math</button>
+      <button class="tab-pill" data-tab="tab-about">About</button>
+    </nav>
+
+    <!-- Tab Panels -->
+    <div class="tab-panels">
+
+      <!-- Network Diagram -->
+      <div class="tab-panel active" id="tab-viz">
         <div class="viz-container">
           <canvas id="nn-canvas" width="460" height="260"></canvas>
         </div>
       </div>
-    </div>
 
-    <!-- Toggle: Decision Boundary Visualizer (Heatmap) -->
-    <div class="toggle-section" id="toggle-heatmap">
-      <button class="toggle-btn" onclick="toggleSection('toggle-heatmap')">
-        Decision Boundary Visualizer
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+      <!-- Heatmap -->
+      <div class="tab-panel" id="tab-heatmap">
         <section class="panel panel-center">
           <div class="heatmap-section">
             <div class="heatmap-controls">
@@ -200,15 +205,9 @@
           </div>
         </section>
       </div>
-    </div>
 
-    <!-- Toggle: Decision Boundary + Training -->
-    <div class="toggle-section" id="toggle-boundary">
-      <button class="toggle-btn" onclick="toggleSection('toggle-boundary')">
-        Decision Boundary &amp; Training
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+      <!-- Training -->
+      <div class="tab-panel" id="tab-boundary">
         <section class="panel panel-center">
           <div class="boundary-section">
             <div class="boundary-axes-labels">
@@ -242,17 +241,48 @@
           <div class="milestone-banner hidden" id="milestone-banner"></div>
         </section>
       </div>
-    </div>
 
-    <!-- Toggle: Two-Neuron Chain -->
-    <div class="toggle-section" id="toggle-chain">
-      <button class="toggle-btn" onclick="toggleSection('toggle-chain')">
-        Two-Neuron Chain
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+      <!-- Sensitivity Analysis -->
+      <div class="tab-panel" id="tab-sensitivity">
+        <div class="sensitivity-container">
+          <p class="sensitivity-desc">How much does each input actually matter? Each curve sweeps one input from 0&rarr;1 while holding the others fixed. Steep = influential.</p>
+          <div class="sensitivity-plot-wrapper">
+            <canvas id="sensitivity-canvas" width="500" height="300"></canvas>
+          </div>
+          <label class="sensitivity-bar-toggle">
+            <input type="checkbox" id="sensitivity-bar-check"> Show influence ranking
+          </label>
+          <div class="sensitivity-bar-wrapper">
+            <canvas id="sensitivity-bar-canvas" width="500" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Neuron Battle -->
+      <div class="tab-panel" id="tab-battle">
+        <div class="battle-container">
+          <p class="battle-desc">Two neurons with different &ldquo;personalities&rdquo; evaluate the same inputs. Who says nap? Who says grind?</p>
+          <div class="battle-selectors">
+            <div class="battle-selector">
+              <label class="battle-selector-label">Left Fighter</label>
+              <select id="battle-select-left" class="battle-select"></select>
+            </div>
+            <span class="battle-vs">VS</span>
+            <div class="battle-selector">
+              <label class="battle-selector-label">Right Fighter</label>
+              <select id="battle-select-right" class="battle-select"></select>
+            </div>
+          </div>
+          <div class="battle-canvas-wrapper">
+            <canvas id="battle-canvas" width="500" height="300"></canvas>
+          </div>
+          <div class="battle-weights" id="battle-weights"></div>
+        </div>
+      </div>
+
+      <!-- Two-Neuron Chain -->
+      <div class="tab-panel" id="tab-chain">
         <div class="chain-container">
-          <!-- Neuron 1 Summary -->
           <div class="chain-n1">
             <div class="chain-neuron-label">Neuron 1</div>
             <div class="chain-n1-inputs" id="chain-n1-inputs"></div>
@@ -263,8 +293,6 @@
               <div class="chain-val-label">a<sub>1</sub> = <span id="chain-n1-a">0.500</span></div>
             </div>
           </div>
-
-          <!-- Chain Synapse -->
           <div class="chain-synapse">
             <canvas id="chain-canvas" width="200" height="200"></canvas>
             <div class="chain-weight-control">
@@ -273,8 +301,6 @@
               <span class="chain-weight-value" id="value-chainWeight">+0.80</span>
             </div>
           </div>
-
-          <!-- Neuron 2 -->
           <div class="chain-n2">
             <div class="chain-neuron-label">Neuron 2</div>
             <div class="chain-n2-inputs">
@@ -290,7 +316,6 @@
                 </div>
                 <div class="input-value" id="value-budget">0.50</div>
               </div>
-
               <div class="chain-input-group">
                 <div class="chain-input-header">
                   <label>Partner Approval</label>
@@ -303,14 +328,12 @@
                 </div>
                 <div class="input-value" id="value-partner">0.50</div>
               </div>
-
               <div class="chain-bias-row">
                 <label class="bias-label">Bias b<sub>2</sub></label>
                 <input type="range" min="-100" max="100" value="10" class="slider chain-slider" id="slider-n2Bias">
                 <span class="bias-value" id="value-n2Bias">+0.10</span>
               </div>
             </div>
-
             <div class="chain-n2-output">
               <div class="chain-mini-neuron nap" id="chain-n2-circle">
                 <span id="chain-n2-pct">50%</span>
@@ -320,8 +343,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Chain Math -->
         <div class="chain-math">
           <div class="chain-math-stage">
             <div class="chain-math-title">Neuron 1</div>
@@ -336,35 +357,22 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Toggle: Activation Function Showdown -->
-    <div class="toggle-section" id="toggle-activation">
-      <button class="toggle-btn" onclick="toggleSection('toggle-activation')">
-        Activation Function Showdown
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+      <!-- Activation Functions -->
+      <div class="tab-panel" id="tab-activation">
         <div class="activation-container">
-          <!-- Function Selector -->
           <div class="activation-selector">
             <button class="activation-btn active" data-fn="sigmoid">Sigmoid</button>
             <button class="activation-btn" data-fn="step">Step Function</button>
             <button class="activation-btn" data-fn="relu">ReLU</button>
           </div>
           <div class="activation-era" id="activation-era">Classic &mdash; smooth gradient, used everywhere</div>
-
-          <!-- Function Curve Canvas -->
           <div class="activation-plot-wrapper">
             <canvas id="activation-canvas" width="500" height="280"></canvas>
           </div>
-
-          <!-- Comparison Mode Toggle -->
           <label class="activation-compare-toggle">
             <input type="checkbox" id="activation-compare"> Compare all three
           </label>
-
-          <!-- Live Math Display -->
           <div class="activation-math" id="activation-math">
             <div class="activation-math-formula" id="activation-formula">&sigma;(z) = 1 / (1 + e<sup>-z</sup>)</div>
             <div class="activation-math-values">
@@ -374,52 +382,9 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Toggle: Sensitivity Analysis -->
-    <div class="toggle-section" id="toggle-sensitivity">
-      <button class="toggle-btn" onclick="toggleSection('toggle-sensitivity')">
-        Sensitivity Analysis
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
-        <div class="sensitivity-container">
-          <p class="sensitivity-desc">How much does each input actually matter? Each curve sweeps one input from 0&rarr;1 while holding the others fixed. Steep = influential.</p>
-          <div class="sensitivity-plot-wrapper">
-            <canvas id="sensitivity-canvas" width="500" height="300"></canvas>
-          </div>
-          <label class="sensitivity-bar-toggle">
-            <input type="checkbox" id="sensitivity-bar-check"> Show influence ranking
-          </label>
-          <div class="sensitivity-bar-wrapper">
-            <canvas id="sensitivity-bar-canvas" width="500" height="200"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toggle: About This Project -->
-    <div class="toggle-section" id="toggle-about">
-      <button class="toggle-btn" onclick="toggleSection('toggle-about')">
-        About This Project
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
-        <div class="about-card">
-          <p>This was built for my vibe coding class. The assignment was to create a single-neuron classifier that takes real inputs and makes a binary decision using a sigmoid activation function.</p>
-          <p>I chose the most relatable decision in student life: <strong>should I nap or actually do my work?</strong></p>
-          <p>The neuron takes 5 inputs about your current state, multiplies each by a learned weight, adds a bias, and passes the sum through a sigmoid to get a probability. You can also train it by placing points on the decision boundary plot and watching the weights update in real time.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Toggle: Math Panel -->
-    <div class="toggle-section" id="toggle-math">
-      <button class="toggle-btn" onclick="toggleSection('toggle-math')">
-        The Math
-        <span class="toggle-chevron">&#9660;</span>
-      </button>
-      <div class="toggle-content">
+      <!-- Math -->
+      <div class="tab-panel" id="tab-math">
         <section class="panel panel-math">
           <div class="math-formula">
             <div class="formula-line">z = &Sigma;(x<sub>i</sub> &middot; w<sub>i</sub>) + b</div>
@@ -434,6 +399,16 @@
           </div>
         </section>
       </div>
+
+      <!-- About -->
+      <div class="tab-panel" id="tab-about">
+        <div class="about-card">
+          <p>This was built for my vibe coding class. The assignment was to create a single-neuron classifier that takes real inputs and makes a binary decision using a sigmoid activation function.</p>
+          <p>I chose the most relatable decision in student life: <strong>should I nap or actually do my work?</strong></p>
+          <p>The neuron takes 5 inputs about your current state, multiplies each by a learned weight, adds a bias, and passes the sum through a sigmoid to get a probability. You can also train it by placing points on the decision boundary plot and watching the weights update in real time.</p>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -447,6 +422,7 @@
   <script src="chain.js"></script>
   <script src="activation.js"></script>
   <script src="sensitivity.js"></script>
+  <script src="battle.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
