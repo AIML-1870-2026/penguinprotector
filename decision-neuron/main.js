@@ -27,6 +27,10 @@ function toggleSection(id) {
         ACTIVATION.resize();
         ACTIVATION.draw(state);
       }
+      if (id === 'toggle-sensitivity') {
+        SENSITIVITY.resize();
+        SENSITIVITY.draw(state);
+      }
     }, 50);
   }
 }
@@ -350,6 +354,7 @@ function updateNeuron() {
   BOUNDARY.draw(state);
   updateChainPanel();
   ACTIVATION.draw(state);
+  SENSITIVITY.draw(state);
 }
 
 function updateHeatmapHeld() {
@@ -676,6 +681,7 @@ function init() {
   BOUNDARY.init();
   CHAIN.init();
   ACTIVATION.init();
+  SENSITIVITY.init();
 
   // Heatmap axis selector
   document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
@@ -783,6 +789,16 @@ function init() {
     });
   }
 
+  // Sensitivity bar toggle
+  const sensitivityBarCheck = document.getElementById('sensitivity-bar-check');
+  if (sensitivityBarCheck) {
+    sensitivityBarCheck.addEventListener('change', () => {
+      SENSITIVITY.setShowBars(sensitivityBarCheck.checked);
+      SENSITIVITY.resize();
+      SENSITIVITY.draw(state);
+    });
+  }
+
   // Mission modal
   document.getElementById('mission-btn').addEventListener('click', () => {
     document.getElementById('mission-modal').classList.remove('hidden');
@@ -881,6 +897,7 @@ function init() {
     BOUNDARY.resize();
     CHAIN.resize();
     ACTIVATION.resize();
+    SENSITIVITY.resize();
     updateNeuron();
   });
 

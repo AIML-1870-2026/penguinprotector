@@ -376,6 +376,28 @@
       </div>
     </div>
 
+    <!-- Toggle: Sensitivity Analysis -->
+    <div class="toggle-section" id="toggle-sensitivity">
+      <button class="toggle-btn" onclick="toggleSection('toggle-sensitivity')">
+        Sensitivity Analysis
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <div class="sensitivity-container">
+          <p class="sensitivity-desc">How much does each input actually matter? Each curve sweeps one input from 0&rarr;1 while holding the others fixed. Steep = influential.</p>
+          <div class="sensitivity-plot-wrapper">
+            <canvas id="sensitivity-canvas" width="500" height="300"></canvas>
+          </div>
+          <label class="sensitivity-bar-toggle">
+            <input type="checkbox" id="sensitivity-bar-check"> Show influence ranking
+          </label>
+          <div class="sensitivity-bar-wrapper">
+            <canvas id="sensitivity-bar-canvas" width="500" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toggle: About This Project -->
     <div class="toggle-section" id="toggle-about">
       <button class="toggle-btn" onclick="toggleSection('toggle-about')">
@@ -424,6 +446,7 @@
   <script src="boundary.js"></script>
   <script src="chain.js"></script>
   <script src="activation.js"></script>
+  <script src="sensitivity.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

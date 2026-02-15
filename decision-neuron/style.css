@@ -1378,6 +1378,68 @@ body {
   font-weight: 600;
 }
 
+/* === Sensitivity Analysis === */
+.sensitivity-container {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.sensitivity-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  text-align: center;
+  max-width: 440px;
+}
+
+.sensitivity-plot-wrapper {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 500 / 300;
+}
+
+#sensitivity-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sensitivity-bar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sensitivity-bar-toggle input[type="checkbox"] {
+  accent-color: var(--nap-color);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.sensitivity-bar-wrapper {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 500 / 200;
+}
+
+#sensitivity-bar-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  display: none;
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .hero-grid {
