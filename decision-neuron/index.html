@@ -338,6 +338,44 @@
       </div>
     </div>
 
+    <!-- Toggle: Activation Function Showdown -->
+    <div class="toggle-section" id="toggle-activation">
+      <button class="toggle-btn" onclick="toggleSection('toggle-activation')">
+        Activation Function Showdown
+        <span class="toggle-chevron">&#9660;</span>
+      </button>
+      <div class="toggle-content">
+        <div class="activation-container">
+          <!-- Function Selector -->
+          <div class="activation-selector">
+            <button class="activation-btn active" data-fn="sigmoid">Sigmoid</button>
+            <button class="activation-btn" data-fn="step">Step Function</button>
+            <button class="activation-btn" data-fn="relu">ReLU</button>
+          </div>
+          <div class="activation-era" id="activation-era">Classic &mdash; smooth gradient, used everywhere</div>
+
+          <!-- Function Curve Canvas -->
+          <div class="activation-plot-wrapper">
+            <canvas id="activation-canvas" width="500" height="280"></canvas>
+          </div>
+
+          <!-- Comparison Mode Toggle -->
+          <label class="activation-compare-toggle">
+            <input type="checkbox" id="activation-compare"> Compare all three
+          </label>
+
+          <!-- Live Math Display -->
+          <div class="activation-math" id="activation-math">
+            <div class="activation-math-formula" id="activation-formula">&sigma;(z) = 1 / (1 + e<sup>-z</sup>)</div>
+            <div class="activation-math-values">
+              <span>z = <strong id="activation-z">0.000</strong></span>
+              <span>output = <strong id="activation-output">0.500</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Toggle: About This Project -->
     <div class="toggle-section" id="toggle-about">
       <button class="toggle-btn" onclick="toggleSection('toggle-about')">
@@ -385,6 +423,7 @@
   <script src="heatmap.js"></script>
   <script src="boundary.js"></script>
   <script src="chain.js"></script>
+  <script src="activation.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

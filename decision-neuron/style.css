@@ -1264,6 +1264,120 @@ body {
   flex-shrink: 0;
 }
 
+/* === Activation Function Showdown === */
+.activation-container {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.activation-selector {
+  display: flex;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+}
+
+.activation-btn {
+  padding: 8px 16px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-light);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.activation-btn:hover {
+  background: var(--bg-warm);
+  color: var(--text-primary);
+}
+
+.activation-btn.active[data-fn="sigmoid"] {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.activation-btn.active[data-fn="step"] {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.activation-btn.active[data-fn="relu"] {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.activation-era {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.activation-plot-wrapper {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 500 / 280;
+}
+
+#activation-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.activation-compare-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.activation-compare-toggle input[type="checkbox"] {
+  accent-color: var(--nap-color);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.activation-math {
+  width: 100%;
+  max-width: 400px;
+  font-family: 'Fira Code', monospace;
+  text-align: center;
+}
+
+.activation-math-formula {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.activation-math-values {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.activation-math-values strong {
+  color: var(--boundary);
+  font-weight: 600;
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .hero-grid {
@@ -1345,5 +1459,19 @@ body {
 
   .training-controls {
     flex-direction: column;
+  }
+
+  .activation-selector {
+    flex-direction: column;
+    border-radius: 14px;
+  }
+
+  .activation-btn {
+    padding: 8px 14px;
+  }
+
+  .activation-math-values {
+    flex-direction: column;
+    gap: 4px;
   }
 }

@@ -23,6 +23,10 @@ function toggleSection(id) {
         CHAIN.resize();
         CHAIN.draw(state);
       }
+      if (id === 'toggle-activation') {
+        ACTIVATION.resize();
+        ACTIVATION.draw(state);
+      }
     }, 50);
   }
 }
@@ -129,6 +133,7 @@ const state = {
   accuracy: null,
   isTraining: false,
   muted: false,
+  activationFn: 'sigmoid',
   // Two-Neuron Chain
   chainWeight: 0.80,
   n2Inputs: { budget: 0.5, partner: 0.5 },
@@ -329,13 +334,14 @@ function drawConnections() {
 
 // === Update Logic ===
 function updateNeuron() {
-  const result = forwardPass(state.inputs, state.weights, state.bias);
+  const result = forwardPass(state.inputs, state.weights, state.bias, state.activationFn);
   state.z = result.z;
   state.probability = result.probability;
   state.decision = result.decision;
 
   updateOutputCard();
   updateMathPanel(result);
+  updateActivationPanel();
   updateHeldInputs();
   updateSliderFills();
   updateContributionLabels();
@@ -343,6 +349,7 @@ function updateNeuron() {
   updateHeatmapHeld();
   BOUNDARY.draw(state);
   updateChainPanel();
+  ACTIVATION.draw(state);
 }
 
 function updateHeatmapHeld() {
@@ -352,7 +359,7 @@ function updateHeatmapHeld() {
 
 function updateOutputCard() {
   const prob = state.probability;
-  const pct = Math.round(prob * 100);
+  const pct = state.activationFn === 'relu' ? Math.round(Math.min(prob, 1) * 100) : Math.round(prob * 100);
   const isNap = state.decision === 'Nap';
 
   // Update neuron circle + ring
@@ -398,11 +405,41 @@ function updateMathPanel(result) {
 
   document.getElementById('math-z').textContent = state.z.toFixed(3);
   document.getElementById('math-sigma').textContent = state.probability.toFixed(3);
+
+  // Update formula display based on activation function
+  const formulaLines = document.querySelectorAll('.formula-line');
+  if (formulaLines.length >= 2) {
+    if (state.activationFn === 'step') {
+      formulaLines[1].innerHTML = 'output = f(z) = z &ge; 0 ? 1 : 0';
+    } else if (state.activationFn === 'relu') {
+      formulaLines[1].innerHTML = 'output = f(z) = max(0, z)';
+    } else {
+      formulaLines[1].innerHTML = 'output = &sigma;(z) = 1/(1 + e<sup>-z</sup>)';
+    }
+  }
 }
 
 function updateHeldInputs() {
   const held = document.getElementById('held-inputs');
   held.textContent = `Held: tired=${state.inputs.tiredness.toFixed(2)} urge=${state.inputs.urgency.toFixed(2)} work=${state.inputs.workLength.toFixed(2)}`;
+}
+
+// === Activation Panel ===
+function updateActivationPanel() {
+  const fnInfo = ACTIVATION.FUNCTIONS[state.activationFn];
+  if (!fnInfo) return;
+
+  const formulaEl = document.getElementById('activation-formula');
+  if (formulaEl) formulaEl.innerHTML = fnInfo.formula;
+
+  const eraEl = document.getElementById('activation-era');
+  if (eraEl) eraEl.textContent = fnInfo.era;
+
+  const zEl = document.getElementById('activation-z');
+  if (zEl) zEl.textContent = state.z.toFixed(3);
+
+  const outEl = document.getElementById('activation-output');
+  if (outEl) outEl.textContent = state.probability.toFixed(3);
 }
 
 // === Two-Neuron Chain ===
@@ -414,7 +451,7 @@ function updateChainPanel() {
     + state.n2Weights.budget * state.n2Inputs.budget
     + state.n2Weights.partner * state.n2Inputs.partner
     + state.n2Bias;
-  const a2 = sigmoid(z2);
+  const a2 = applyActivation(z2, state.activationFn);
   const isNap2 = a2 >= 0.5;
 
   state.n2Z = z2;
@@ -638,6 +675,7 @@ function init() {
   HEATMAP.init();
   BOUNDARY.init();
   CHAIN.init();
+  ACTIVATION.init();
 
   // Heatmap axis selector
   document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
@@ -725,6 +763,25 @@ function init() {
     state.muted = !state.muted;
     document.getElementById('mute-btn').innerHTML = state.muted ? '&#x1f507;' : '&#x1f50a;';
   });
+
+  // Activation function selector
+  document.querySelectorAll('.activation-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.activation-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activationFn = btn.dataset.fn;
+      updateNeuron();
+    });
+  });
+
+  // Activation compare mode
+  const compareCheckbox = document.getElementById('activation-compare');
+  if (compareCheckbox) {
+    compareCheckbox.addEventListener('change', () => {
+      ACTIVATION.setCompareMode(compareCheckbox.checked);
+      ACTIVATION.draw(state);
+    });
+  }
 
   // Mission modal
   document.getElementById('mission-btn').addEventListener('click', () => {
@@ -823,6 +880,7 @@ function init() {
     HEATMAP.resize();
     BOUNDARY.resize();
     CHAIN.resize();
+    ACTIVATION.resize();
     updateNeuron();
   });
 

@@ -4,7 +4,21 @@ function sigmoid(z) {
   return 1 / (1 + Math.exp(-z));
 }
 
-function forwardPass(inputs, weights, bias) {
+function stepFunction(z) {
+  return z >= 0 ? 1 : 0;
+}
+
+function relu(z) {
+  return Math.max(0, z);
+}
+
+function applyActivation(z, fnName) {
+  if (fnName === 'step') return stepFunction(z);
+  if (fnName === 'relu') return relu(z);
+  return sigmoid(z);
+}
+
+function forwardPass(inputs, weights, bias, activationFn) {
   const keys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
   let z = bias;
   const terms = [];
@@ -17,8 +31,11 @@ function forwardPass(inputs, weights, bias) {
     terms.push({ key, xi, wi, product });
   }
 
-  const probability = sigmoid(z);
-  const decision = probability >= 0.5 ? 'Nap' : 'Grind';
+  const fnName = activationFn || 'sigmoid';
+  const probability = applyActivation(z, fnName);
+  const decision = fnName === 'relu'
+    ? (probability >= 0.5 ? 'Nap' : 'Grind')
+    : (probability >= 0.5 ? 'Nap' : 'Grind');
 
   return { z, probability, decision, terms };
 }
