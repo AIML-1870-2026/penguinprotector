@@ -15,6 +15,7 @@
     <h1 class="header-title">Nap or Grind?</h1>
     <div class="header-actions">
       <button id="mission-btn" class="header-btn" title="Mission">Mission</button>
+      <button id="dark-mode-btn" class="header-btn" title="Toggle Dark Mode">&#x1f319;</button>
       <button id="mute-btn" class="header-btn" title="Toggle Sound">&#x1f50a;</button>
     </div>
   </header>
@@ -50,7 +51,10 @@
           <span class="slider-label-right">Exhausted</span>
         </div>
         <div class="input-value" id="value-tiredness">0.50</div>
-        <div class="contribution-label" id="contrib-tiredness">+0.425</div>
+        <div class="contrib-row">
+          <div class="contribution-label" id="contrib-tiredness">+0.425</div>
+          <span class="gradient-arrow" id="grad-tiredness"></span>
+        </div>
       </div>
 
       <div class="input-group" data-input="timeSinceSlept">
@@ -64,7 +68,10 @@
           <span class="slider-label-right">24h+ ago</span>
         </div>
         <div class="input-value" id="value-timeSinceSlept">0.50</div>
-        <div class="contribution-label" id="contrib-timeSinceSlept">+0.375</div>
+        <div class="contrib-row">
+          <div class="contribution-label" id="contrib-timeSinceSlept">+0.375</div>
+          <span class="gradient-arrow" id="grad-timeSinceSlept"></span>
+        </div>
       </div>
 
       <div class="input-group" data-input="stress">
@@ -78,7 +85,10 @@
           <span class="slider-label-right">Spiraling</span>
         </div>
         <div class="input-value" id="value-stress">0.50</div>
-        <div class="contribution-label" id="contrib-stress">+0.250</div>
+        <div class="contrib-row">
+          <div class="contribution-label" id="contrib-stress">+0.250</div>
+          <span class="gradient-arrow" id="grad-stress"></span>
+        </div>
       </div>
     </div>
 
@@ -107,7 +117,10 @@
           <span class="slider-label-right">Due now!</span>
         </div>
         <div class="input-value" id="value-urgency">0.50</div>
-        <div class="contribution-label" id="contrib-urgency">-0.450</div>
+        <div class="contrib-row">
+          <div class="contribution-label" id="contrib-urgency">-0.450</div>
+          <span class="gradient-arrow" id="grad-urgency"></span>
+        </div>
       </div>
 
       <div class="input-group" data-input="workLength">
@@ -121,7 +134,10 @@
           <span class="slider-label-right">All night</span>
         </div>
         <div class="input-value" id="value-workLength">0.50</div>
-        <div class="contribution-label" id="contrib-workLength">-0.200</div>
+        <div class="contrib-row">
+          <div class="contribution-label" id="contrib-workLength">-0.200</div>
+          <span class="gradient-arrow" id="grad-workLength"></span>
+        </div>
       </div>
     </div>
   </section>

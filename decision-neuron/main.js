@@ -263,6 +263,38 @@ function updateContributionLabels() {
   }
 }
 
+// === Gradient Arrows ===
+function updateGradientArrows() {
+  const p = state.probability;
+  const sigmoidDeriv = p * (1 - p); // d(sigma)/dz
+  const inputKeys = ['tiredness', 'urgency', 'workLength', 'timeSinceSlept', 'stress'];
+
+  for (const key of inputKeys) {
+    const el = document.getElementById(`grad-${key}`);
+    if (!el) continue;
+
+    const grad = sigmoidDeriv * state.weights[key]; // d(output)/d(input_i)
+    const absGrad = Math.abs(grad);
+
+    // Arrow direction
+    const isUp = grad > 0;
+    el.className = 'gradient-arrow ' + (isUp ? 'up' : 'down');
+
+    // Size based on magnitude
+    if (absGrad > 0.15) {
+      el.classList.add('strong');
+      el.textContent = isUp ? '\u25B2\u25B2' : '\u25BC\u25BC';
+    } else if (absGrad > 0.05) {
+      el.textContent = isUp ? '\u25B2' : '\u25BC';
+    } else {
+      el.classList.add('weak');
+      el.textContent = isUp ? '\u25B5' : '\u25BF';
+    }
+
+    el.title = `Gradient: ${grad >= 0 ? '+' : ''}${grad.toFixed(4)}`;
+  }
+}
+
 // === Connection Lines ===
 const connectionCanvas = document.getElementById('connection-canvas');
 const connectionCtx = connectionCanvas ? connectionCanvas.getContext('2d') : null;
@@ -339,6 +371,7 @@ function updateNeuron() {
   updateHeldInputs();
   updateSliderFills();
   updateContributionLabels();
+  updateGradientArrows();
   HEATMAP.draw(state);
   updateHeatmapHeld();
   BOUNDARY.draw(state);
@@ -787,6 +820,15 @@ function init() {
     });
   }
 
+  // Dark mode toggle
+  document.getElementById('dark-mode-btn').addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    const isDark = document.body.classList.contains('dark');
+    document.getElementById('dark-mode-btn').innerHTML = isDark ? '&#x2600;' : '&#x1f319;';
+    // Redraw canvases that use hardcoded colors
+    updateNeuron();
+  });
+
   // Mute button
   document.getElementById('mute-btn').addEventListener('click', () => {
     state.muted = !state.muted;
@@ -966,6 +1008,7 @@ function init() {
   updateTrainingStats();
   updateSliderFills();
   updateContributionLabels();
+  updateGradientArrows();
   updateNeuron();
 
   // Initialize first tab canvas

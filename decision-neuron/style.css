@@ -18,6 +18,19 @@
   --slider-thumb: #6366f1;
 }
 
+body.dark {
+  --bg: #0f172a;
+  --bg-warm: #1e293b;
+  --card: #1e293b;
+  --card-border: #334155;
+  --text-primary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  --slider-track: #334155;
+  --nap-light: #818cf8;
+  --grind-light: #fbbf24;
+}
+
 /* === Reset & Base === */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -31,6 +44,19 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body.dark .neuron-circle {
+  background: var(--card);
+}
+
+body.dark .modal {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+body.dark .scenario-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* === Header === */
@@ -308,6 +334,43 @@ body {
 
 .side-right .contribution-label {
   color: var(--grind-light);
+}
+
+/* === Gradient Arrows === */
+.contrib-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.gradient-arrow {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: all 0.3s;
+  min-width: 18px;
+  text-align: center;
+}
+
+.gradient-arrow.up {
+  color: var(--nap-color);
+}
+
+.gradient-arrow.down {
+  color: var(--grind-color);
+}
+
+.gradient-arrow.strong {
+  font-size: 0.9rem;
+}
+
+.gradient-arrow.weak {
+  font-size: 0.6rem;
+  opacity: 0.6;
 }
 
 /* === Neuron Hero (center column) === */
