@@ -1624,6 +1624,38 @@ body.dark .scenario-card:hover {
   line-height: 1.8;
 }
 
+/* === Weight History === */
+.weight-history-container {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.weight-history-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  text-align: center;
+  max-width: 440px;
+}
+
+.weight-history-plot-wrapper {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 500 / 300;
+}
+
+#weight-history-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 /* === Responsive === */
 @media (max-width: 768px) {
   .hero-grid {
@@ -1699,6 +1731,12 @@ body.dark .scenario-card:hover {
     font-size: 0.95rem;
   }
 
+  /* Tab navigation - smaller for more tabs */
+  .tab-pill {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
   .bias-bar {
     flex-wrap: wrap;
   }
@@ -1719,5 +1757,43 @@ body.dark .scenario-card:hover {
   .activation-math-values {
     flex-direction: column;
     gap: 4px;
+  }
+
+  /* Chain tab - fit on narrow screens */
+  .chain-n1,
+  .chain-n2 {
+    min-width: 140px;
+  }
+
+  .chain-synapse {
+    min-width: 100px;
+  }
+
+  /* Battle tab - stack selectors and single-column weights */
+  .battle-selectors {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .battle-select {
+    min-width: 0;
+    width: 100%;
+    max-width: 240px;
+  }
+
+  .battle-vs {
+    transform: rotate(90deg);
+  }
+
+  .battle-weights {
+    grid-template-columns: 1fr;
+  }
+
+  /* Canvas wrappers - prevent overflow */
+  .sensitivity-plot-wrapper,
+  .sensitivity-bar-wrapper,
+  .battle-canvas-wrapper,
+  .weight-history-plot-wrapper {
+    max-width: 100%;
   }
 }

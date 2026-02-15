@@ -20,6 +20,7 @@ function switchTab(tabId) {
       'tab-activation': () => { ACTIVATION.resize(); ACTIVATION.draw(state); },
       'tab-sensitivity': () => { SENSITIVITY.resize(); SENSITIVITY.draw(state); },
       'tab-battle': () => { BATTLE.resize(); BATTLE.draw(state); updateBattleWeights(); },
+      'tab-history': () => { WEIGHT_HISTORY.resize(); WEIGHT_HISTORY.draw(state); },
     };
     if (resizeMap[tabId]) resizeMap[tabId]();
   }, 50);
@@ -663,6 +664,7 @@ function doStep() {
   state.weights = updateResult.weights;
   state.bias = updateResult.bias;
   state.stepCount++;
+  WEIGHT_HISTORY.recordSnapshot(state);
 
   // Flash the triggered point
   targetPoint.flash = 1.0;
@@ -715,6 +717,8 @@ function doReset() {
   state.accuracy = null;
   state.isTraining = false;
 
+  WEIGHT_HISTORY.clear();
+
   // Reset milestones
   for (const m of MILESTONES) m.shown = false;
   document.getElementById('milestone-banner').classList.add('hidden');
@@ -738,6 +742,7 @@ function init() {
   ACTIVATION.init();
   SENSITIVITY.init();
   BATTLE.init();
+  WEIGHT_HISTORY.init();
 
   // Heatmap axis selector
   document.getElementById('heatmap-axis-select').addEventListener('change', (e) => {
@@ -1000,6 +1005,7 @@ function init() {
     ACTIVATION.resize();
     SENSITIVITY.resize();
     BATTLE.resize();
+    WEIGHT_HISTORY.resize();
     updateNeuron();
   });
 

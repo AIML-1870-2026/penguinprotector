@@ -179,6 +179,7 @@
       <button class="tab-pill" data-tab="tab-chain">Chain</button>
       <button class="tab-pill" data-tab="tab-activation">Activations</button>
       <button class="tab-pill" data-tab="tab-math">Math</button>
+      <button class="tab-pill" data-tab="tab-history">Weights</button>
       <button class="tab-pill" data-tab="tab-about">About</button>
     </nav>
 
@@ -416,6 +417,16 @@
         </section>
       </div>
 
+      <!-- Weight History -->
+      <div class="tab-panel" id="tab-history">
+        <div class="weight-history-container">
+          <p class="weight-history-desc">Watch how your neuron's weights evolve during training. Each line shows one weight changing over time as the neuron learns from your labeled points.</p>
+          <div class="weight-history-plot-wrapper">
+            <canvas id="weight-history-canvas" width="500" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+
       <!-- About -->
       <div class="tab-panel" id="tab-about">
         <div class="about-card">
@@ -439,6 +450,7 @@
   <script src="activation.js"></script>
   <script src="sensitivity.js"></script>
   <script src="battle.js"></script>
+  <script src="weight-history.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
