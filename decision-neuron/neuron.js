@@ -12,6 +12,26 @@ function relu(z) {
   return Math.max(0, z);
 }
 
+// === Theme Color Helper ===
+function getThemeColors() {
+  const s = getComputedStyle(document.body);
+  return {
+    bg: s.getPropertyValue('--bg').trim(),
+    card: s.getPropertyValue('--card').trim(),
+    cardBorder: s.getPropertyValue('--card-border').trim(),
+    textPrimary: s.getPropertyValue('--text-primary').trim(),
+    textMuted: s.getPropertyValue('--text-muted').trim(),
+    textLight: s.getPropertyValue('--text-light').trim(),
+  };
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function applyActivation(z, fnName) {
   if (fnName === 'step') return stepFunction(z);
   if (fnName === 'relu') return relu(z);

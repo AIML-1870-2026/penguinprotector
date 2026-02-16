@@ -67,6 +67,7 @@ const SENSITIVITY = {
 
   drawLineChart(state) {
     const ctx = this.ctx;
+    const colors = getThemeColors();
     const W = this.width;
     const H = this.height;
     const pad = { top: 20, right: 20, bottom: 36, left: 48 };
@@ -79,7 +80,7 @@ const SENSITIVITY = {
     const steps = 80;
 
     // Draw grid
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+    ctx.strokeStyle = hexToRgba(colors.textLight, 0.15);
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const y = pad.top + (plotH * i) / 4;
@@ -91,7 +92,7 @@ const SENSITIVITY = {
 
     // Y-axis labels
     ctx.font = '10px "Fira Code", monospace';
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'right';
     for (let i = 0; i <= 4; i++) {
       const val = 1 - i * 0.25;
@@ -108,7 +109,7 @@ const SENSITIVITY = {
     }
 
     // Axis titles
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.font = '10px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.fillText('Input Value (0 → 1)', pad.left + plotW / 2, H - 4);
@@ -131,7 +132,7 @@ const SENSITIVITY = {
     ctx.setLineDash([]);
 
     // Threshold label
-    ctx.fillStyle = 'rgba(124, 58, 237, 0.5)';
+    ctx.fillStyle = hexToRgba('#7c3aed', 0.5);
     ctx.font = '9px "Fira Code", monospace';
     ctx.textAlign = 'left';
     ctx.fillText('threshold 0.50', pad.left + plotW - 80, threshY - 5);
@@ -190,8 +191,8 @@ const SENSITIVITY = {
       ctx.arc(markerX, markerY, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      // White inner dot
-      ctx.fillStyle = '#ffffff';
+      // Inner dot
+      ctx.fillStyle = colors.card;
       ctx.beginPath();
       ctx.arc(markerX, markerY, 2.5, 0, Math.PI * 2);
       ctx.fill();
@@ -207,7 +208,7 @@ const SENSITIVITY = {
       ctx.beginPath();
       ctx.arc(legendX + 5, legendY + 3, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = colors.textMuted;
       ctx.textAlign = 'left';
       ctx.fillText(label, legendX + 12, legendY + 7);
       legendX += ctx.measureText(label).width + 22;
@@ -215,6 +216,7 @@ const SENSITIVITY = {
   },
 
   drawBarChart(state) {
+    const colors = getThemeColors();
     const ctx = this.barCtx;
     const rect = this.barCanvas.getBoundingClientRect();
     const W = rect.width;
@@ -262,13 +264,13 @@ const SENSITIVITY = {
       ctx.globalAlpha = 1;
 
       // Label on left
-      ctx.fillStyle = '#475569';
+      ctx.fillStyle = colors.textMuted;
       ctx.font = '11px "Inter", sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText(this.LABELS[s.key], pad.left - 8, y + barH / 2 + 4);
 
       // Value on bar
-      ctx.fillStyle = barW > 50 ? '#ffffff' : '#475569';
+      ctx.fillStyle = barW > 50 ? colors.card : colors.textMuted;
       ctx.font = '10px "Fira Code", monospace';
       ctx.textAlign = barW > 50 ? 'right' : 'left';
       const valX = barW > 50 ? pad.left + barW - 6 : pad.left + barW + 6;

@@ -45,6 +45,7 @@ const VIZ = {
   draw(state) {
     if (!this.w || this.w === 0) return;
     const ctx = this.ctx;
+    const colors = getThemeColors();
     ctx.clearRect(0, 0, this.w, this.h);
 
     const inputNodes = this.getInputNodePositions();
@@ -89,21 +90,21 @@ const VIZ = {
       // Node circle
       ctx.beginPath();
       ctx.arc(inputNodes[i].x, inputNodes[i].y, 16, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = colors.card;
       ctx.fill();
       ctx.strokeStyle = isPositive ? '#818cf8' : '#f59e0b';
       ctx.lineWidth = 2;
       ctx.stroke();
 
       // Value text inside node
-      ctx.fillStyle = '#1e293b';
+      ctx.fillStyle = colors.textPrimary;
       ctx.font = '10px "Fira Code", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(value.toFixed(1), inputNodes[i].x, inputNodes[i].y);
 
       // Label to the left
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = colors.textMuted;
       ctx.font = '9px "Fira Code", monospace';
       ctx.textAlign = 'right';
       ctx.fillText(this.inputLabels[i], inputNodes[i].x - 22, inputNodes[i].y);
@@ -135,7 +136,7 @@ const VIZ = {
     // Main circle
     ctx.beginPath();
     ctx.arc(outputNode.x, outputNode.y, 28, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.card;
     ctx.fill();
     ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
     ctx.lineWidth = 2.5;
@@ -149,7 +150,7 @@ const VIZ = {
     ctx.fillText(Math.round(prob * 100) + '%', outputNode.x, outputNode.y);
 
     // Label
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = colors.textMuted;
     ctx.font = '9px "Fira Code", monospace';
     ctx.fillText(state.decision, outputNode.x, outputNode.y + 42);
   },

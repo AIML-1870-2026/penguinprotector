@@ -66,11 +66,12 @@ const WEIGHT_HISTORY = {
     const plotW = W - pad.left - pad.right;
     const plotH = H - pad.top - pad.bottom;
 
+    const colors = getThemeColors();
     ctx.clearRect(0, 0, W, H);
 
     if (this.history.length === 0) {
       ctx.font = '13px "Inter", sans-serif';
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = colors.textLight;
       ctx.textAlign = 'center';
       ctx.fillText('Train your neuron to see weight changes!', W / 2, H / 2 - 8);
       ctx.font = '11px "Inter", sans-serif';
@@ -101,7 +102,7 @@ const WEIGHT_HISTORY = {
     const toY = (val) => pad.top + (1 - (val - yMin) / (yMax - yMin)) * plotH;
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+    ctx.strokeStyle = hexToRgba(colors.textLight, 0.15);
     ctx.lineWidth = 1;
     const numYTicks = 5;
     for (let i = 0; i <= numYTicks; i++) {
@@ -114,7 +115,7 @@ const WEIGHT_HISTORY = {
 
     // Y-axis labels
     ctx.font = '10px "Fira Code", monospace';
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'right';
     for (let i = 0; i <= numYTicks; i++) {
       const val = yMax - (yMax - yMin) * (i / numYTicks);
@@ -132,7 +133,7 @@ const WEIGHT_HISTORY = {
     }
 
     // Axis titles
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.font = '10px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.fillText('Training Step', pad.left + plotW / 2, H - 4);
@@ -186,7 +187,7 @@ const WEIGHT_HISTORY = {
       ctx.beginPath();
       ctx.arc(lx, ly, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = colors.card;
       ctx.beginPath();
       ctx.arc(lx, ly, 2, 0, Math.PI * 2);
       ctx.fill();
@@ -214,7 +215,7 @@ const WEIGHT_HISTORY = {
       ctx.arc(legendX + 4, legendY + 3, 3.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = colors.textMuted;
       ctx.textAlign = 'left';
       ctx.fillText(label, legendX + 11, legendY + 6);
       legendX += ctx.measureText(label).width + 20;

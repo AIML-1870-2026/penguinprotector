@@ -26,6 +26,7 @@ const BOUNDARY = {
   draw(state) {
     if (!this.size || this.size === 0) return;
     const ctx = this.ctx;
+    const colors = getThemeColors();
     const s = this.size;
     const p = this.padding;
     const plotSize = s - p * 2;
@@ -100,7 +101,7 @@ const BOUNDARY = {
     }
 
     // Draw axes
-    ctx.strokeStyle = '#c5d3e8';
+    ctx.strokeStyle = colors.cardBorder;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(p, p);
@@ -109,7 +110,7 @@ const BOUNDARY = {
     ctx.stroke();
 
     // Tick marks
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = colors.textMuted;
     ctx.font = '9px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -119,7 +120,7 @@ const BOUNDARY = {
       ctx.beginPath();
       ctx.moveTo(x, s - p);
       ctx.lineTo(x, s - p + 4);
-      ctx.strokeStyle = '#64748b';
+      ctx.strokeStyle = colors.textMuted;
       ctx.stroke();
       ctx.fillText(val.toFixed(2), x, s - p + 6);
     }
@@ -132,7 +133,7 @@ const BOUNDARY = {
       ctx.beginPath();
       ctx.moveTo(p, y);
       ctx.lineTo(p - 4, y);
-      ctx.strokeStyle = '#64748b';
+      ctx.strokeStyle = colors.textMuted;
       ctx.stroke();
       ctx.fillText(val.toFixed(2), p - 6, y);
     }
@@ -173,22 +174,22 @@ const BOUNDARY = {
     ctx.beginPath();
     ctx.arc(youX, youY, 10, 0, Math.PI * 2);
     const glow = ctx.createRadialGradient(youX, youY, 2, youX, youY, 12);
-    glow.addColorStop(0, 'rgba(30, 41, 59, 0.5)');
-    glow.addColorStop(1, 'rgba(30, 41, 59, 0)');
+    glow.addColorStop(0, hexToRgba(colors.textPrimary, 0.5));
+    glow.addColorStop(1, hexToRgba(colors.textPrimary, 0));
     ctx.fillStyle = glow;
     ctx.fill();
 
     // Dot
     ctx.beginPath();
     ctx.arc(youX, youY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = colors.textPrimary;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = colors.card;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // Label
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = colors.textPrimary;
     ctx.font = '9px "Fira Code", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';

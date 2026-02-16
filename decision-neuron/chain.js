@@ -31,6 +31,7 @@ const CHAIN = {
   draw(state) {
     if (!this.w || this.w === 0 || !this.ctx) return;
     const ctx = this.ctx;
+    const colors = getThemeColors();
     ctx.clearRect(0, 0, this.w, this.h);
 
     const chainWeight = state.chainWeight || 0.8;
@@ -58,7 +59,7 @@ const CHAIN = {
     ctx.globalAlpha = 1;
 
     // Weight label
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = colors.textMuted;
     ctx.font = '10px "Fira Code", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -79,7 +80,7 @@ const CHAIN = {
     const n1Color = a1 >= 0.5 ? '#6366f1' : '#d97706';
     ctx.beginPath();
     ctx.arc(fromX, fromY, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.card;
     ctx.fill();
     ctx.strokeStyle = n1Color;
     ctx.lineWidth = 2;
@@ -88,7 +89,7 @@ const CHAIN = {
     // Draw N2 input dot (right)
     ctx.beginPath();
     ctx.arc(toX, toY, 8, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.card;
     ctx.fill();
     ctx.strokeStyle = '#6366f1';
     ctx.lineWidth = 2;

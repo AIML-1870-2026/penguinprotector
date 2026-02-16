@@ -77,6 +77,7 @@ const BATTLE = {
 
   draw(state) {
     const ctx = this.ctx;
+    const colors = getThemeColors();
     const W = this.width;
     const H = this.height;
 
@@ -95,7 +96,7 @@ const BATTLE = {
 
     // VS text
     ctx.font = `bold ${Math.min(18, W * 0.035)}px "Inter", sans-serif`;
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'center';
     ctx.fillText('VS', centerX, centerY - neuronR - 30);
 
@@ -110,7 +111,7 @@ const BATTLE = {
     const barX = 40;
 
     // Bar background
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = colors.cardBorder;
     ctx.beginPath();
     ctx.roundRect(barX, barY, barW, barH, 7);
     ctx.fill();
@@ -134,21 +135,20 @@ const BATTLE = {
     // Indicator dot showing who's winning
     const diff = r1.probability - r2.probability;
     const dotPos = barX + barW * 0.5 + (diff * barW * 0.4);
-    ctx.fillStyle = diff > 0 ? p1.color : diff < 0 ? p2.color : '#94a3b8';
+    ctx.fillStyle = diff > 0 ? p1.color : diff < 0 ? p2.color : colors.textLight;
     ctx.beginPath();
     ctx.arc(dotPos, barY + barH / 2, 9, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.card;
     ctx.beginPath();
     ctx.arc(dotPos, barY + barH / 2, 5, 0, Math.PI * 2);
     ctx.fill();
 
     // Labels under bar
     ctx.font = `${Math.min(10, W * 0.02)}px "Fira Code", monospace`;
-    ctx.fillStyle = p1.color;
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'left';
     ctx.fillText('More nap', barX, barY + barH + 14);
-    ctx.fillStyle = p2.color;
     ctx.textAlign = 'right';
     ctx.fillText('More nap', barX + barW, barY + barH + 14);
 
@@ -166,6 +166,7 @@ const BATTLE = {
   },
 
   drawBattleNeuron(ctx, cx, cy, r, personality, result, side) {
+    const colors = getThemeColors();
     const pct = Math.round(result.probability * 100);
     const isNap = result.decision === 'Nap';
 
@@ -185,7 +186,7 @@ const BATTLE = {
     // Neuron circle
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = colors.card;
     ctx.fill();
     ctx.strokeStyle = personality.color;
     ctx.lineWidth = 3;
@@ -220,7 +221,7 @@ const BATTLE = {
 
     // Tagline
     ctx.font = `italic ${Math.min(10, r * 0.25)}px "Inter", sans-serif`;
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.fillText(personality.desc, cx, cy - r - 8);
   },
 

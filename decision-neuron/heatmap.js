@@ -63,6 +63,7 @@ const HEATMAP = {
   draw(state) {
     if (!this.size || this.size === 0) return;
     const ctx = this.ctx;
+    const colors = getThemeColors();
     const s = this.size;
     const p = this.padding;
     const plotSize = s - p * 2;
@@ -99,7 +100,7 @@ const HEATMAP = {
     this.drawContour(state, plotSize, p);
 
     // Draw axes
-    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeStyle = colors.textLight;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(p, p);
@@ -108,7 +109,7 @@ const HEATMAP = {
     ctx.stroke();
 
     // Tick marks + labels
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = colors.textMuted;
     ctx.font = '9px "Fira Code", monospace';
 
     // X axis ticks
@@ -120,7 +121,7 @@ const HEATMAP = {
       ctx.beginPath();
       ctx.moveTo(x, s - p);
       ctx.lineTo(x, s - p + 4);
-      ctx.strokeStyle = '#64748b';
+      ctx.strokeStyle = colors.textMuted;
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.fillText(val.toFixed(2), x, s - p + 7);
@@ -135,7 +136,7 @@ const HEATMAP = {
       ctx.beginPath();
       ctx.moveTo(p, y);
       ctx.lineTo(p - 4, y);
-      ctx.strokeStyle = '#64748b';
+      ctx.strokeStyle = colors.textMuted;
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.fillText(val.toFixed(2), p - 7, y);
@@ -146,7 +147,7 @@ const HEATMAP = {
     ctx.translate(12, p + plotSize / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.font = '10px "Fira Code", monospace';
-    ctx.fillStyle = '#64748b';
+    ctx.fillStyle = colors.textMuted;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(INPUT_LABELS[this.yAxis], 0, 0);
@@ -208,13 +209,14 @@ const HEATMAP = {
 
   drawCrosshair(state, plotSize, p) {
     const ctx = this.ctx;
+    const colors = getThemeColors();
     const xVal = state.inputs[this.xAxis];
     const yVal = state.inputs[this.yAxis];
     const cx = p + xVal * plotSize;
     const cy = p + (1 - yVal) * plotSize;
 
     // Crosshair lines
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+    ctx.strokeStyle = hexToRgba(colors.textPrimary, 0.3);
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
 
@@ -235,16 +237,16 @@ const HEATMAP = {
     // Dot at intersection
     ctx.beginPath();
     ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = colors.textPrimary;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = colors.card;
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Outer glow ring
     ctx.beginPath();
     ctx.arc(cx, cy, 10, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.2)';
+    ctx.strokeStyle = hexToRgba(colors.textPrimary, 0.2);
     ctx.lineWidth = 1.5;
     ctx.stroke();
   },

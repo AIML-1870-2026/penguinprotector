@@ -63,10 +63,11 @@ const ACTIVATION = (() => {
   }
 
   function drawGrid(w, h, yMin, yMax) {
-    ctx.strokeStyle = '#c5d3e8';
+    const colors = getThemeColors();
+    ctx.strokeStyle = colors.cardBorder;
     ctx.lineWidth = 0.5;
     ctx.font = '10px "Fira Code", monospace';
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
 
@@ -95,7 +96,7 @@ const ACTIVATION = (() => {
     }
 
     // Zero axis
-    ctx.strokeStyle = '#94a3b8';
+    ctx.strokeStyle = colors.textLight;
     ctx.lineWidth = 1;
     const zeroX = toPlotX(0, w);
     ctx.beginPath();
@@ -112,7 +113,7 @@ const ACTIVATION = (() => {
     }
 
     // Axis label
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = colors.textLight;
     ctx.textAlign = 'center';
     ctx.fillText('z', PLOT_PADDING.left + w / 2, PLOT_PADDING.top + h + 22);
   }
@@ -172,7 +173,7 @@ const ACTIVATION = (() => {
     ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fillStyle = fnObj.color;
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
+    ctx.strokeStyle = getThemeColors().card;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
