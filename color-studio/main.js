@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const valR = document.getElementById('val-r');
     const valG = document.getElementById('val-g');
     const valB = document.getElementById('val-b');
+    const dotR = document.getElementById('dot-r');
+    const dotG = document.getElementById('dot-g');
+    const dotB = document.getElementById('dot-b');
     const hexCode = document.getElementById('hex-code');
     const rgbCode = document.getElementById('rgb-code');
     const colorPreview = document.getElementById('color-preview');
@@ -136,6 +139,30 @@ document.addEventListener('DOMContentLoaded', () => {
         hexCode.textContent = hex;
         rgbCode.textContent = `rgb(${colorState.r}, ${colorState.g}, ${colorState.b})`;
         colorPreview.style.backgroundColor = hex;
+
+        // Dynamic slider fill: filled portion shows actual channel shade, unfilled is dark
+        const pctR = (colorState.r / 255) * 100;
+        const pctG = (colorState.g / 255) * 100;
+        const pctB = (colorState.b / 255) * 100;
+        const dark = 'rgba(255,255,255,0.08)';
+        sliderR.style.background = `linear-gradient(to right, rgb(${colorState.r},0,0) 0%, rgb(${colorState.r},0,0) ${pctR}%, ${dark} ${pctR}%, ${dark} 100%)`;
+        sliderG.style.background = `linear-gradient(to right, rgb(0,${colorState.g},0) 0%, rgb(0,${colorState.g},0) ${pctG}%, ${dark} ${pctG}%, ${dark} 100%)`;
+        sliderB.style.background = `linear-gradient(to right, rgb(0,0,${colorState.b}) 0%, rgb(0,0,${colorState.b}) ${pctB}%, ${dark} ${pctB}%, ${dark} 100%)`;
+
+        // Thumb color = exact channel shade
+        sliderR.style.setProperty('--thumb-color', `rgb(${colorState.r}, 0, 0)`);
+        sliderG.style.setProperty('--thumb-color', `rgb(0, ${colorState.g}, 0)`);
+        sliderB.style.setProperty('--thumb-color', `rgb(0, 0, ${colorState.b})`);
+
+        // Thumb glow = faint channel color
+        sliderR.style.setProperty('--thumb-glow', `rgba(${colorState.r}, 0, 0, 0.25)`);
+        sliderG.style.setProperty('--thumb-glow', `rgba(0, ${colorState.g}, 0, 0.25)`);
+        sliderB.style.setProperty('--thumb-glow', `rgba(0, 0, ${colorState.b}, 0.25)`);
+
+        // Channel dots show the exact per-channel shade
+        dotR.style.backgroundColor = `rgb(${colorState.r}, 0, 0)`;
+        dotG.style.backgroundColor = `rgb(0, ${colorState.g}, 0)`;
+        dotB.style.backgroundColor = `rgb(0, 0, ${colorState.b})`;
 
         Explorer.setIntensities(colorState.r, colorState.g, colorState.b);
         Accessibility.setForeground(hex);
