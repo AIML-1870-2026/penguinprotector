@@ -30,12 +30,13 @@ header {
 }
 
 .rainbow-text {
-    font-size: 2.2rem;
-    font-weight: 800;
-    letter-spacing: -0.5px;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 2.4rem;
+    font-weight: 400;
+    letter-spacing: 1px;
     background: linear-gradient(
         135deg,
-        #f0a0c0, #a78bfa, #6495ed, #9cb8a0, #c8b888, #d4a0a0, #a78bfa
+        #d4a0a0, #c9a9b0, #9cb8a0, #b8c4a0, #dba8a8, #a8b89c, #d4a0a0
     );
     background-size: 200% 200%;
     animation: gradientShift 6s ease infinite;
