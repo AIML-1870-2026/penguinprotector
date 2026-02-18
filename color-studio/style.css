@@ -695,6 +695,97 @@ header {
     transform: translateX(-50%) translateY(0);
 }
 
+/* Light theme — activated when a light background preset is chosen */
+body.theme-light {
+    color: #1e1530;
+    transition: color 0.4s ease, background-color 0.4s ease;
+}
+
+body.theme-light .rainbow-text {
+    color: #4a2d70;
+}
+
+body.theme-light .subtitle {
+    color: rgba(80, 50, 120, 0.6);
+}
+
+body.theme-light .panel h2,
+body.theme-light .bg-preset-label,
+body.theme-light .cvd-label,
+body.theme-light .cvd-section h3,
+body.theme-light .rgb-code,
+body.theme-light .slider-value,
+body.theme-light .contrast-hex,
+body.theme-light #accessible-bg-hex {
+    color: rgba(20, 10, 40, 0.45);
+}
+
+body.theme-light .hex-code {
+    color: #1e1530;
+}
+
+body.theme-light .hex-code:hover {
+    background: rgba(0, 0, 0, 0.07);
+}
+
+body.theme-light .tab {
+    color: rgba(20, 10, 40, 0.45);
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .tab:hover {
+    color: rgba(20, 10, 40, 0.75);
+    background: rgba(0, 0, 0, 0.09);
+}
+
+body.theme-light .tab.active {
+    background: rgba(99, 102, 241, 0.18);
+    color: #3730a3;
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+body.theme-light .panel {
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .color-output {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.07);
+}
+
+body.theme-light .harmony-btn {
+    color: rgba(20, 10, 40, 0.45);
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .harmony-btn:hover {
+    color: rgba(20, 10, 40, 0.75);
+    background: rgba(0, 0, 0, 0.09);
+}
+
+body.theme-light .harmony-btn.active {
+    background: rgba(139, 92, 246, 0.18);
+    color: #5b21b6;
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+body.theme-light .randomize-btn {
+    color: #3730a3;
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+body.theme-light .toggle-label,
+body.theme-light .bg-picker,
+body.theme-light .contrast-color-pick label {
+    color: rgba(20, 10, 40, 0.5);
+}
+
+body.theme-light .contrast-ratio {
+    color: #1e1530;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .panels {

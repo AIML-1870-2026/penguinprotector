@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
         explorerPanel.style.backgroundColor = hex;
         document.body.style.backgroundColor = hex;
         siteHeader.style.backgroundColor = darkenHex(hex, 0.6);
+
+        // Switch to dark text on light backgrounds
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        document.body.classList.toggle('theme-light', brightness > 128);
     }
 
     applyPreset('#000000'); // match initial active preset
