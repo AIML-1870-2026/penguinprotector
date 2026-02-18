@@ -18,6 +18,7 @@
             <button class="tab" data-tab="explorer">Explorer</button>
             <button class="tab" data-tab="palette">Palette</button>
             <button class="tab" data-tab="accessibility">Accessibility</button>
+            <button class="tab" data-tab="custom">Custom</button>
         </nav>
     </header>
 
@@ -40,6 +41,10 @@
                 <span class="color-preview" id="color-preview"></span>
                 <span class="hex-code" id="hex-code" title="Click to copy">#000000</span>
                 <span class="rgb-code" id="rgb-code">rgb(0, 0, 0)</span>
+            </div>
+            <div class="tints-shades-wrapper">
+                <span class="tints-label">Tints &amp; Shades</span>
+                <div class="tints-shades" id="tints-shades"></div>
             </div>
             <div class="sliders">
                 <div class="slider-row">
@@ -133,6 +138,30 @@
                     <input type="color" id="accessible-bg" value="#0f0f14">
                     <span id="accessible-bg-hex">#0f0f14</span>
                 </div>
+            </div>
+        </section>
+
+        <!-- Custom Palette Builder Panel -->
+        <section class="panel custom-panel" id="custom-panel">
+            <h2>Palette Builder</h2>
+            <div class="builder-header">
+                <div class="builder-actions">
+                    <button id="add-color-btn" class="add-color-btn">+ Add Current Color</button>
+                    <button id="clear-palette-btn" class="clear-palette-btn">Clear All</button>
+                </div>
+                <div class="builder-count-control">
+                    <span class="builder-label">Target</span>
+                    <button class="count-btn" id="count-dec">−</button>
+                    <span id="target-count">3</span>
+                    <button class="count-btn" id="count-inc">+</button>
+                    <span class="builder-label">colors</span>
+                </div>
+            </div>
+            <div class="custom-palette-grid" id="custom-palette-grid">
+                <div class="custom-palette-empty">Pick a color with the sliders, then click "+ Add Current Color"</div>
+            </div>
+            <div class="export-bar" id="export-bar">
+                <button id="export-css-btn" class="export-btn">Copy as CSS Variables</button>
             </div>
         </section>
     </main>

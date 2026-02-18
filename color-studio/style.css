@@ -695,6 +695,291 @@ header {
     transform: translateX(-50%) translateY(0);
 }
 
+/* Tints & Shades Strip */
+.tints-shades-wrapper {
+    margin-bottom: 1rem;
+}
+
+.tints-label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.25);
+    margin-bottom: 0.35rem;
+}
+
+.tints-shades {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 38px;
+}
+
+.shade-chip {
+    flex: 1;
+    cursor: pointer;
+    position: relative;
+    transition: flex 0.2s ease;
+}
+
+.shade-chip:hover {
+    flex: 2.5;
+}
+
+.shade-chip.is-current {
+    box-shadow: inset 0 0 0 2.5px rgba(255, 255, 255, 0.85);
+}
+
+/* Custom Palette Builder */
+.custom-panel {
+    grid-column: 1 / -1;
+}
+
+.builder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.builder-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-color-btn {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 10px;
+    padding: 0.45rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-color-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.3));
+    transform: translateY(-1px);
+}
+
+.clear-palette-btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 0.45rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clear-palette-btn:hover {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.2);
+}
+
+.builder-count-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.builder-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.5px;
+}
+
+.count-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    padding: 0;
+    line-height: 1;
+    font-family: 'Inter', sans-serif;
+}
+
+.count-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+#target-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    min-width: 20px;
+    text-align: center;
+}
+
+.custom-palette-grid {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    min-height: 140px;
+    align-items: flex-start;
+}
+
+.custom-palette-empty {
+    color: rgba(255, 255, 255, 0.18);
+    font-size: 0.85rem;
+    padding: 2.5rem;
+    text-align: center;
+    width: 100%;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+}
+
+.palette-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    width: 96px;
+    position: relative;
+}
+
+.palette-slot-swatch {
+    width: 100%;
+    height: 80px;
+    border-radius: 14px;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.palette-slot-swatch.empty {
+    background: rgba(255, 255, 255, 0.04);
+    border-style: dashed;
+}
+
+.palette-slot-swatch.filled:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.palette-slot-hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+}
+
+.palette-slot-hex:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.palette-slot-hex.empty {
+    color: rgba(255, 255, 255, 0.15);
+    cursor: default;
+    pointer-events: none;
+}
+
+.palette-slot-shades {
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+    height: 16px;
+}
+
+.palette-shade-chip {
+    flex: 1;
+    cursor: pointer;
+    transition: flex 0.15s ease;
+}
+
+.palette-shade-chip:hover {
+    flex: 2.5;
+}
+
+.palette-slot-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.85);
+    color: white;
+    border: none;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    transition: background 0.15s;
+    z-index: 2;
+}
+
+.palette-slot:hover .palette-slot-remove.has-color {
+    display: flex;
+}
+
+.palette-slot-remove:hover {
+    background: rgb(220, 38, 38);
+}
+
+.export-bar {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: none;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.export-btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.45rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.export-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+}
+
 /* Light theme — activated when a light background preset is chosen */
 body.theme-light {
     color: #1e1530;
@@ -784,6 +1069,63 @@ body.theme-light .contrast-color-pick label {
 
 body.theme-light .contrast-ratio {
     color: #1e1530;
+}
+
+body.theme-light .tints-label,
+body.theme-light .builder-label {
+    color: rgba(20, 10, 40, 0.3);
+}
+
+body.theme-light .shade-chip.is-current {
+    box-shadow: inset 0 0 0 2.5px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-light .custom-palette-empty {
+    color: rgba(20, 10, 40, 0.22);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.theme-light .palette-slot-swatch.empty {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+body.theme-light .palette-slot-hex {
+    color: rgba(20, 10, 40, 0.45);
+}
+
+body.theme-light .palette-slot-hex:hover {
+    background: rgba(0, 0, 0, 0.07);
+    color: rgba(20, 10, 40, 0.85);
+}
+
+body.theme-light .palette-slot-hex.empty {
+    color: rgba(20, 10, 40, 0.15);
+}
+
+body.theme-light .clear-palette-btn {
+    color: rgba(20, 10, 40, 0.4);
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .export-btn {
+    color: rgba(20, 10, 40, 0.4);
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light #target-count {
+    color: #5b21b6;
+}
+
+body.theme-light .count-btn {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(20, 10, 40, 0.5);
+}
+
+body.theme-light .export-bar {
+    border-top-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Responsive */
