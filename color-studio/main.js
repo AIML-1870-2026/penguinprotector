@@ -33,15 +33,29 @@ document.addEventListener('DOMContentLoaded', () => {
     Palette.init(null, onSwatchClick);
     Accessibility.init();
 
-    // Background preset buttons — change the explorer panel and page background
+    // Background preset buttons — change the explorer panel, page, and header background
     const explorerPanel = document.getElementById('explorer-panel');
-    explorerPanel.style.backgroundColor = '#000000'; // match initial active preset
+    const siteHeader = document.querySelector('header');
+
+    function darkenHex(hex, factor) {
+        const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
+        const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor);
+        const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function applyPreset(hex) {
+        explorerPanel.style.backgroundColor = hex;
+        document.body.style.backgroundColor = hex;
+        siteHeader.style.backgroundColor = darkenHex(hex, 0.6);
+    }
+
+    applyPreset('#000000'); // match initial active preset
     document.querySelectorAll('.bg-preset').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.bg-preset').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            explorerPanel.style.backgroundColor = btn.dataset.bg;
-            document.body.style.backgroundColor = btn.dataset.bg;
+            applyPreset(btn.dataset.bg);
         });
     });
 
