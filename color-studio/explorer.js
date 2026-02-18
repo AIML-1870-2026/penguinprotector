@@ -16,8 +16,9 @@ const Explorer = (() => {
     const RING_PAD    = 8;   // px gap between canvas edge and ring outer base edge
     const RING_WIDTH  = 28;  // px width of the hue ring
     const TRI_GAP     = 8;   // px gap between ring inner edge and triangle vertices
-    const PETALS      = 6;   // flower petal count
-    const PETAL_DEPTH = 0.22; // petal protrusion (0 = circle, higher = more petal-y)
+    const PETALS      = 6;   // number of spikes
+    const SPIKE_OUT   = 0.32; // how far spikes extend beyond the base ring (fraction of oR)
+    const SPIKE_SHARP = 2.5;  // higher = narrower/pointer spikes
     const FEATHER     = 3;   // edge softness in pixels
 
     // ─── Geometry ─────────────────────────────────────────────────────────────
@@ -28,9 +29,10 @@ const Explorer = (() => {
     function iR() { return oR() - RING_WIDTH; }
     function tR() { return iR() - TRI_GAP; }
 
-    // Flower outer radius at a given angle — petals bulge out from the base ring
+    // Starburst outer radius — spikes only extend outward, ring base stays solid
     function flowerOuterR(angle) {
-        return oR() * (1 + PETAL_DEPTH * Math.cos(PETALS * angle));
+        const t = Math.pow(Math.max(0, Math.cos(PETALS * angle)), SPIKE_SHARP);
+        return oR() * (1 + SPIKE_OUT * t);
     }
 
     // Equilateral triangle vertices — v0 points toward selected hue on ring
