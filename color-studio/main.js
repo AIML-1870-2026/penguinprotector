@@ -30,18 +30,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Init modules
     Explorer.init(document.getElementById('explorer-canvas'));
-    Palette.init(document.getElementById('color-wheel'), onSwatchClick);
+    Palette.init(null, onSwatchClick);
     Accessibility.init();
 
-    // When the color wheel selection changes, sync everything
+    // When spotlight blend changes, update the display only (don't feed back into sliders)
     Explorer.onColorChange(({ r, g, b }) => {
-        colorState.r = r;
-        colorState.g = g;
-        colorState.b = b;
-        sliderR.value = r;
-        sliderG.value = g;
-        sliderB.value = b;
-        updateAll();
+        const hex = rgbToHex(r, g, b);
+        hexCode.textContent = hex;
+        rgbCode.textContent = `rgb(${r}, ${g}, ${b})`;
+        colorPreview.style.backgroundColor = hex;
+        Accessibility.setForeground(hex);
     });
 
     // Tab switching
@@ -184,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const base = { r: colorState.r, g: colorState.g, b: colorState.b };
         const palette = Palette.generate(base, colorState.harmony, colorState.accessibleMode, colorState.accessibleBg);
         Palette.renderSwatches(swatchesEl, palette, colorState.accessibleMode);
-        Palette.drawWheel(palette);
         Palette.updateSampleCard(sampleCard, palette);
         Palette.renderCVD(palette);
 

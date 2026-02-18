@@ -7,7 +7,7 @@ const Palette = (() => {
 
     function init(wheelEl, swatchClickCb) {
         wheelCanvas = wheelEl;
-        wheelCtx = wheelCanvas.getContext('2d');
+        wheelCtx = wheelEl ? wheelEl.getContext('2d') : null;
         onSwatchClick = swatchClickCb;
     }
 
