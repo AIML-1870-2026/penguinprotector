@@ -149,6 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
         Palette.drawWheel(palette);
         Palette.updateSampleCard(sampleCard, palette);
         Palette.renderCVD(palette);
+
+        if (palette.length > 0) {
+            document.querySelector('.rainbow-text').style.color = rgbToHex(palette[0].r, palette[0].g, palette[0].b);
+        }
     }
 
     // Window resize

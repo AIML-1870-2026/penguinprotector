@@ -34,20 +34,8 @@ header {
     font-size: 2.4rem;
     font-weight: 400;
     letter-spacing: 1px;
-    background: linear-gradient(
-        135deg,
-        #d4a0a0, #c9a9b0, #9cb8a0, #b8c4a0, #dba8a8, #a8b89c, #d4a0a0
-    );
-    background-size: 200% 200%;
-    animation: gradientShift 6s ease infinite;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-@keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
+    color: #c8a0b0;
+    transition: color 0.4s ease;
 }
 
 .subtitle {
