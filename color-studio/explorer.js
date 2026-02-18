@@ -1,329 +1,271 @@
-/* Explorer — canvas spotlight rendering, dragging, particles, additive blending */
+/* Explorer — HSL color wheel with draggable selector and lightness bar */
 
 const Explorer = (() => {
     let canvas, ctx;
-    let spotlights = [];
-    let particles = [];
-    let dragging = null;
-    let animId = null;
-    let lastValues = { r: 0, g: 0, b: 0 };
+    let selectedH = 0, selectedS = 80, selectedL = 50;
+    let draggingWheel = false;
+    let draggingBar = false;
     let colorChangeCallback = null;
-    let lastMixedStr = '';
+    let ignoreSetIntensities = false;
+    let wheelCache = null;
+    let animId = null;
+
+    const WHEEL_PAD = 12; // px between wheel edge and canvas edge
+    const BAR_H     = 20; // lightness bar height
+    const BAR_GAP   = 14; // gap between wheel area and bar
+    const BAR_BOT   = 10; // bottom padding
+
+    // Computed layout (recalculated on resize)
+    function layout() {
+        const by = canvas.height - BAR_H - BAR_BOT;
+        const wh = by - BAR_GAP;          // height of the wheel region
+        const cx = canvas.width  / 2;
+        const cy = wh / 2;
+        const r  = Math.min(cx, cy) - WHEEL_PAD;
+        return { cx, cy, r, wh, by };
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────────
 
     function init(canvasEl) {
         canvas = canvasEl;
-        ctx = canvas.getContext('2d');
+        ctx    = canvas.getContext('2d');
         resizeCanvas();
 
-        spotlights = [
-            { x: canvas.width * 0.3, y: canvas.height * 0.35, radius: 120, color: 'red', intensity: 200 },
-            { x: canvas.width * 0.7, y: canvas.height * 0.35, radius: 120, color: 'green', intensity: 100 },
-            { x: canvas.width * 0.5, y: canvas.height * 0.65, radius: 120, color: 'blue', intensity: 150 }
-        ];
-
-        canvas.addEventListener('mousedown', onMouseDown);
-        canvas.addEventListener('mousemove', onMouseMove);
-        canvas.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('mousedown',  onMouseDown);
+        canvas.addEventListener('mousemove',  onMouseMove);
+        canvas.addEventListener('mouseup',    onMouseUp);
         canvas.addEventListener('mouseleave', onMouseUp);
-        canvas.addEventListener('wheel', onWheel, { passive: false });
-
-        // Touch support
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-        canvas.addEventListener('touchend', onTouchEnd);
+        canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+        canvas.addEventListener('touchend',   onTouchEnd);
 
         startLoop();
     }
 
     function resizeCanvas() {
-        const wrapper = canvas.parentElement;
-        const w = wrapper.clientWidth;
-        canvas.width = w;
+        const w = canvas.parentElement.clientWidth;
+        canvas.width  = w;
         canvas.height = Math.min(w * 0.8, 400);
+        buildWheelCache();
     }
+
+    // ─── Wheel cache (pixel-perfect, built once per resize) ──────────────────
+
+    function buildWheelCache() {
+        if (!canvas || canvas.width === 0) return;
+        const { cx, cy, r, wh } = layout();
+
+        wheelCache        = document.createElement('canvas');
+        wheelCache.width  = canvas.width;
+        wheelCache.height = wh;
+        const wCtx      = wheelCache.getContext('2d');
+        const imageData = wCtx.createImageData(canvas.width, wh);
+
+        for (let y = 0; y < wh; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const dx   = x - cx;
+                const dy   = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > r) continue;
+
+                const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+                const sat = (dist / r) * 100;
+                const rgb = hslToRgb(hue, sat, 50);
+                const i   = (y * canvas.width + x) * 4;
+                imageData.data[i]     = rgb.r;
+                imageData.data[i + 1] = rgb.g;
+                imageData.data[i + 2] = rgb.b;
+                imageData.data[i + 3] = 255;
+            }
+        }
+        wCtx.putImageData(imageData, 0, 0);
+    }
+
+    // ─── Input helpers ───────────────────────────────────────────────────────
 
     function getCanvasPos(e) {
         const rect = canvas.getBoundingClientRect();
         return {
-            x: (e.clientX - rect.left) * (canvas.width / rect.width),
-            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+            x: (e.clientX - rect.left) * (canvas.width  / rect.width),
+            y: (e.clientY - rect.top)  * (canvas.height / rect.height)
         };
     }
 
-    function findSpotlight(pos) {
-        for (let i = spotlights.length - 1; i >= 0; i--) {
-            const s = spotlights[i];
-            const d = Math.hypot(pos.x - s.x, pos.y - s.y);
-            if (d < s.radius) return i;
-        }
-        return -1;
+    function inWheel(pos) {
+        const { cx, cy, r } = layout();
+        return Math.hypot(pos.x - cx, pos.y - cy) <= r;
     }
+
+    function inBar(pos) {
+        const { by } = layout();
+        return pos.y >= by && pos.y <= by + BAR_H;
+    }
+
+    // ─── Color update from interaction ───────────────────────────────────────
+
+    function updateFromWheelPos(pos) {
+        const { cx, cy, r } = layout();
+        const dx   = pos.x - cx;
+        const dy   = pos.y - cy;
+        const dist = Math.min(Math.hypot(dx, dy), r);
+        selectedH  = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+        selectedS  = (dist / r) * 100;
+        fireColorChange();
+    }
+
+    function updateFromBarPos(pos) {
+        selectedL = Math.max(0, Math.min(100, (pos.x / canvas.width) * 100));
+        fireColorChange();
+    }
+
+    function fireColorChange() {
+        if (!colorChangeCallback) return;
+        ignoreSetIntensities = true;
+        colorChangeCallback(getMixedColor());
+        ignoreSetIntensities = false;
+    }
+
+    // ─── Mouse events ────────────────────────────────────────────────────────
 
     function onMouseDown(e) {
         const pos = getCanvasPos(e);
-        const idx = findSpotlight(pos);
-        if (idx >= 0) {
-            dragging = { idx, offsetX: pos.x - spotlights[idx].x, offsetY: pos.y - spotlights[idx].y };
-        }
+        if      (inWheel(pos)) { draggingWheel = true; updateFromWheelPos(pos); }
+        else if (inBar(pos))   { draggingBar   = true; updateFromBarPos(pos);   }
     }
 
     function onMouseMove(e) {
-        if (!dragging) return;
         const pos = getCanvasPos(e);
-        spotlights[dragging.idx].x = pos.x - dragging.offsetX;
-        spotlights[dragging.idx].y = pos.y - dragging.offsetY;
+        if      (draggingWheel) updateFromWheelPos(pos);
+        else if (draggingBar)   updateFromBarPos(pos);
     }
 
-    function onMouseUp() {
-        dragging = null;
-    }
+    function onMouseUp() { draggingWheel = false; draggingBar = false; }
 
-    function onWheel(e) {
-        e.preventDefault();
-        const pos = getCanvasPos(e);
-        const idx = findSpotlight(pos);
-        if (idx >= 0) {
-            spotlights[idx].radius = Math.max(40, Math.min(200, spotlights[idx].radius - e.deltaY * 0.3));
-        }
-    }
+    // ─── Touch events ────────────────────────────────────────────────────────
 
     function onTouchStart(e) {
         e.preventDefault();
-        const touch = e.touches[0];
-        const pos = getCanvasPos(touch);
-        const idx = findSpotlight(pos);
-        if (idx >= 0) {
-            dragging = { idx, offsetX: pos.x - spotlights[idx].x, offsetY: pos.y - spotlights[idx].y };
-        }
+        const pos = getCanvasPos(e.touches[0]);
+        if      (inWheel(pos)) { draggingWheel = true; updateFromWheelPos(pos); }
+        else if (inBar(pos))   { draggingBar   = true; updateFromBarPos(pos);   }
     }
 
     function onTouchMove(e) {
         e.preventDefault();
-        if (!dragging) return;
-        const touch = e.touches[0];
-        const pos = getCanvasPos(touch);
-        spotlights[dragging.idx].x = pos.x - dragging.offsetX;
-        spotlights[dragging.idx].y = pos.y - dragging.offsetY;
+        const pos = getCanvasPos(e.touches[0]);
+        if      (draggingWheel) updateFromWheelPos(pos);
+        else if (draggingBar)   updateFromBarPos(pos);
     }
 
-    function onTouchEnd() {
-        dragging = null;
-    }
+    function onTouchEnd() { draggingWheel = false; draggingBar = false; }
+
+    // ─── Public API (called by main.js) ──────────────────────────────────────
 
     function setIntensities(r, g, b) {
-        // Check for rapid changes → spawn particles
-        const dr = Math.abs(r - lastValues.r);
-        const dg = Math.abs(g - lastValues.g);
-        const db = Math.abs(b - lastValues.b);
-        if (dr + dg + db > 20) {
-            spawnParticles(5);
-        }
-
-        spotlights[0].intensity = r;
-        spotlights[1].intensity = g;
-        spotlights[2].intensity = b;
-        lastValues = { r, g, b };
+        if (ignoreSetIntensities) return;
+        const hsl = rgbToHsl(r, g, b);
+        selectedH = hsl.h;
+        selectedS = hsl.s;
+        selectedL = hsl.l;
     }
 
     function getMixedColor() {
-        // Sample the additive blend at the canvas center based on each spotlight's distance
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        let r = 0, g = 0, b = 0;
-        for (const s of spotlights) {
-            if (s.intensity <= 0) continue;
-            const dist = Math.hypot(cx - s.x, cy - s.y);
-            const t = dist / s.radius; // 0 = spotlight center is on canvas center, 1 = edge
-            if (t >= 1) continue;
-            const contribution = s.intensity * (1 - t);
-            if (s.color === 'red')   r += contribution;
-            else if (s.color === 'green') g += contribution;
-            else if (s.color === 'blue')  b += contribution;
-        }
-        return {
-            r: Math.min(255, Math.round(r)),
-            g: Math.min(255, Math.round(g)),
-            b: Math.min(255, Math.round(b))
-        };
+        return hslToRgb(selectedH, selectedS, selectedL);
     }
 
     function onColorChange(fn) {
         colorChangeCallback = fn;
     }
 
-    function spawnParticles(count) {
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        for (let i = 0; i < count; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const speed = 1 + Math.random() * 3;
-            particles.push({
-                x: cx + (Math.random() - 0.5) * 30,
-                y: cy + (Math.random() - 0.5) * 30,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                life: 1,
-                decay: 0.01 + Math.random() * 0.02,
-                size: 2 + Math.random() * 3,
-                color: `hsl(${Math.random() * 360}, 100%, 70%)`
-            });
-        }
-    }
-
-    function updateParticles() {
-        for (let i = particles.length - 1; i >= 0; i--) {
-            const p = particles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life -= p.decay;
-            if (p.life <= 0) particles.splice(i, 1);
-        }
-    }
-
-    const SPOTLIGHT_COLORS = { red: '#ff5555', green: '#55ff55', blue: '#5599ff' };
+    // ─── Drawing ─────────────────────────────────────────────────────────────
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const { cx, cy, r, by } = layout();
 
-        // Draw with additive blending
-        ctx.globalCompositeOperation = 'lighter';
+        // 1. Cached color wheel (rendered at L=50)
+        if (wheelCache) ctx.drawImage(wheelCache, 0, 0);
 
-        for (const s of spotlights) {
-            const alpha = Math.pow(s.intensity / 255, 0.65); // gamma boost: brighter at low values
-            if (alpha <= 0) continue;
-
-            let r = 0, g = 0, b = 0;
-            if (s.color === 'red') r = s.intensity;
-            else if (s.color === 'green') g = s.intensity;
-            else if (s.color === 'blue') b = s.intensity;
-
-            const gradient = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.radius);
-            gradient.addColorStop(0,   `rgba(${r}, ${g}, ${b}, ${Math.min(1, alpha * 1.1)})`);
-            gradient.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, ${alpha * 0.65})`);
-            gradient.addColorStop(0.7,  `rgba(${r}, ${g}, ${b}, ${alpha * 0.2})`);
-            gradient.addColorStop(1,   `rgba(${r}, ${g}, ${b}, 0)`);
-
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        ctx.globalCompositeOperation = 'source-over';
-
-        // Always-visible spotlight rings — show position even at low intensity
-        for (const s of spotlights) {
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-            ctx.strokeStyle = SPOTLIGHT_COLORS[s.color] + '55'; // ~33% opacity
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        // Faint background axes — spatial orientation
+        // 2. Lightness overlay — darken or lighten the wheel
         ctx.save();
-        ctx.globalAlpha = 0.1;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 10]);
-        ctx.beginPath(); ctx.moveTo(0, canvas.height / 2); ctx.lineTo(canvas.width, canvas.height / 2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 0.2;
-        ctx.font = '9px system-ui';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-        ctx.fillText('X →', canvas.width - 4, canvas.height / 2 - 4);
-        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.fillText('Y ↓', canvas.width / 2 + 4, 4);
-        ctx.restore();
-
-        // Crosshairs while dragging — colored lines to canvas edges with position %
-        if (dragging !== null) {
-            const s = spotlights[dragging.idx];
-            const color = SPOTLIGHT_COLORS[s.color];
-            const xPct = Math.round(s.x / canvas.width * 100);
-            const yPct = Math.round(s.y / canvas.height * 100);
-
-            ctx.save();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.5;
-            ctx.setLineDash([4, 5]);
-            // Horizontal crosshair
-            ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(canvas.width, s.y); ctx.stroke();
-            // Vertical crosshair
-            ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, canvas.height); ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Edge labels showing position
-            ctx.globalAlpha = 0.9;
-            ctx.font = 'bold 10px JetBrains Mono, monospace';
-            ctx.fillStyle = color;
-            // X% at left edge of horizontal line
-            ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-            ctx.fillText(`x: ${xPct}%`, 4, s.y - 3);
-            // Y% at top edge of vertical line
-            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-            const xLabelX = Math.min(s.x + 4, canvas.width - 48);
-            ctx.fillText(`y: ${yPct}%`, xLabelX, 4);
-            ctx.restore();
-        }
-
-        // Draw center mixed color indicator
-        const mixed = getMixedColor();
-        const mixedStr = `${mixed.r},${mixed.g},${mixed.b}`;
-        if (mixedStr !== lastMixedStr) {
-            lastMixedStr = mixedStr;
-            if (colorChangeCallback) colorChangeCallback(mixed);
-        }
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        const pulse = 1 + Math.sin(Date.now() * 0.003) * 0.05;
-
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.scale(pulse, pulse);
         ctx.beginPath();
-        ctx.arc(0, 0, 16, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`;
-        ctx.shadowColor = `rgb(${mixed.r}, ${mixed.g}, ${mixed.b})`;
-        ctx.shadowBlur = 25;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.clip();
+        if (selectedL < 50) {
+            ctx.fillStyle = `rgba(0,0,0,${(50 - selectedL) / 50})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else if (selectedL > 50) {
+            ctx.fillStyle = `rgba(255,255,255,${(selectedL - 50) / 50})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         ctx.restore();
 
-        // Spotlight labels — colored by channel, with intensity value
-        ctx.shadowBlur = 0;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        for (const s of spotlights) {
-            const labelColor = SPOTLIGHT_COLORS[s.color];
-            // Letter
-            ctx.font = 'bold 15px system-ui';
-            ctx.fillStyle = labelColor;
-            ctx.fillText(s.color[0].toUpperCase(), s.x, s.y - 9);
-            // Numeric intensity
-            ctx.font = '11px JetBrains Mono, monospace';
-            ctx.fillStyle = 'rgba(255,255,255,0.75)';
-            ctx.fillText(Math.round(s.intensity), s.x, s.y + 9);
-        }
+        // 3. Wheel border ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth   = 1.5;
+        ctx.stroke();
 
-        // Draw particles
-        for (const p of particles) {
-            ctx.globalAlpha = p.life;
-            ctx.fillStyle = p.color;
+        // 4. Hue tick marks at every 30°
+        ctx.save();
+        for (let deg = 0; deg < 360; deg += 30) {
+            const rad = deg * Math.PI / 180;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(cx + Math.cos(rad) * (r - 6), cy + Math.sin(rad) * (r - 6));
+            ctx.lineTo(cx + Math.cos(rad) * (r + 4), cy + Math.sin(rad) * (r + 4));
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth   = 1.5;
+            ctx.stroke();
         }
-        ctx.globalAlpha = 1;
+        ctx.restore();
 
-        updateParticles();
+        // 5. Selector dot on wheel
+        const angleRad = selectedH * Math.PI / 180;
+        const satR     = (selectedS / 100) * r;
+        const sx       = cx + Math.cos(angleRad) * satR;
+        const sy       = cy + Math.sin(angleRad) * satR;
+        const { r: cr, g: cg, b: cb } = getMixedColor();
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, 11, 0, Math.PI * 2);
+        ctx.fillStyle   = `rgb(${cr}, ${cg}, ${cb})`;
+        ctx.shadowColor = `rgb(${cr}, ${cg}, ${cb})`;
+        ctx.shadowBlur  = 12;
+        ctx.fill();
+        ctx.shadowBlur  = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth   = 2.5;
+        ctx.stroke();
+
+        // 6. Lightness bar (black → full color → white)
+        const barGrad = ctx.createLinearGradient(0, by, canvas.width, by);
+        barGrad.addColorStop(0,   `hsl(${selectedH}, ${selectedS}%, 0%)`);
+        barGrad.addColorStop(0.5, `hsl(${selectedH}, ${selectedS}%, 50%)`);
+        barGrad.addColorStop(1,   `hsl(${selectedH}, ${selectedS}%, 100%)`);
+
+        ctx.beginPath();
+        ctx.roundRect(0, by, canvas.width, BAR_H, BAR_H / 2);
+        ctx.fillStyle = barGrad;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+
+        // 7. Lightness bar thumb
+        const halfH  = BAR_H / 2;
+        const thumbX = Math.max(halfH, Math.min(canvas.width - halfH, (selectedL / 100) * canvas.width));
+        ctx.beginPath();
+        ctx.arc(thumbX, by + halfH, halfH - 1, 0, Math.PI * 2);
+        ctx.fillStyle   = `hsl(${selectedH}, ${selectedS}%, ${selectedL}%)`;
+        ctx.shadowColor = `hsl(${selectedH}, ${selectedS}%, ${selectedL}%)`;
+        ctx.shadowBlur  = 8;
+        ctx.fill();
+        ctx.shadowBlur  = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth   = 2;
+        ctx.stroke();
     }
 
     function startLoop() {
