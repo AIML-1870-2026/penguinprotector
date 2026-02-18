@@ -160,6 +160,8 @@ const Explorer = (() => {
         }
     }
 
+    const SPOTLIGHT_COLORS = { red: '#ff5555', green: '#55ff55', blue: '#5599ff' };
+
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -167,7 +169,7 @@ const Explorer = (() => {
         ctx.globalCompositeOperation = 'lighter';
 
         for (const s of spotlights) {
-            const alpha = s.intensity / 255;
+            const alpha = Math.pow(s.intensity / 255, 0.65); // gamma boost: brighter at low values
             if (alpha <= 0) continue;
 
             let r = 0, g = 0, b = 0;
@@ -176,9 +178,10 @@ const Explorer = (() => {
             else if (s.color === 'blue') b = s.intensity;
 
             const gradient = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.radius);
-            gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha * 0.9})`);
-            gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${alpha * 0.4})`);
-            gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            gradient.addColorStop(0,   `rgba(${r}, ${g}, ${b}, ${Math.min(1, alpha * 1.1)})`);
+            gradient.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, ${alpha * 0.65})`);
+            gradient.addColorStop(0.7,  `rgba(${r}, ${g}, ${b}, ${alpha * 0.2})`);
+            gradient.addColorStop(1,   `rgba(${r}, ${g}, ${b}, 0)`);
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -187,6 +190,17 @@ const Explorer = (() => {
         }
 
         ctx.globalCompositeOperation = 'source-over';
+
+        // Always-visible spotlight rings — show position even at low intensity
+        for (const s of spotlights) {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+            ctx.strokeStyle = SPOTLIGHT_COLORS[s.color] + '55'; // ~33% opacity
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
         // Draw center mixed color indicator
         const mixed = getMixedColor();
@@ -208,14 +222,20 @@ const Explorer = (() => {
         ctx.stroke();
         ctx.restore();
 
-        // Spotlight labels
+        // Spotlight labels — colored by channel, with intensity value
         ctx.shadowBlur = 0;
-        ctx.font = 'bold 14px system-ui';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         for (const s of spotlights) {
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.fillText(s.color[0].toUpperCase(), s.x, s.y);
+            const labelColor = SPOTLIGHT_COLORS[s.color];
+            // Letter
+            ctx.font = 'bold 15px system-ui';
+            ctx.fillStyle = labelColor;
+            ctx.fillText(s.color[0].toUpperCase(), s.x, s.y - 9);
+            // Numeric intensity
+            ctx.font = '11px JetBrains Mono, monospace';
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillText(Math.round(s.intensity), s.x, s.y + 9);
         }
 
         // Draw particles
