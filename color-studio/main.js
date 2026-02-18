@@ -33,6 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
     Palette.init(document.getElementById('color-wheel'), onSwatchClick);
     Accessibility.init();
 
+    // When spotlight positions change the blend, update the color output display
+    Explorer.onColorChange(({ r, g, b }) => {
+        const hex = rgbToHex(r, g, b);
+        hexCode.textContent = hex;
+        rgbCode.textContent = `rgb(${r}, ${g}, ${b})`;
+        colorPreview.style.backgroundColor = hex;
+    });
+
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {

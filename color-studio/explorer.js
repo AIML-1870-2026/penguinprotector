@@ -7,6 +7,8 @@ const Explorer = (() => {
     let dragging = null;
     let animId = null;
     let lastValues = { r: 0, g: 0, b: 0 };
+    let colorChangeCallback = null;
+    let lastMixedStr = '';
 
     function init(canvasEl) {
         canvas = canvasEl;
@@ -124,11 +126,29 @@ const Explorer = (() => {
     }
 
     function getMixedColor() {
+        // Sample the additive blend at the canvas center based on each spotlight's distance
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        let r = 0, g = 0, b = 0;
+        for (const s of spotlights) {
+            if (s.intensity <= 0) continue;
+            const dist = Math.hypot(cx - s.x, cy - s.y);
+            const t = dist / s.radius; // 0 = spotlight center is on canvas center, 1 = edge
+            if (t >= 1) continue;
+            const contribution = s.intensity * (1 - t);
+            if (s.color === 'red')   r += contribution;
+            else if (s.color === 'green') g += contribution;
+            else if (s.color === 'blue')  b += contribution;
+        }
         return {
-            r: spotlights[0].intensity,
-            g: spotlights[1].intensity,
-            b: spotlights[2].intensity
+            r: Math.min(255, Math.round(r)),
+            g: Math.min(255, Math.round(g)),
+            b: Math.min(255, Math.round(b))
         };
+    }
+
+    function onColorChange(fn) {
+        colorChangeCallback = fn;
     }
 
     function spawnParticles(count) {
@@ -254,6 +274,11 @@ const Explorer = (() => {
 
         // Draw center mixed color indicator
         const mixed = getMixedColor();
+        const mixedStr = `${mixed.r},${mixed.g},${mixed.b}`;
+        if (mixedStr !== lastMixedStr) {
+            lastMixedStr = mixedStr;
+            if (colorChangeCallback) colorChangeCallback(mixed);
+        }
         const cx = canvas.width / 2;
         const cy = canvas.height / 2;
         const pulse = 1 + Math.sin(Date.now() * 0.003) * 0.05;
@@ -313,5 +338,5 @@ const Explorer = (() => {
         if (animId) cancelAnimationFrame(animId);
     }
 
-    return { init, setIntensities, getMixedColor, resizeCanvas, destroy };
+    return { init, setIntensities, getMixedColor, onColorChange, resizeCanvas, destroy };
 })();
