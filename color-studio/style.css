@@ -35,7 +35,7 @@ header {
     letter-spacing: -0.5px;
     background: linear-gradient(
         135deg,
-        #f472b6, #a78bfa, #60a5fa, #34d399, #fbbf24, #fb923c, #f472b6
+        #f0a0c0, #a78bfa, #6495ed, #9cb8a0, #c8b888, #d4a0a0, #a78bfa
     );
     background-size: 200% 200%;
     animation: gradientShift 6s ease infinite;
