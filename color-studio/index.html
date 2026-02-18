@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Quest: RGB Color Studio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1 class="rainbow-text">Color Quest</h1>
+        <p class="subtitle">RGB Color Studio</p>
+        <nav class="tabs">
+            <button class="tab active" data-tab="both">Both</button>
+            <button class="tab" data-tab="explorer">Explorer</button>
+            <button class="tab" data-tab="palette">Palette</button>
+            <button class="tab" data-tab="accessibility">Accessibility</button>
+        </nav>
+    </header>
+
+    <main class="panels">
+        <!-- Explorer Panel -->
+        <section class="panel explorer-panel" id="explorer-panel">
+            <h2>Color Explorer</h2>
+            <div class="canvas-wrapper">
+                <canvas id="explorer-canvas" width="500" height="400"></canvas>
+            </div>
+            <div class="color-output" id="color-output">
+                <span class="color-preview" id="color-preview"></span>
+                <span class="hex-code" id="hex-code" title="Click to copy">#000000</span>
+                <span class="rgb-code" id="rgb-code">rgb(0, 0, 0)</span>
+            </div>
+            <div class="sliders">
+                <div class="slider-row">
+                    <label class="slider-label red">R</label>
+                    <input type="range" id="slider-r" min="0" max="255" value="200" class="slider red">
+                    <span class="slider-value" id="val-r">200</span>
+                </div>
+                <div class="slider-row">
+                    <label class="slider-label green">G</label>
+                    <input type="range" id="slider-g" min="0" max="255" value="100" class="slider green">
+                    <span class="slider-value" id="val-g">100</span>
+                </div>
+                <div class="slider-row">
+                    <label class="slider-label blue">B</label>
+                    <input type="range" id="slider-b" min="0" max="255" value="150" class="slider blue">
+                    <span class="slider-value" id="val-b">150</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Palette Panel -->
+        <section class="panel palette-panel" id="palette-panel">
+            <h2>Palette Generator</h2>
+            <div class="harmony-selector">
+                <button class="harmony-btn active" data-harmony="complementary">Complementary</button>
+                <button class="harmony-btn" data-harmony="analogous">Analogous</button>
+                <button class="harmony-btn" data-harmony="triadic">Triadic</button>
+                <button class="harmony-btn" data-harmony="split-complementary">Split-Comp</button>
+            </div>
+            <button class="randomize-btn" id="randomize-btn">Randomize</button>
+            <div class="swatches" id="swatches"></div>
+            <div class="color-wheel-wrapper">
+                <canvas id="color-wheel" width="200" height="200"></canvas>
+            </div>
+            <div class="sample-card" id="sample-card">
+                <h3>Sample UI Preview</h3>
+                <p>This card shows your palette in action.</p>
+                <button class="sample-btn">Action Button</button>
+            </div>
+
+            <!-- Color Blindness Simulator -->
+            <div class="cvd-section" id="cvd-section">
+                <h3>Color Blindness Preview</h3>
+                <div class="cvd-row" id="cvd-protanopia">
+                    <span class="cvd-label">Protanopia</span>
+                    <div class="cvd-swatches"></div>
+                </div>
+                <div class="cvd-row" id="cvd-deuteranopia">
+                    <span class="cvd-label">Deuteranopia</span>
+                    <div class="cvd-swatches"></div>
+                </div>
+                <div class="cvd-row" id="cvd-tritanopia">
+                    <span class="cvd-label">Tritanopia</span>
+                    <div class="cvd-swatches"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Accessibility Panel -->
+        <section class="panel accessibility-panel" id="accessibility-panel">
+            <h2>Contrast Checker</h2>
+            <div class="contrast-checker">
+                <div class="contrast-color-pick">
+                    <label>Foreground</label>
+                    <input type="color" id="fg-color" value="#ffffff">
+                    <span class="contrast-hex" id="fg-hex">#ffffff</span>
+                </div>
+                <div class="contrast-color-pick">
+                    <label>Background</label>
+                    <input type="color" id="bg-color" value="#0f0f14">
+                    <span class="contrast-hex" id="bg-hex">#0f0f14</span>
+                </div>
+            </div>
+            <div class="contrast-result" id="contrast-result">
+                <div class="contrast-ratio" id="contrast-ratio">—</div>
+                <div class="contrast-badges" id="contrast-badges"></div>
+                <div class="contrast-preview" id="contrast-preview">
+                    <p class="preview-normal">Normal text sample (14px)</p>
+                    <p class="preview-large">Large text sample (18px bold)</p>
+                </div>
+            </div>
+
+            <h2>Accessible Palette Mode</h2>
+            <div class="accessible-mode-controls">
+                <label class="toggle-label">
+                    <input type="checkbox" id="accessible-mode-toggle">
+                    <span>Enforce AA contrast</span>
+                </label>
+                <div class="bg-picker">
+                    <label>Check against:</label>
+                    <input type="color" id="accessible-bg" value="#0f0f14">
+                    <span id="accessible-bg-hex">#0f0f14</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast">Copied!</div>
+
+    <script src="color-utils.js"></script>
+    <script src="explorer.js"></script>
+    <script src="palette.js"></script>
+    <script src="accessibility.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
