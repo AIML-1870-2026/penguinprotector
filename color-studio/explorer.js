@@ -9,6 +9,94 @@ const Explorer = (() => {
     let lastValues = { r: 0, g: 0, b: 0 };
     let colorChangeCallback = null;
     let lastMixedStr = '';
+    let canvasBg = '#000000';
+
+    // ─── Read-only hue wheel ──────────────────────────────────────────────────
+    let wheelCanvas, wheelCtx, wheelCache = null;
+    let wheelMarkerH = 0, wheelMarkerS = 0; // degrees, 0-100
+
+    function setBackground(color) {
+        canvasBg = color;
+    }
+
+    // ─── Wheel: build pixel cache ─────────────────────────────────────────────
+
+    function buildWheelCache() {
+        if (!wheelCanvas) return;
+        const w = wheelCanvas.width, h = wheelCanvas.height;
+        const wc = document.createElement('canvas');
+        wc.width = w; wc.height = h;
+        const wcCtx = wc.getContext('2d');
+        const img = wcCtx.createImageData(w, h);
+        const cx = w / 2, cy = h / 2, r = Math.min(cx, cy) - 3;
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const dx = x - cx, dy = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > r) continue;
+                const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+                const sat = (dist / r) * 100;
+                const rgb = hslToRgb(hue, sat, 50);
+                const i = (y * w + x) * 4;
+                img.data[i] = rgb.r; img.data[i + 1] = rgb.g; img.data[i + 2] = rgb.b;
+                img.data[i + 3] = dist > r - 2 ? Math.round(255 * (r - dist) / 2) : 255;
+            }
+        }
+        wcCtx.putImageData(img, 0, 0);
+        wheelCache = wc;
+    }
+
+    function initWheel(canvasEl) {
+        wheelCanvas = canvasEl;
+        wheelCtx = canvasEl.getContext('2d');
+        buildWheelCache();
+        (function loop() { drawWheelCanvas(); requestAnimationFrame(loop); })();
+    }
+
+    function updateWheelMarker(r, g, b) {
+        const hsl = rgbToHsl(r, g, b);
+        wheelMarkerH = hsl.h;
+        wheelMarkerS = hsl.s;
+    }
+
+    function drawWheelCanvas() {
+        if (!wheelCtx || !wheelCanvas) return;
+        const w = wheelCanvas.width, h = wheelCanvas.height;
+        const cx = w / 2, cy = h / 2;
+        const r = Math.min(cx, cy) - 3;
+
+        wheelCtx.clearRect(0, 0, w, h);
+        if (wheelCache) wheelCtx.drawImage(wheelCache, 0, 0);
+
+        // Subtle border
+        wheelCtx.beginPath();
+        wheelCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        wheelCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+        wheelCtx.lineWidth = 1.5;
+        wheelCtx.stroke();
+
+        // Marker ring at current H/S position
+        const angle = wheelMarkerH * Math.PI / 180;
+        const dist  = (wheelMarkerS / 100) * r;
+        const mx = cx + Math.cos(angle) * dist;
+        const my = cy + Math.sin(angle) * dist;
+
+        wheelCtx.beginPath();
+        wheelCtx.arc(mx, my, 9, 0, Math.PI * 2);
+        wheelCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+        wheelCtx.lineWidth = 2.5;
+        wheelCtx.shadowColor = 'rgba(0,0,0,0.6)';
+        wheelCtx.shadowBlur = 4;
+        wheelCtx.stroke();
+        wheelCtx.shadowBlur = 0;
+
+        // Inner filled dot
+        wheelCtx.beginPath();
+        wheelCtx.arc(mx, my, 4, 0, Math.PI * 2);
+        wheelCtx.fillStyle = 'rgba(255,255,255,0.9)';
+        wheelCtx.fill();
+    }
 
     function init(canvasEl) {
         canvas = canvasEl;
@@ -184,6 +272,8 @@ const Explorer = (() => {
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = canvasBg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw with additive blending
         ctx.globalCompositeOperation = 'lighter';
@@ -338,5 +428,6 @@ const Explorer = (() => {
         if (animId) cancelAnimationFrame(animId);
     }
 
-    return { init, setIntensities, getMixedColor, onColorChange, resizeCanvas, destroy };
+    return { init, setIntensities, getMixedColor, onColorChange, resizeCanvas, destroy,
+             setBackground, initWheel, updateWheelMarker };
 })();

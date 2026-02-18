@@ -118,6 +118,56 @@ header {
     grid-column: 1 / -1;
 }
 
+/* Background presets */
+.bg-presets {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.bg-preset-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-right: 0.25rem;
+}
+
+.bg-preset {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.bg-preset:hover {
+    transform: scale(1.15);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.bg-preset.active {
+    border-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+}
+
+/* Read-only hue wheel */
+.explorer-wheel-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+#explorer-wheel {
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+}
+
 /* Explorer */
 .canvas-wrapper {
     border-radius: 16px;

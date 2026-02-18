@@ -30,8 +30,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Init modules
     Explorer.init(document.getElementById('explorer-canvas'));
+    Explorer.initWheel(document.getElementById('explorer-wheel'));
     Palette.init(null, onSwatchClick);
     Accessibility.init();
+
+    // Background preset buttons
+    document.querySelectorAll('.bg-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.bg-preset').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            Explorer.setBackground(btn.dataset.bg);
+        });
+    });
 
     // When spotlight blend changes, update the display only (don't feed back into sliders)
     Explorer.onColorChange(({ r, g, b }) => {
@@ -174,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dotB.style.backgroundColor = `rgb(0, 0, ${colorState.b})`;
 
         Explorer.setIntensities(colorState.r, colorState.g, colorState.b);
+        Explorer.updateWheelMarker(colorState.r, colorState.g, colorState.b);
         Accessibility.setForeground(hex);
         updatePalette();
     }
