@@ -202,6 +202,56 @@ const Explorer = (() => {
             ctx.setLineDash([]);
         }
 
+        // Faint background axes — spatial orientation
+        ctx.save();
+        ctx.globalAlpha = 0.1;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 10]);
+        ctx.beginPath(); ctx.moveTo(0, canvas.height / 2); ctx.lineTo(canvas.width, canvas.height / 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, canvas.height); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.2;
+        ctx.font = '9px system-ui';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+        ctx.fillText('X →', canvas.width - 4, canvas.height / 2 - 4);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('Y ↓', canvas.width / 2 + 4, 4);
+        ctx.restore();
+
+        // Crosshairs while dragging — colored lines to canvas edges with position %
+        if (dragging !== null) {
+            const s = spotlights[dragging.idx];
+            const color = SPOTLIGHT_COLORS[s.color];
+            const xPct = Math.round(s.x / canvas.width * 100);
+            const yPct = Math.round(s.y / canvas.height * 100);
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.5;
+            ctx.setLineDash([4, 5]);
+            // Horizontal crosshair
+            ctx.beginPath(); ctx.moveTo(0, s.y); ctx.lineTo(canvas.width, s.y); ctx.stroke();
+            // Vertical crosshair
+            ctx.beginPath(); ctx.moveTo(s.x, 0); ctx.lineTo(s.x, canvas.height); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Edge labels showing position
+            ctx.globalAlpha = 0.9;
+            ctx.font = 'bold 10px JetBrains Mono, monospace';
+            ctx.fillStyle = color;
+            // X% at left edge of horizontal line
+            ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+            ctx.fillText(`x: ${xPct}%`, 4, s.y - 3);
+            // Y% at top edge of vertical line
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            const xLabelX = Math.min(s.x + 4, canvas.width - 48);
+            ctx.fillText(`y: ${yPct}%`, xLabelX, 4);
+            ctx.restore();
+        }
+
         // Draw center mixed color indicator
         const mixed = getMixedColor();
         const cx = canvas.width / 2;
