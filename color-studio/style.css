@@ -98,7 +98,7 @@ header {
     border: 1px solid rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    transition: opacity 0.3s, transform 0.3s;
+    transition: opacity 0.3s, transform 0.3s, background-color 0.4s ease;
 }
 
 .panel h2 {
@@ -160,33 +160,14 @@ header {
 .explorer-wheel-wrapper {
     display: flex;
     justify-content: center;
-    margin-top: 1rem;
+    margin-bottom: 1.25rem;
 }
 
 #explorer-wheel {
     border-radius: 50%;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
-}
-
-/* Explorer */
-.canvas-wrapper {
-    border-radius: 16px;
-    overflow: hidden;
-    background: #05050a;
-    margin-bottom: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.5);
-}
-
-#explorer-canvas {
-    width: 100%;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    max-width: 100%;
     height: auto;
-    display: block;
-    cursor: grab;
-}
-
-#explorer-canvas:active {
-    cursor: grabbing;
 }
 
 .color-output {
