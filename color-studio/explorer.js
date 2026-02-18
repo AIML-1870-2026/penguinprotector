@@ -1,31 +1,194 @@
-/* Explorer — HSL color wheel with draggable selector and lightness bar */
+/* Explorer — HSV color picker: flower-shaped hue ring + rotating triangle */
 
 const Explorer = (() => {
     let canvas, ctx;
-    let selectedH = 0, selectedS = 80, selectedL = 50;
-    let draggingWheel = false;
-    let draggingBar = false;
-    let colorChangeCallback = null;
+    let selectedH = 30, selectedS = 80, selectedV = 80;
+    let draggingRing     = false;
+    let draggingTriangle = false;
+    let colorChangeCallback  = null;
     let ignoreSetIntensities = false;
-    let wheelCache = null;
+    let ringCache  = null;           // offscreen canvas for the hue ring
+    let triCache   = null;           // { canvas, x, y } offscreen triangle
+    let triCacheH  = -1;             // hue when triangle was last built
+    let triCacheW  = 0, triCacheHd = 0; // canvas size when built
     let animId = null;
 
-    const WHEEL_PAD = 12; // px between wheel edge and canvas edge
-    const BAR_H     = 20; // lightness bar height
-    const BAR_GAP   = 14; // gap between wheel area and bar
-    const BAR_BOT   = 10; // bottom padding
+    const RING_PAD    = 8;   // px gap between canvas edge and ring outer base edge
+    const RING_WIDTH  = 28;  // px width of the hue ring
+    const TRI_GAP     = 8;   // px gap between ring inner edge and triangle vertices
+    const PETALS      = 6;   // flower petal count
+    const PETAL_DEPTH = 0.22; // petal protrusion (0 = circle, higher = more petal-y)
+    const FEATHER     = 3;   // edge softness in pixels
 
-    // Computed layout (recalculated on resize)
-    function layout() {
-        const by = canvas.height - BAR_H - BAR_BOT;
-        const wh = by - BAR_GAP;          // height of the wheel region
-        const cx = canvas.width  / 2;
-        const cy = wh / 2;
-        const r  = Math.min(cx, cy) - WHEEL_PAD;
-        return { cx, cy, r, wh, by };
+    // ─── Geometry ─────────────────────────────────────────────────────────────
+
+    function cx() { return canvas.width  / 2; }
+    function cy() { return canvas.height / 2; }
+    function oR() { return Math.min(cx(), cy()) - RING_PAD; }
+    function iR() { return oR() - RING_WIDTH; }
+    function tR() { return iR() - TRI_GAP; }
+
+    // Flower outer radius at a given angle — petals bulge out from the base ring
+    function flowerOuterR(angle) {
+        return oR() * (1 + PETAL_DEPTH * Math.cos(PETALS * angle));
     }
 
-    // ─── Init ────────────────────────────────────────────────────────────────
+    // Equilateral triangle vertices — v0 points toward selected hue on ring
+    function triVerts() {
+        const a = (selectedH - 90) * Math.PI / 180;
+        const r = tR(), x = cx(), y = cy();
+        return [
+            { x: x + r * Math.cos(a),               y: y + r * Math.sin(a)               }, // v0 pure hue
+            { x: x + r * Math.cos(a + 2*Math.PI/3), y: y + r * Math.sin(a + 2*Math.PI/3) }, // v1 black
+            { x: x + r * Math.cos(a - 2*Math.PI/3), y: y + r * Math.sin(a - 2*Math.PI/3) }, // v2 white
+        ];
+    }
+
+    // Barycentric coords of (px,py) relative to triangle (v0,v1,v2)
+    function bary(px, py, v0, v1, v2) {
+        const d = (v1.y - v2.y) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.y - v2.y);
+        const a = ((v1.y - v2.y) * (px - v2.x) + (v2.x - v1.x) * (py - v2.y)) / d;
+        const b = ((v2.y - v0.y) * (px - v2.x) + (v0.x - v2.x) * (py - v2.y)) / d;
+        return { a, b, g: 1 - a - b };
+    }
+
+    function insideTri(px, py, v) {
+        const { a, b, g } = bary(px, py, v[0], v[1], v[2]);
+        return a >= 0 && b >= 0 && g >= 0;
+    }
+
+    function inRing(pos) {
+        const dx = pos.x - cx(), dy = pos.y - cy();
+        const d  = Math.hypot(dx, dy);
+        return d >= iR() && d <= flowerOuterR(Math.atan2(dy, dx));
+    }
+
+    // ─── HSV ↔ RGB ────────────────────────────────────────────────────────────
+
+    function hsvToRgb(h, s, v) {
+        h /= 360; s /= 100; v /= 100;
+        const i = Math.floor(h * 6), f = h * 6 - i;
+        const p = v*(1-s), q = v*(1-f*s), t = v*(1-(1-f)*s);
+        let r, g, b;
+        switch (i % 6) {
+            case 0: r=v;g=t;b=p; break; case 1: r=q;g=v;b=p; break;
+            case 2: r=p;g=v;b=t; break; case 3: r=p;g=q;b=v; break;
+            case 4: r=t;g=p;b=v; break; case 5: r=v;g=p;b=q; break;
+        }
+        return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255) };
+    }
+
+    function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+        let h = 0, s = max === 0 ? 0 : d/max, v = max;
+        if (d !== 0) {
+            switch (max) {
+                case r: h = ((g-b)/d + (g<b?6:0)) / 6; break;
+                case g: h = ((b-r)/d + 2) / 6; break;
+                case b: h = ((r-g)/d + 4) / 6; break;
+            }
+        }
+        return { h: h*360, s: s*100, v: v*100 };
+    }
+
+    // Position inside triangle that corresponds to current S/V
+    function triSelectorPos() {
+        const v = triVerts();
+        const s = selectedS/100, val = selectedV/100;
+        const wa = s * val, wb = 1 - val, wg = (1 - s) * val;
+        return {
+            x: wa * v[0].x + wb * v[1].x + wg * v[2].x,
+            y: wa * v[0].y + wb * v[1].y + wg * v[2].y
+        };
+    }
+
+    // Read S/V from a click/drag position inside the triangle
+    function svFromPos(px, py) {
+        const v = triVerts();
+        let { a, b, g } = bary(px, py, v[0], v[1], v[2]);
+        a = Math.max(0, a); b = Math.max(0, b); g = Math.max(0, g);
+        const sum = a + b + g; a /= sum; b /= sum; g /= sum;
+        const val = 1 - b;
+        return {
+            s: Math.max(0, Math.min(100, (val < 0.001 ? 0 : a / val) * 100)),
+            v: Math.max(0, Math.min(100, val * 100))
+        };
+    }
+
+    // ─── Caches ───────────────────────────────────────────────────────────────
+
+    function buildRingCache() {
+        if (!canvas || canvas.width === 0) return;
+        ringCache = document.createElement('canvas');
+        ringCache.width  = canvas.width;
+        ringCache.height = canvas.height;
+        const rc  = ringCache.getContext('2d');
+        const img = rc.createImageData(canvas.width, canvas.height);
+        const x0 = cx(), y0 = cy(), inner = iR();
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const dx    = x - x0, dy = y - y0;
+                const d     = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                const outer = flowerOuterR(angle);
+
+                if (d < inner - FEATHER || d > outer + FEATHER) continue;
+
+                const hue = ((angle * 180 / Math.PI) + 90 + 360) % 360;
+                const rgb = hsvToRgb(hue, 100, 100);
+                const i   = (y * canvas.width + x) * 4;
+                img.data[i]     = rgb.r;
+                img.data[i + 1] = rgb.g;
+                img.data[i + 2] = rgb.b;
+
+                // Smooth feathering at both inner and outer edges
+                let alpha = 255;
+                if (d < inner + FEATHER)
+                    alpha = Math.min(alpha, Math.round(255 * (d - (inner - FEATHER)) / (FEATHER * 2)));
+                if (d > outer - FEATHER)
+                    alpha = Math.min(alpha, Math.round(255 * (outer + FEATHER - d) / (FEATHER * 2)));
+                img.data[i + 3] = Math.max(0, Math.min(255, alpha));
+            }
+        }
+        rc.putImageData(img, 0, 0);
+    }
+
+    function buildTriCache() {
+        const v = triVerts();
+        const pureHue = hsvToRgb(selectedH, 100, 100);
+        const minX = Math.floor(Math.min(v[0].x, v[1].x, v[2].x)) - 1;
+        const maxX = Math.ceil( Math.max(v[0].x, v[1].x, v[2].x)) + 1;
+        const minY = Math.floor(Math.min(v[0].y, v[1].y, v[2].y)) - 1;
+        const maxY = Math.ceil( Math.max(v[0].y, v[1].y, v[2].y)) + 1;
+        const w = maxX - minX, h = maxY - minY;
+        if (w <= 0 || h <= 0) return;
+
+        const off = document.createElement('canvas');
+        off.width = w; off.height = h;
+        const offCtx = off.getContext('2d');
+        const img = offCtx.createImageData(w, h);
+
+        for (let py = minY; py < maxY; py++) {
+            for (let px = minX; px < maxX; px++) {
+                const { a, b, g } = bary(px, py, v[0], v[1], v[2]);
+                if (a < 0 || b < 0 || g < 0) continue;
+                const r = Math.round(a * pureHue.r + g * 255);
+                const gr = Math.round(a * pureHue.g + g * 255);
+                const bl = Math.round(a * pureHue.b + g * 255);
+                const i = ((py - minY) * w + (px - minX)) * 4;
+                img.data[i] = r; img.data[i+1] = gr; img.data[i+2] = bl; img.data[i+3] = 255;
+            }
+        }
+        offCtx.putImageData(img, 0, 0);
+        triCache = { canvas: off, x: minX, y: minY };
+        triCacheH  = Math.round(selectedH * 10) / 10;
+        triCacheW  = canvas.width;
+        triCacheHd = canvas.height;
+    }
+
+    // ─── Init / resize ────────────────────────────────────────────────────────
 
     function init(canvasEl) {
         canvas = canvasEl;
@@ -46,45 +209,14 @@ const Explorer = (() => {
     function resizeCanvas() {
         const w = canvas.parentElement.clientWidth;
         canvas.width  = w;
-        canvas.height = Math.min(w * 0.8, 400);
-        buildWheelCache();
+        canvas.height = Math.min(w * 0.85, 420);
+        buildRingCache();
+        triCache = null; // force rebuild
     }
 
-    // ─── Wheel cache (pixel-perfect, built once per resize) ──────────────────
+    // ─── Events ───────────────────────────────────────────────────────────────
 
-    function buildWheelCache() {
-        if (!canvas || canvas.width === 0) return;
-        const { cx, cy, r, wh } = layout();
-
-        wheelCache        = document.createElement('canvas');
-        wheelCache.width  = canvas.width;
-        wheelCache.height = wh;
-        const wCtx      = wheelCache.getContext('2d');
-        const imageData = wCtx.createImageData(canvas.width, wh);
-
-        for (let y = 0; y < wh; y++) {
-            for (let x = 0; x < canvas.width; x++) {
-                const dx   = x - cx;
-                const dy   = y - cy;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > r) continue;
-
-                const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
-                const sat = (dist / r) * 100;
-                const rgb = hslToRgb(hue, sat, 50);
-                const i   = (y * canvas.width + x) * 4;
-                imageData.data[i]     = rgb.r;
-                imageData.data[i + 1] = rgb.g;
-                imageData.data[i + 2] = rgb.b;
-                imageData.data[i + 3] = 255;
-            }
-        }
-        wCtx.putImageData(imageData, 0, 0);
-    }
-
-    // ─── Input helpers ───────────────────────────────────────────────────────
-
-    function getCanvasPos(e) {
+    function getPos(e) {
         const rect = canvas.getBoundingClientRect();
         return {
             x: (e.clientX - rect.left) * (canvas.width  / rect.width),
@@ -92,30 +224,51 @@ const Explorer = (() => {
         };
     }
 
-    function inWheel(pos) {
-        const { cx, cy, r } = layout();
-        return Math.hypot(pos.x - cx, pos.y - cy) <= r;
+    function onMouseDown(e) {
+        const pos = getPos(e);
+        if (inRing(pos)) { draggingRing = true; updateRing(pos); }
+        else {
+            const v = triVerts();
+            if (insideTri(pos.x, pos.y, v)) { draggingTriangle = true; updateTri(pos); }
+        }
     }
 
-    function inBar(pos) {
-        const { by } = layout();
-        return pos.y >= by && pos.y <= by + BAR_H;
+    function onMouseMove(e) {
+        const pos = getPos(e);
+        if      (draggingRing)     updateRing(pos);
+        else if (draggingTriangle) updateTri(pos);
     }
 
-    // ─── Color update from interaction ───────────────────────────────────────
+    function onMouseUp() { draggingRing = false; draggingTriangle = false; }
 
-    function updateFromWheelPos(pos) {
-        const { cx, cy, r } = layout();
-        const dx   = pos.x - cx;
-        const dy   = pos.y - cy;
-        const dist = Math.min(Math.hypot(dx, dy), r);
-        selectedH  = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
-        selectedS  = (dist / r) * 100;
+    function onTouchStart(e) {
+        e.preventDefault();
+        const pos = getPos(e.touches[0]);
+        if (inRing(pos)) { draggingRing = true; updateRing(pos); }
+        else {
+            const v = triVerts();
+            if (insideTri(pos.x, pos.y, v)) { draggingTriangle = true; updateTri(pos); }
+        }
+    }
+
+    function onTouchMove(e) {
+        e.preventDefault();
+        const pos = getPos(e.touches[0]);
+        if      (draggingRing)     updateRing(pos);
+        else if (draggingTriangle) updateTri(pos);
+    }
+
+    function onTouchEnd() { draggingRing = false; draggingTriangle = false; }
+
+    function updateRing(pos) {
+        selectedH = ((Math.atan2(pos.y - cy(), pos.x - cx()) * 180 / Math.PI) + 90 + 360) % 360;
+        triCache = null; // hue changed → rebuild triangle
         fireColorChange();
     }
 
-    function updateFromBarPos(pos) {
-        selectedL = Math.max(0, Math.min(100, (pos.x / canvas.width) * 100));
+    function updateTri(pos) {
+        const sv = svFromPos(pos.x, pos.y);
+        selectedS = sv.s; selectedV = sv.v;
         fireColorChange();
     }
 
@@ -126,159 +279,110 @@ const Explorer = (() => {
         ignoreSetIntensities = false;
     }
 
-    // ─── Mouse events ────────────────────────────────────────────────────────
-
-    function onMouseDown(e) {
-        const pos = getCanvasPos(e);
-        if      (inWheel(pos)) { draggingWheel = true; updateFromWheelPos(pos); }
-        else if (inBar(pos))   { draggingBar   = true; updateFromBarPos(pos);   }
-    }
-
-    function onMouseMove(e) {
-        const pos = getCanvasPos(e);
-        if      (draggingWheel) updateFromWheelPos(pos);
-        else if (draggingBar)   updateFromBarPos(pos);
-    }
-
-    function onMouseUp() { draggingWheel = false; draggingBar = false; }
-
-    // ─── Touch events ────────────────────────────────────────────────────────
-
-    function onTouchStart(e) {
-        e.preventDefault();
-        const pos = getCanvasPos(e.touches[0]);
-        if      (inWheel(pos)) { draggingWheel = true; updateFromWheelPos(pos); }
-        else if (inBar(pos))   { draggingBar   = true; updateFromBarPos(pos);   }
-    }
-
-    function onTouchMove(e) {
-        e.preventDefault();
-        const pos = getCanvasPos(e.touches[0]);
-        if      (draggingWheel) updateFromWheelPos(pos);
-        else if (draggingBar)   updateFromBarPos(pos);
-    }
-
-    function onTouchEnd() { draggingWheel = false; draggingBar = false; }
-
-    // ─── Public API (called by main.js) ──────────────────────────────────────
+    // ─── Public API ───────────────────────────────────────────────────────────
 
     function setIntensities(r, g, b) {
         if (ignoreSetIntensities) return;
-        const hsl = rgbToHsl(r, g, b);
-        selectedH = hsl.h;
-        selectedS = hsl.s;
-        selectedL = hsl.l;
+        const hsv = rgbToHsv(r, g, b);
+        const hChanged = Math.abs(hsv.h - selectedH) > 0.5;
+        selectedH = hsv.h; selectedS = hsv.s; selectedV = hsv.v;
+        if (hChanged) triCache = null;
     }
 
     function getMixedColor() {
-        return hslToRgb(selectedH, selectedS, selectedL);
+        return hsvToRgb(selectedH, selectedS, selectedV);
     }
 
-    function onColorChange(fn) {
-        colorChangeCallback = fn;
-    }
+    function onColorChange(fn) { colorChangeCallback = fn; }
 
-    // ─── Drawing ─────────────────────────────────────────────────────────────
+    // ─── Draw ─────────────────────────────────────────────────────────────────
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const { cx, cy, r, by } = layout();
 
-        // 1. Cached color wheel (rendered at L=50)
-        if (wheelCache) ctx.drawImage(wheelCache, 0, 0);
+        // 1. Hue ring
+        if (ringCache) ctx.drawImage(ringCache, 0, 0);
 
-        // 2. Lightness overlay — darken or lighten the wheel
+        // 2. Ring highlight at selected hue — follows the flower outer edge
+        const selA  = (selectedH - 90) * Math.PI / 180;
+        const HSPAN = 0.07; // half-width in radians
+        const STEPS = 24;
         ctx.save();
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.clip();
-        if (selectedL < 50) {
-            ctx.fillStyle = `rgba(0,0,0,${(50 - selectedL) / 50})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        } else if (selectedL > 50) {
-            ctx.fillStyle = `rgba(255,255,255,${(selectedL - 50) / 50})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i <= STEPS; i++) {
+            const a  = selA - HSPAN + (2 * HSPAN * i / STEPS);
+            const fr = flowerOuterR(a);
+            const px = cx() + Math.cos(a) * fr;
+            const py = cy() + Math.sin(a) * fr;
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
         }
+        for (let i = STEPS; i >= 0; i--) {
+            const a  = selA - HSPAN + (2 * HSPAN * i / STEPS);
+            ctx.lineTo(cx() + Math.cos(a) * iR(), cy() + Math.sin(a) * iR());
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fill();
         ctx.restore();
 
-        // 3. Wheel border ring
+        // 3. Triangle (build cache if needed)
+        if (!triCache || triCacheH !== Math.round(selectedH * 10) / 10
+                      || triCacheW !== canvas.width || triCacheHd !== canvas.height) {
+            buildTriCache();
+        }
+        if (triCache) ctx.drawImage(triCache.canvas, triCache.x, triCache.y);
+
+        // 4. Triangle border
+        const v = triVerts();
         ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.lineWidth   = 1.5;
+        ctx.moveTo(v[0].x, v[0].y);
+        ctx.lineTo(v[1].x, v[1].y);
+        ctx.lineTo(v[2].x, v[2].y);
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 4. Hue tick marks at every 30°
+        // 5. Vertex labels
         ctx.save();
-        for (let deg = 0; deg < 360; deg += 30) {
-            const rad = deg * Math.PI / 180;
-            ctx.beginPath();
-            ctx.moveTo(cx + Math.cos(rad) * (r - 6), cy + Math.sin(rad) * (r - 6));
-            ctx.lineTo(cx + Math.cos(rad) * (r + 4), cy + Math.sin(rad) * (r + 4));
-            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-            ctx.lineWidth   = 1.5;
-            ctx.stroke();
+        ctx.font = 'bold 10px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labels = [
+            { ...v[0], text: 'H', color: `hsl(${selectedH},100%,65%)` },
+            { ...v[1], text: '●', color: 'rgba(255,255,255,0.3)' },  // black vertex
+            { ...v[2], text: '○', color: 'rgba(255,255,255,0.7)' },  // white vertex
+        ];
+        for (const l of labels) {
+            // Nudge label slightly outward from center
+            const dx = l.x - cx(), dy = l.y - cy();
+            const len = Math.hypot(dx, dy) || 1;
+            ctx.fillStyle = l.color;
+            ctx.fillText(l.text, l.x + dx/len * 14, l.y + dy/len * 14);
         }
         ctx.restore();
 
-        // 5. Selector dot on wheel
-        const angleRad = selectedH * Math.PI / 180;
-        const satR     = (selectedS / 100) * r;
-        const sx       = cx + Math.cos(angleRad) * satR;
-        const sy       = cy + Math.sin(angleRad) * satR;
-        const { r: cr, g: cg, b: cb } = getMixedColor();
-
+        // 6. Triangle selector dot
+        const sp = triSelectorPos();
+        const { r, g: gr, b } = getMixedColor();
         ctx.beginPath();
-        ctx.arc(sx, sy, 11, 0, Math.PI * 2);
-        ctx.fillStyle   = `rgb(${cr}, ${cg}, ${cb})`;
-        ctx.shadowColor = `rgb(${cr}, ${cg}, ${cb})`;
-        ctx.shadowBlur  = 12;
+        ctx.arc(sp.x, sp.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = `rgb(${r},${gr},${b})`;
+        ctx.shadowColor = `rgb(${r},${gr},${b})`;
+        ctx.shadowBlur  = 14;
         ctx.fill();
         ctx.shadowBlur  = 0;
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.lineWidth   = 2.5;
         ctx.stroke();
-
-        // 6. Lightness bar (black → full color → white)
-        const barGrad = ctx.createLinearGradient(0, by, canvas.width, by);
-        barGrad.addColorStop(0,   `hsl(${selectedH}, ${selectedS}%, 0%)`);
-        barGrad.addColorStop(0.5, `hsl(${selectedH}, ${selectedS}%, 50%)`);
-        barGrad.addColorStop(1,   `hsl(${selectedH}, ${selectedS}%, 100%)`);
-
-        ctx.beginPath();
-        ctx.roundRect(0, by, canvas.width, BAR_H, BAR_H / 2);
-        ctx.fillStyle = barGrad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-        ctx.lineWidth   = 1;
-        ctx.stroke();
-
-        // 7. Lightness bar thumb
-        const halfH  = BAR_H / 2;
-        const thumbX = Math.max(halfH, Math.min(canvas.width - halfH, (selectedL / 100) * canvas.width));
-        ctx.beginPath();
-        ctx.arc(thumbX, by + halfH, halfH - 1, 0, Math.PI * 2);
-        ctx.fillStyle   = `hsl(${selectedH}, ${selectedS}%, ${selectedL}%)`;
-        ctx.shadowColor = `hsl(${selectedH}, ${selectedS}%, ${selectedL}%)`;
-        ctx.shadowBlur  = 8;
-        ctx.fill();
-        ctx.shadowBlur  = 0;
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth   = 2;
-        ctx.stroke();
     }
 
     function startLoop() {
-        function loop() {
-            draw();
-            animId = requestAnimationFrame(loop);
-        }
+        function loop() { draw(); animId = requestAnimationFrame(loop); }
         loop();
     }
 
-    function destroy() {
-        if (animId) cancelAnimationFrame(animId);
-    }
+    function destroy() { if (animId) cancelAnimationFrame(animId); }
 
     return { init, setIntensities, getMixedColor, onColorChange, resizeCanvas, destroy };
 })();
