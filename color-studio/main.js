@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     Palette.init(null, onSwatchClick);
     Accessibility.init();
 
-    // Background preset buttons — change the explorer panel background
+    // Background preset buttons — change the explorer panel and page background
     const explorerPanel = document.getElementById('explorer-panel');
     explorerPanel.style.backgroundColor = '#000000'; // match initial active preset
     document.querySelectorAll('.bg-preset').forEach(btn => {
@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.bg-preset').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             explorerPanel.style.backgroundColor = btn.dataset.bg;
+            document.body.style.backgroundColor = btn.dataset.bg;
         });
     });
 
