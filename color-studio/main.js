@@ -34,22 +34,44 @@ document.addEventListener('DOMContentLoaded', () => {
     Palette.init(null, onSwatchClick);
     Accessibility.init();
 
-    // Background preset buttons
+    // Background preset buttons — change the whole page background
     document.querySelectorAll('.bg-preset').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.bg-preset').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            Explorer.setBackground(btn.dataset.bg);
+            document.body.style.background = btn.dataset.bg;
         });
     });
 
-    // When spotlight blend changes, update the display only (don't feed back into sliders)
+    // Cooldown flag — prevents spotlight drag from fighting slider input
+    let sliderChanging = false;
+    let sliderTimer;
+
+    // When spotlights are dragged, sync the display and sliders
     Explorer.onColorChange(({ r, g, b }) => {
         const hex = rgbToHex(r, g, b);
         hexCode.textContent = hex;
         rgbCode.textContent = `rgb(${r}, ${g}, ${b})`;
         colorPreview.style.backgroundColor = hex;
         Accessibility.setForeground(hex);
+
+        if (!sliderChanging) {
+            colorState.r = r; colorState.g = g; colorState.b = b;
+            sliderR.value = r; sliderG.value = g; sliderB.value = b;
+            valR.textContent = r; valG.textContent = g; valB.textContent = b;
+            const pctR = (r/255)*100, pctG = (g/255)*100, pctB = (b/255)*100;
+            const dark = 'rgba(255,255,255,0.08)';
+            sliderR.style.background = `linear-gradient(to right, rgb(${r},0,0) 0%, rgb(${r},0,0) ${pctR}%, ${dark} ${pctR}%, ${dark} 100%)`;
+            sliderG.style.background = `linear-gradient(to right, rgb(0,${g},0) 0%, rgb(0,${g},0) ${pctG}%, ${dark} ${pctG}%, ${dark} 100%)`;
+            sliderB.style.background = `linear-gradient(to right, rgb(0,0,${b}) 0%, rgb(0,0,${b}) ${pctB}%, ${dark} ${pctB}%, ${dark} 100%)`;
+            sliderR.style.setProperty('--thumb-color', `rgb(${r}, 0, 0)`);
+            sliderG.style.setProperty('--thumb-color', `rgb(0, ${g}, 0)`);
+            sliderB.style.setProperty('--thumb-color', `rgb(0, 0, ${b})`);
+            dotR.style.backgroundColor = `rgb(${r}, 0, 0)`;
+            dotG.style.backgroundColor = `rgb(0, ${g}, 0)`;
+            dotB.style.backgroundColor = `rgb(0, 0, ${b})`;
+            Explorer.updateWheelMarker(r, g, b);
+        }
     });
 
     // Tab switching
@@ -99,6 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sliders
     function onSliderChange() {
+        sliderChanging = true;
+        clearTimeout(sliderTimer);
+        sliderTimer = setTimeout(() => { sliderChanging = false; }, 600);
         colorState.r = parseInt(sliderR.value);
         colorState.g = parseInt(sliderG.value);
         colorState.b = parseInt(sliderB.value);
