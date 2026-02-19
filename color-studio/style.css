@@ -1178,19 +1178,45 @@ body.theme-light .palette-a11y-hint {
     color: rgba(20, 10, 40, 0.25);
 }
 
+/* Slider labels — need darker hues on light backgrounds */
+body.theme-light .slider-label.red   { color: #b91c1c; }
+body.theme-light .slider-label.green { color: #15803d; }
+body.theme-light .slider-label.blue  { color: #1d4ed8; }
+
+/* Background preset buttons — white borders vanish on light backgrounds */
+body.theme-light .bg-preset {
+    border-color: rgba(0, 0, 0, 0.25);
+}
+
+body.theme-light .bg-preset:hover {
+    border-color: rgba(0, 0, 0, 0.5);
+}
+
+body.theme-light .bg-preset.active {
+    border-color: rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Add Color button — light purple is hard to read on light backgrounds */
+body.theme-light .add-color-btn {
+    color: #3730a3;
+    border-color: rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.12));
+}
+
 /* Header light theme — header is 60% darker than preset, needs stronger contrast */
 header.header-light .subtitle {
-    color: rgba(20, 10, 40, 0.65);
+    color: rgba(10, 5, 20, 0.82);
 }
 
 header.header-light .tab {
-    color: rgba(20, 10, 40, 0.7);
+    color: rgba(10, 5, 20, 0.75);
     background: rgba(0, 0, 0, 0.08);
     border-color: rgba(0, 0, 0, 0.12);
 }
 
 header.header-light .tab:hover {
-    color: rgba(20, 10, 40, 0.9);
+    color: rgba(10, 5, 20, 0.95);
     background: rgba(0, 0, 0, 0.12);
 }
 

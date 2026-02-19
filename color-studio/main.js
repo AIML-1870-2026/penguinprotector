@@ -61,6 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const hr = Math.round(r * 0.6), hg = Math.round(g * 0.6), hb = Math.round(b * 0.6);
         const headerBrightness = (hr * 299 + hg * 587 + hb * 114) / 1000;
         siteHeader.classList.toggle('header-light', headerBrightness > 100);
+
+        // Re-evaluate rainbow-text color and slider tracks for new theme
+        updatePalette();
     }
 
     applyPreset('#000000'); // match initial active preset
@@ -176,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pctR = (colorState.r / 255) * 100;
         const pctG = (colorState.g / 255) * 100;
         const pctB = (colorState.b / 255) * 100;
-        const dark = 'rgba(255,255,255,0.08)';
+        const dark = document.body.classList.contains('theme-light') ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.08)';
         sliderR.style.background = `linear-gradient(to right, rgb(${colorState.r},0,0) 0%, rgb(${colorState.r},0,0) ${pctR}%, ${dark} ${pctR}%, ${dark} 100%)`;
         sliderG.style.background = `linear-gradient(to right, rgb(0,${colorState.g},0) 0%, rgb(0,${colorState.g},0) ${pctG}%, ${dark} ${pctG}%, ${dark} 100%)`;
         sliderB.style.background = `linear-gradient(to right, rgb(0,0,${colorState.b}) 0%, rgb(0,0,${colorState.b}) ${pctB}%, ${dark} ${pctB}%, ${dark} 100%)`;
