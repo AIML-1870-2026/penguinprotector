@@ -144,6 +144,7 @@ function applyBgPreset(hex) {
   document.getElementById('explorer-panel').style.backgroundColor = hex;
   document.body.style.backgroundColor = hex;
   document.querySelector('.app-header').style.backgroundColor = darkenHex(hex, 0.75);
+  if (explorerCanvas) explorerCanvas.setBgColor(darkenHex(hex, 0.08));
 }
 
 // ── Tab Switching ─────────────────────────────────────────────
@@ -254,6 +255,19 @@ document.addEventListener('DOMContentLoaded', () => {
   accessibilityPanel = new AccessibilityPanel();
   accessibilityPanel.init();
   window.accessibilityPanel = accessibilityPanel;
+
+  // Snap-to-home button
+  document.getElementById('snap-home-btn').addEventListener('click', () => {
+    explorerCanvas.snapToHome();
+  });
+  explorerCanvas.onSnapHome = () => {
+    colorState.r = 255; colorState.g = 0; colorState.b = 0;
+    rSlider.value = 255; rVal.textContent = 255;
+    gSlider.value = 0;   gVal.textContent = 0;
+    bSlider.value = 0;   bVal.textContent = 0;
+    updateReadouts();
+    palettePanel.generate(0, 100, 50);
+  };
 
   // Background preset buttons
   applyBgPreset('#000000');

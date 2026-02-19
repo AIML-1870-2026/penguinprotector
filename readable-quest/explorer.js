@@ -15,6 +15,10 @@ class ExplorerCanvas {
     this.cy = 0;
     this.maxDist = 130;      // px from center → intensity 0
     this.onDragUpdate = null; // callback(channel, value255) set by main.js
+    this.bgColor  = '#0a0a10';
+    this.homing   = false;
+    this.homePositions = null;
+    this.onSnapHome = null;   // callback fired when snap animation completes
   }
 
   init() {
@@ -73,6 +77,43 @@ class ExplorerCanvas {
     }
   }
 
+  setBgColor(color) {
+    this.bgColor = color;
+  }
+
+  snapToHome() {
+    const { cx, cy } = this;
+    this.homePositions = [
+      { channel: 'r', x: cx,       y: cy,      intensity: 1.0 },
+      { channel: 'g', x: cx - 110, y: cy + 85, intensity: 0.0 },
+      { channel: 'b', x: cx + 110, y: cy + 85, intensity: 0.0 },
+    ];
+    this.homing = true;
+    this.emitParticles(30);
+  }
+
+  _updateHome() {
+    const lerp = 0.1;
+    let allDone = true;
+    for (const target of this.homePositions) {
+      const s = this.spotlights.find(sp => sp.channel === target.channel);
+      if (!s) continue;
+      s.x         += (target.x         - s.x)         * lerp;
+      s.y         += (target.y         - s.y)         * lerp;
+      s.intensity += (target.intensity - s.intensity) * lerp;
+      if (Math.abs(s.x - target.x) > 0.5 || Math.abs(s.y - target.y) > 0.5) allDone = false;
+    }
+    if (allDone) {
+      for (const target of this.homePositions) {
+        const s = this.spotlights.find(sp => sp.channel === target.channel);
+        if (!s) continue;
+        s.x = target.x; s.y = target.y; s.intensity = target.intensity;
+      }
+      this.homing = false;
+      if (this.onSnapHome) this.onSnapHome();
+    }
+  }
+
   emitParticles(count) {
     const { cx, cy } = this;
     for (let i = 0; i < count; i++) {
@@ -100,9 +141,12 @@ class ExplorerCanvas {
   render() {
     const { ctx, canvas } = this;
 
-    // Dark background
-    ctx.fillStyle = '#0a0a10';
+    // Background (follows preset)
+    ctx.fillStyle = this.bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Lerp spotlights toward home if snapping
+    if (this.homing) this._updateHome();
 
     // Subtle beam lines converging to center
     this.drawBeams();
@@ -278,6 +322,7 @@ class ExplorerCanvas {
   }
 
   onDown({ x, y }) {
+    this.homing = false; // cancel snap if user grabs a spotlight
     const s = this.hitTest(x, y);
     if (s) {
       this.dragging = { s, ox: s.x - x, oy: s.y - y };
