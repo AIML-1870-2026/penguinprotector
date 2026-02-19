@@ -45,10 +45,20 @@
                     <div class="color-codes-top">
                         <span class="hex-code" id="hex-code" title="Click to copy">#000000</span>
                         <span class="color-name-tag" id="color-name-tag">Black</span>
+                        <button class="save-fav-btn" id="save-fav-btn" title="Save to favorites">♡</button>
                     </div>
                     <span class="rgb-code" id="rgb-code">rgb(0, 0, 0)</span>
                     <span class="hsl-code" id="hsl-code">hsl(0, 0%, 0%)</span>
                     <span class="cmyk-code" id="cmyk-code">cmyk(0%, 0%, 0%, 100%)</span>
+                </div>
+            </div>
+            <div class="favorites-wrapper" id="favorites-wrapper">
+                <div class="favorites-header">
+                    <span class="favorites-label">Favorites</span>
+                    <button class="favorites-clear-btn" id="favorites-clear-btn">Clear all</button>
+                </div>
+                <div class="favorites-strip" id="favorites-strip">
+                    <span class="favorites-empty">Click ♡ to save colors here</span>
                 </div>
             </div>
             <div class="tints-shades-wrapper">
@@ -183,24 +193,8 @@
         <!-- Gradient Builder Panel -->
         <section class="panel gradient-panel" id="gradient-panel">
             <h2>Gradient Builder</h2>
-            <div class="gradient-stops">
-                <div class="gradient-stop">
-                    <div class="grad-stop-swatch" id="grad-stop-a"></div>
-                    <span class="grad-stop-label">Color A</span>
-                    <span class="grad-stop-hex" id="grad-hex-a">#c86496</span>
-                    <span class="grad-stop-hint">← from explorer</span>
-                </div>
-                <button class="grad-swap-btn" id="grad-swap" title="Swap colors">⇄</button>
-                <div class="gradient-stop">
-                    <label class="grad-stop-b-wrap">
-                        <div class="grad-stop-swatch-inner" id="grad-stop-b"></div>
-                        <input type="color" id="grad-color-b" value="#6496c8">
-                    </label>
-                    <span class="grad-stop-label">Color B</span>
-                    <span class="grad-stop-hex" id="grad-hex-b">#6496c8</span>
-                    <span class="grad-stop-hint">click to pick</span>
-                </div>
-            </div>
+            <div class="gradient-stops-row" id="gradient-stops-row"></div>
+            <button class="grad-add-stop-btn" id="grad-add-stop-btn">+ Add Color Stop</button>
             <div class="gradient-directions">
                 <button class="grad-dir-btn active" data-dir="to right">→ Horizontal</button>
                 <button class="grad-dir-btn" data-dir="to bottom">↓ Vertical</button>
@@ -217,6 +211,10 @@
         <!-- Color Match Game Panel -->
         <section class="panel game-panel" id="game-panel">
             <h2>Color Match Game</h2>
+            <div class="game-daily-bar">
+                <button class="game-daily-btn" id="game-daily-btn">🗓️ Today's Challenge</button>
+                <span class="hidden game-daily-badge" id="game-daily-badge">Daily · <span id="game-daily-date"></span></span>
+            </div>
             <div class="game-arena">
                 <div class="game-color-box">
                     <div class="game-swatch" id="game-target-swatch"></div>

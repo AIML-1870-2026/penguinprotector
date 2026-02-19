@@ -220,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTintsShades(colorState.r, colorState.g, colorState.b);
         Accessibility.setForeground(hex);
         updatePalette();
+        updateFavBtn();
     }
 
     function updatePalette() {
@@ -383,6 +384,79 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderCustomPalette();
+
+    // ─── Favorites ────────────────────────────────────────────────────────────
+    const FAV_KEY = 'cq_favorites';
+    const FAV_MAX = 24;
+    let favorites = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
+
+    function saveFavorites() {
+        localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
+    }
+
+    function updateFavBtn() {
+        const hex = rgbToHex(colorState.r, colorState.g, colorState.b);
+        const btn = document.getElementById('save-fav-btn');
+        const isSaved = favorites.includes(hex);
+        btn.textContent = isSaved ? '♥' : '♡';
+        btn.classList.toggle('saved', isSaved);
+        btn.title = isSaved ? 'Saved! Right-click a chip to remove' : 'Save to favorites';
+    }
+
+    function saveFavorite() {
+        const hex = rgbToHex(colorState.r, colorState.g, colorState.b);
+        if (favorites.includes(hex)) return; // already saved
+        if (favorites.length >= FAV_MAX) favorites.shift(); // drop oldest
+        favorites.push(hex);
+        saveFavorites();
+        renderFavorites();
+        updateFavBtn();
+    }
+
+    function renderFavorites() {
+        const strip = document.getElementById('favorites-strip');
+        if (!strip) return;
+        strip.innerHTML = '';
+        if (favorites.length === 0) {
+            strip.innerHTML = '<span class="favorites-empty">Click ♡ to save colors here</span>';
+            return;
+        }
+        favorites.forEach((hex, i) => {
+            const chip = document.createElement('div');
+            chip.className = 'fav-chip';
+            chip.style.backgroundColor = hex;
+            chip.title = `${hex} — click to restore · right-click to remove`;
+
+            chip.addEventListener('click', () => {
+                const rgb = hexToRgb(hex);
+                colorState.r = rgb.r; colorState.g = rgb.g; colorState.b = rgb.b;
+                document.getElementById('slider-r').value = rgb.r;
+                document.getElementById('slider-g').value = rgb.g;
+                document.getElementById('slider-b').value = rgb.b;
+                updateAll();
+            });
+
+            chip.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                favorites.splice(i, 1);
+                saveFavorites();
+                renderFavorites();
+                updateFavBtn();
+            });
+
+            strip.appendChild(chip);
+        });
+    }
+
+    document.getElementById('save-fav-btn').addEventListener('click', saveFavorite);
+    document.getElementById('favorites-clear-btn').addEventListener('click', () => {
+        favorites = [];
+        saveFavorites();
+        renderFavorites();
+        updateFavBtn();
+    });
+
+    renderFavorites();
 
     // Initial render
     updateAll();
