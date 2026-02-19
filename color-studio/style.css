@@ -36,13 +36,22 @@ header {
     font-size: 2.4rem;
     font-weight: 400;
     letter-spacing: 1px;
-    color: hsl(330, 80%, 72%);
-    animation: rainbow-hue 9s linear infinite;
+    background: linear-gradient(to right,
+        hsl(0,90%,70%), hsl(60,90%,70%), hsl(120,90%,70%), hsl(180,90%,70%), hsl(240,90%,70%), hsl(300,90%,70%), hsl(360,90%,70%),
+        hsl(0,90%,70%), hsl(60,90%,70%), hsl(120,90%,70%), hsl(180,90%,70%), hsl(240,90%,70%), hsl(300,90%,70%), hsl(360,90%,70%),
+        hsl(0,90%,70%), hsl(60,90%,70%), hsl(120,90%,70%), hsl(180,90%,70%), hsl(240,90%,70%), hsl(300,90%,70%), hsl(360,90%,70%)
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: rainbow-slide 7s linear infinite;
 }
 
-@keyframes rainbow-hue {
-    from { filter: hue-rotate(0deg); }
-    to   { filter: hue-rotate(360deg); }
+@keyframes rainbow-slide {
+    from { background-position: 0% center; }
+    to   { background-position: 100% center; }
 }
 
 .subtitle {
@@ -991,9 +1000,6 @@ body.theme-light {
     transition: color 0.4s ease, background-color 0.4s ease;
 }
 
-body.theme-light .rainbow-text {
-    color: hsl(330, 85%, 50%);
-}
 
 body.theme-light .subtitle {
     color: rgba(80, 50, 120, 0.6);
