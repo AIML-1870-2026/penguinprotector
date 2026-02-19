@@ -141,11 +141,34 @@ function darkenHex(hex, factor) {
 }
 
 function applyBgPreset(hex) {
-  document.body.style.backgroundColor = hex;
-  document.getElementById('main-panels').style.background = hex;
-  document.querySelectorAll('.panel').forEach(p => p.style.backgroundColor = hex);
-  document.querySelector('.app-header').style.backgroundColor = darkenHex(hex, 0.75);
-  if (explorerCanvas) explorerCanvas.setBgColor(darkenHex(hex, 0.08));
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const isLight = lum >= 0.45;
+  const bt = isLight ? 0 : 255; // blend target: dark for light bg, light for dark bg
+
+  const mix = (v, t, a) => Math.round(v + (t - v) * a);
+  const rgb  = a => `rgb(${mix(r,bt,a)},${mix(g,bt,a)},${mix(b,bt,a)})`;
+
+  // Update CSS variables so all components using them repaint automatically
+  const root = document.documentElement;
+  root.style.setProperty('--bg',         hex);
+  root.style.setProperty('--panel',      rgb(0.07));
+  root.style.setProperty('--panel-alt',  rgb(0.13));
+  root.style.setProperty('--border',     rgb(0.23));
+  root.style.setProperty('--text',       isLight ? '#1a1a2e' : '#e0e0f0');
+  root.style.setProperty('--text-muted', isLight ? '#55566a' : '#888898');
+
+  // Clear any previously applied inline overrides so CSS vars take effect
+  document.querySelectorAll('.panel').forEach(p => p.style.backgroundColor = '');
+  document.getElementById('main-panels').style.background = '';
+
+  // Header has its own hardcoded bg — set directly
+  document.querySelector('.app-header').style.backgroundColor = rgb(0.15);
+
+  // Canvas interior: keep dark enough for spotlight blending
+  if (explorerCanvas) explorerCanvas.setBgColor(rgb(isLight ? 0.88 : 0.08));
 }
 
 // ── Tab Switching ─────────────────────────────────────────────
