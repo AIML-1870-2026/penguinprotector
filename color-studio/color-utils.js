@@ -214,6 +214,41 @@ function rgbToCmyk(r, g, b) {
     };
 }
 
+/* Color Lore — hue-based mood, use cases, and brand associations */
+function getColorLore(r, g, b) {
+    const { h, s, l } = rgbToHsl(r, g, b);
+
+    if (l < 12) return {
+        moods: ['Power', 'Elegance', 'Mystery'],
+        uses: ['Luxury goods', 'Formal wear', 'Premium tech'],
+        brands: ['Chanel', 'Apple', 'Nike']
+    };
+    if (l > 90) return {
+        moods: ['Pure', 'Clean', 'Minimal'],
+        uses: ['Healthcare', 'Minimalism', 'Bridal'],
+        brands: ['Apple', 'Tesla', 'MUJI']
+    };
+    if (s < 12) return {
+        moods: ['Neutral', 'Sophisticated', 'Timeless'],
+        uses: ['Editorial', 'Architecture', 'Corporate'],
+        brands: ['Mercedes', 'Armani', 'Dior']
+    };
+
+    const hueTable = [
+        { min: 0,   max: 15,  moods: ['Passion', 'Energy', 'Urgency'],       uses: ['Food & beverage', 'Sales', 'Sports'],        brands: ['Coca-Cola', 'YouTube', 'Netflix']      },
+        { min: 15,  max: 45,  moods: ['Warmth', 'Creativity', 'Enthusiasm'],  uses: ['E-commerce', 'Food', 'Entertainment'],      brands: ['Amazon', 'Fanta', 'Nickelodeon']       },
+        { min: 45,  max: 70,  moods: ['Happiness', 'Optimism', 'Caution'],    uses: ['Retail', 'Kids brands', 'Warnings'],        brands: ["McDonald's", 'IKEA', 'Snapchat']       },
+        { min: 70,  max: 150, moods: ['Growth', 'Health', 'Harmony'],         uses: ['Environment', 'Finance', 'Food'],           brands: ['Starbucks', 'Whole Foods', 'Spotify']  },
+        { min: 150, max: 195, moods: ['Clarity', 'Calm', 'Innovation'],       uses: ['Tech', 'Healthcare', 'Water brands'],      brands: ['Twitter', 'PayPal', 'Oral-B']          },
+        { min: 195, max: 255, moods: ['Trust', 'Stability', 'Intelligence'],  uses: ['Finance', 'Tech', 'Airlines'],             brands: ['Facebook', 'IBM', 'Samsung']           },
+        { min: 255, max: 315, moods: ['Royalty', 'Creativity', 'Luxury'],     uses: ['Beauty', 'Premium brands', 'Spirituality'],brands: ['Cadbury', 'Hallmark', 'FedEx']         },
+        { min: 315, max: 360, moods: ['Romance', 'Playfulness', 'Care'],      uses: ['Beauty', 'Fashion', 'Lifestyle'],           brands: ['Barbie', 'T-Mobile', "Victoria's Secret"]},
+    ];
+
+    const entry = hueTable.find(e => h >= e.min && h < e.max) || hueTable[0];
+    return entry;
+}
+
 /* Harmony generation */
 function generateHarmony(h, s, l, type) {
     const wrap = deg => ((deg % 360) + 360) % 360;

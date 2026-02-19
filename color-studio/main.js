@@ -35,6 +35,23 @@ document.addEventListener('DOMContentLoaded', () => {
     Accessibility.init();
     GradientBuilder.init();
     ColorGame.init();
+    ColorMixer.init(rgb => {
+        colorState.r = rgb.r; colorState.g = rgb.g; colorState.b = rgb.b;
+        document.getElementById('slider-r').value = rgb.r;
+        document.getElementById('slider-g').value = rgb.g;
+        document.getElementById('slider-b').value = rgb.b;
+        updateAll();
+    });
+    ImageExtractor.init();
+    ImageExtractor.setOnColorPick(rgb => {
+        colorState.r = rgb.r; colorState.g = rgb.g; colorState.b = rgb.b;
+        document.getElementById('slider-r').value = rgb.r;
+        document.getElementById('slider-g').value = rgb.g;
+        document.getElementById('slider-b').value = rgb.b;
+        updateAll();
+        // Switch to explorer tab so the user can see the picked color
+        document.querySelector('[data-tab="explorer"]').click();
+    });
 
     // Background preset buttons — change the explorer panel, page, and header background
     const explorerPanel = document.getElementById('explorer-panel');
@@ -79,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Tab switching
-    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel'];
+    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel'];
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -87,13 +104,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = tab.dataset.tab;
             allPanelIds.forEach(id => document.getElementById(id).classList.remove('hidden'));
             const hide = (...ids) => ids.forEach(id => document.getElementById(id).classList.add('hidden'));
-            if (mode === 'both')               hide('accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
-            else if (mode === 'explorer')      hide('palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
-            else if (mode === 'palette')       hide('explorer-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
-            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel', 'gradient-panel', 'game-panel');
-            else if (mode === 'custom')        hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'gradient-panel', 'game-panel');
-            else if (mode === 'gradient')      hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'game-panel');
-            else if (mode === 'game')          hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel');
+            if (mode === 'both')               hide('accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'explorer')      hide('palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'palette')       hide('explorer-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'custom')        hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'gradient')      hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'game-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'game')          hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'mix-panel', 'image-panel');
+            else if (mode === 'mix')           hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'image-panel');
+            else if (mode === 'image')         hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel');
         });
     });
 
@@ -102,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('custom-panel').classList.add('hidden');
     document.getElementById('gradient-panel').classList.add('hidden');
     document.getElementById('game-panel').classList.add('hidden');
+    document.getElementById('mix-panel').classList.add('hidden');
+    document.getElementById('image-panel').classList.add('hidden');
 
     // Harmony buttons
     document.querySelectorAll('.harmony-btn').forEach(btn => {
@@ -190,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `≈ ${nearestColorName(colorState.r, colorState.g, colorState.b)}`;
 
         GradientBuilder.setColorA(colorState.r, colorState.g, colorState.b);
+        ColorMixer.setColorA(colorState.r, colorState.g, colorState.b);
         colorPreview.style.backgroundColor = hex;
 
         // Dynamic slider fill: filled portion shows actual channel shade, unfilled is dark
@@ -221,6 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
         Accessibility.setForeground(hex);
         updatePalette();
         updateFavBtn();
+        updateLore();
+    }
+
+    function updateLore() {
+        const lore = getColorLore(colorState.r, colorState.g, colorState.b);
+        document.getElementById('lore-moods').innerHTML =
+            lore.moods.map(m => `<span class="lore-tag mood">${m}</span>`).join('');
+        document.getElementById('lore-uses').innerHTML =
+            lore.uses.map(u => `<span class="lore-tag use">${u}</span>`).join('');
+        document.getElementById('lore-brands').innerHTML =
+            lore.brands.map(b => `<span class="lore-tag brand">${b}</span>`).join('');
     }
 
     function updatePalette() {

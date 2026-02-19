@@ -1775,6 +1775,347 @@ body.theme-light .save-fav-btn {
     color: rgba(255, 255, 255, 0.25);
 }
 
+/* ─── Color Lore ────────────────────────────────────────────────────────── */
+.lore-card {
+    margin-bottom: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.lore-row {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.lore-tag {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.lore-tag.mood {
+    background: rgba(167, 139, 250, 0.1);
+    color: #c4b5fd;
+    border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+.lore-tag.use {
+    background: rgba(96, 165, 250, 0.1);
+    color: #93c5fd;
+    border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.lore-tag.brand {
+    background: rgba(251, 191, 36, 0.08);
+    color: rgba(251, 191, 36, 0.75);
+    border: 1px solid rgba(251, 191, 36, 0.15);
+}
+
+body.theme-light .lore-tag.mood  { background: rgba(139, 92, 246, 0.08); color: #6d28d9; border-color: rgba(139, 92, 246, 0.2); }
+body.theme-light .lore-tag.use   { background: rgba(59, 130, 246, 0.08); color: #1d4ed8; border-color: rgba(59, 130, 246, 0.18); }
+body.theme-light .lore-tag.brand { background: rgba(217, 119, 6, 0.08);  color: #92400e; border-color: rgba(217, 119, 6, 0.15); }
+
+/* ─── Color Mixer ───────────────────────────────────────────────────────── */
+.mix-panel {
+    grid-column: 1 / -1;
+}
+
+.mixer-colors-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.mixer-color-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.mixer-swatch {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.2s ease;
+}
+
+.mixer-b-wrap {
+    position: relative;
+    display: block;
+    width: 72px;
+    height: 72px;
+    cursor: pointer;
+}
+
+.mixer-b-wrap input[type="color"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
+.mixer-swatch-b {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s, border-color 0.15s;
+    pointer-events: none;
+}
+
+.mixer-b-wrap:hover .mixer-swatch-b {
+    transform: scale(1.06);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.mixer-color-hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.mixer-color-hint {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+.mixer-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 140px;
+    max-width: 240px;
+}
+
+.mixer-ratio-labels {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.mixer-ratio-labels span:nth-child(2) {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.mixer-result-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    padding: 1rem 1.25rem;
+    flex-wrap: wrap;
+}
+
+.mixer-result-swatch {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+    transition: background-color 0.15s ease;
+    animation: breathe 3s ease-in-out infinite;
+}
+
+.mixer-result-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.mixer-result-hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e8eaed;
+}
+
+.mixer-result-name {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+.mixer-use-btn {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.18));
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.28);
+    border-radius: 10px;
+    padding: 0.4rem 1rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: fit-content;
+    transition: all 0.2s ease;
+}
+
+.mixer-use-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(168, 85, 247, 0.28));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
+}
+
+/* ─── Image Color Extractor ─────────────────────────────────────────────── */
+.image-panel {
+    grid-column: 1 / -1;
+}
+
+.image-drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.image-drop-zone:hover,
+.image-drop-zone.drag-over {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.image-drop-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    pointer-events: none;
+}
+
+.image-drop-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.image-drop-hint p {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+}
+
+.image-drop-sub {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+.image-workspace {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.image-preview-img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+}
+
+.image-colors {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    flex: 1;
+}
+
+.img-color-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: transform 0.15s;
+    width: 68px;
+}
+
+.img-color-card:hover {
+    transform: translateY(-3px);
+}
+
+.img-color-swatch {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.15s;
+}
+
+.img-color-card:hover .img-color-swatch {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.img-color-hex {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+}
+
+.img-color-name {
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.25);
+    text-align: center;
+    font-style: italic;
+}
+
+body.theme-light .image-drop-zone {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+body.theme-light .image-drop-zone:hover,
+body.theme-light .image-drop-zone.drag-over {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.04);
+}
+
+body.theme-light .image-drop-hint p { color: rgba(20, 10, 40, 0.45); }
+body.theme-light .image-drop-sub    { color: rgba(20, 10, 40, 0.25); }
+body.theme-light .img-color-hex     { color: rgba(20, 10, 40, 0.5); }
+body.theme-light .img-color-name    { color: rgba(20, 10, 40, 0.28); }
+body.theme-light .mixer-color-hex   { color: rgba(20, 10, 40, 0.5); }
+body.theme-light .mixer-color-hint  { color: rgba(20, 10, 40, 0.22); }
+body.theme-light .mixer-result-hex  { color: #1e1530; }
+body.theme-light .mixer-result-name { color: rgba(20, 10, 40, 0.35); }
+body.theme-light .mixer-ratio-labels { color: rgba(20, 10, 40, 0.3); }
+
 /* Responsive */
 @media (max-width: 768px) {
     .panels {

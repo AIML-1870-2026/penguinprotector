@@ -21,6 +21,8 @@
             <button class="tab" data-tab="custom">Custom</button>
             <button class="tab" data-tab="gradient">Gradient</button>
             <button class="tab" data-tab="game">Game</button>
+            <button class="tab" data-tab="mix">Mix</button>
+            <button class="tab" data-tab="image">Image</button>
         </nav>
     </header>
 
@@ -52,6 +54,13 @@
                     <span class="cmyk-code" id="cmyk-code">cmyk(0%, 0%, 0%, 100%)</span>
                 </div>
             </div>
+            <!-- Color Lore -->
+            <div class="lore-card" id="lore-card">
+                <div class="lore-row" id="lore-moods"></div>
+                <div class="lore-row" id="lore-uses"></div>
+                <div class="lore-row" id="lore-brands"></div>
+            </div>
+
             <div class="favorites-wrapper" id="favorites-wrapper">
                 <div class="favorites-header">
                     <span class="favorites-label">Favorites</span>
@@ -250,6 +259,60 @@
             <div class="game-score" id="game-score"></div>
             <div class="game-reveal" id="game-reveal"></div>
         </section>
+
+        <!-- Color Mixer Panel -->
+        <section class="panel mix-panel" id="mix-panel">
+            <h2>Color Mixer</h2>
+            <div class="mixer-colors-row">
+                <div class="mixer-color-block">
+                    <div class="mixer-swatch" id="mix-swatch-a"></div>
+                    <span class="mixer-color-hex" id="mix-hex-a">#c86496</span>
+                    <span class="mixer-color-hint">← Explorer</span>
+                </div>
+                <div class="mixer-center">
+                    <input type="range" id="mix-ratio" min="0" max="100" value="50" class="slider">
+                    <div class="mixer-ratio-labels">
+                        <span>A</span>
+                        <span id="mix-ratio-val">50%</span>
+                        <span>B</span>
+                    </div>
+                </div>
+                <div class="mixer-color-block">
+                    <label class="mixer-b-wrap">
+                        <div class="mixer-swatch-b" id="mix-swatch-b"></div>
+                        <input type="color" id="mix-color-b" value="#6496c8">
+                    </label>
+                    <span class="mixer-color-hex" id="mix-hex-b">#6496c8</span>
+                    <span class="mixer-color-hint">click to pick</span>
+                </div>
+            </div>
+            <div class="mixer-result-row">
+                <div class="mixer-result-swatch" id="mix-result-swatch"></div>
+                <div class="mixer-result-info">
+                    <span class="mixer-result-hex" id="mix-result-hex">#956480</span>
+                    <span class="mixer-result-name" id="mix-result-name">≈ Rosy Brown</span>
+                    <button class="mixer-use-btn" id="mix-use-btn">↑ Use in Explorer</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Image Color Extractor Panel -->
+        <section class="panel image-panel" id="image-panel">
+            <h2>Image Color Extractor</h2>
+            <div class="image-drop-zone" id="image-drop-zone">
+                <input type="file" id="image-file-input" accept="image/*" style="display:none">
+                <div class="image-drop-hint">
+                    <span class="image-drop-icon">🖼️</span>
+                    <p>Drop an image here or click to upload</p>
+                    <span class="image-drop-sub">Extracts the most dominant colors from any photo</span>
+                </div>
+            </div>
+            <div class="image-workspace hidden" id="image-workspace">
+                <img id="image-preview" class="image-preview-img" alt="Uploaded image">
+                <div class="image-colors" id="image-colors"></div>
+            </div>
+            <canvas id="image-canvas" style="display:none"></canvas>
+        </section>
     </main>
 
     <div class="toast" id="toast">Copied!</div>
@@ -260,6 +323,8 @@
     <script src="accessibility.js"></script>
     <script src="gradient.js"></script>
     <script src="game.js"></script>
+    <script src="mixer.js"></script>
+    <script src="image-extractor.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
