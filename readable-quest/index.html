@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Quest: RGB Color Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <h1 class="app-title">Color Quest</h1>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="both">Both</button>
+      <button class="tab-btn" data-tab="explorer">Explorer</button>
+      <button class="tab-btn" data-tab="palette">Palette</button>
+    </nav>
+  </header>
+
+  <main id="main-panels" class="dual-panel">
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- EXPLORER PANEL                              -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section id="explorer-panel" class="panel">
+      <h2 class="panel-title">Animated Color Explorer</h2>
+
+      <div class="canvas-wrapper">
+        <canvas id="explorer-canvas"></canvas>
+      </div>
+
+      <!-- RGB Sliders -->
+      <div class="sliders">
+        <div class="slider-row">
+          <label class="slider-label">R <span id="r-val">255</span></label>
+          <input type="range" id="r-slider" class="slider slider-r" min="0" max="255" value="255">
+        </div>
+        <div class="slider-row">
+          <label class="slider-label">G <span id="g-val">0</span></label>
+          <input type="range" id="g-slider" class="slider slider-g" min="0" max="255" value="0">
+        </div>
+        <div class="slider-row">
+          <label class="slider-label">B <span id="b-val">0</span></label>
+          <input type="range" id="b-slider" class="slider slider-b" min="0" max="255" value="0">
+        </div>
+      </div>
+
+      <!-- Color Readouts -->
+      <div class="color-readouts">
+        <div class="readout-swatch-wrap">
+          <div class="readout-swatch" id="readout-swatch"></div>
+          <div class="readout-name" id="readout-name">Red</div>
+        </div>
+        <div class="readout-values">
+          <div class="readout" id="hex-readout" title="Click to copy">#FF0000</div>
+          <div class="readout" id="rgb-readout" title="Click to copy">rgb(255, 0, 0)</div>
+          <div class="readout" id="hsl-readout" title="Click to copy">hsl(0°, 100%, 50%)</div>
+          <div class="readout" id="cmyk-readout" title="Click to copy">C:0 M:100 Y:100 K:0</div>
+        </div>
+      </div>
+
+      <!-- Temperature Badge + Scale -->
+      <div class="temperature-row">
+        <span id="temp-badge" class="temp-badge"></span>
+        <div class="temp-scale">
+          <span class="temp-label-cool">Cool</span>
+          <div class="temp-scale-bar">
+            <div id="temp-marker" class="temp-marker"></div>
+          </div>
+          <span class="temp-label-warm">Warm</span>
+        </div>
+      </div>
+
+      <!-- Color Recipe Panel -->
+      <details id="recipe-panel" class="recipe-panel">
+        <summary>Color Recipe</summary>
+        <div class="recipe-content">
+          <p id="recipe-desc" class="recipe-desc"></p>
+          <div class="ingredient-bar">
+            <div id="ing-r" class="ingredient-segment ing-r" title="Red"></div>
+            <div id="ing-g" class="ingredient-segment ing-g" title="Green"></div>
+            <div id="ing-b" class="ingredient-segment ing-b" title="Blue"></div>
+          </div>
+          <div class="recipe-formats">
+            <div class="recipe-format-block" id="recipe-hex" title="Click to copy"></div>
+            <div class="recipe-format-block" id="recipe-rgb" title="Click to copy"></div>
+            <div class="recipe-format-block" id="recipe-hsl" title="Click to copy"></div>
+            <div class="recipe-format-block" id="recipe-cmyk" title="Click to copy"></div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- PALETTE PANEL                               -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section id="palette-panel" class="panel">
+      <h2 class="panel-title">Palette Generator</h2>
+
+      <!-- Harmony Selector -->
+      <div class="harmony-selector">
+        <button class="harmony-btn active" data-harmony="complementary">Complementary</button>
+        <button class="harmony-btn" data-harmony="analogous">Analogous</button>
+        <button class="harmony-btn" data-harmony="triadic">Triadic</button>
+        <button class="harmony-btn" data-harmony="split-complementary">Split-Comp</button>
+        <button class="harmony-btn" data-harmony="monochromatic">Mono</button>
+        <button class="harmony-btn" data-harmony="tetradic">Tetradic</button>
+      </div>
+
+      <!-- Palette Actions -->
+      <div class="palette-actions">
+        <button id="randomize-btn" class="action-btn">⟳ Randomize</button>
+        <button id="pin-btn" class="action-btn">📌 Pin Palette</button>
+        <label class="accessible-toggle">
+          <input type="checkbox" id="accessible-mode-toggle">
+          <span>Accessible Mode</span>
+        </label>
+        <div class="accessible-bg-wrapper" id="accessible-bg-wrapper">
+          <label>BG: <input type="color" id="accessible-bg-color" value="#0f0f14"></label>
+        </div>
+      </div>
+
+      <!-- Swatches -->
+      <div id="swatches-container" class="swatches-container"></div>
+
+      <!-- Shade / Tint Scale -->
+      <div id="shade-scale" class="shade-scale hidden"></div>
+
+      <!-- Color Wheel -->
+      <div class="wheel-wrapper">
+        <canvas id="color-wheel-canvas" width="180" height="180"></canvas>
+      </div>
+
+      <!-- UI Preview -->
+      <div class="ui-preview">
+        <div class="preview-label">UI Preview</div>
+        <div class="preview-content">
+          <nav id="preview-nav" class="preview-nav">
+            <span class="preview-logo">Brand</span>
+            <span class="preview-nav-link">Home</span>
+            <span class="preview-nav-link">About</span>
+            <span class="preview-nav-link">Work</span>
+          </nav>
+          <div id="preview-card" class="preview-card">
+            <h3 id="preview-card-title" class="preview-card-title">Design System</h3>
+            <p id="preview-card-body" class="preview-card-body">Building beautiful interfaces with harmonious color palettes.</p>
+            <div class="preview-card-footer">
+              <button id="preview-btn" class="preview-btn">Get Started</button>
+              <span id="preview-badge" class="preview-badge">New</span>
+            </div>
+          </div>
+          <div class="preview-form">
+            <input id="preview-input" class="preview-input" type="text" placeholder="Enter value…" readonly>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pinned Palettes Comparison -->
+      <div id="pinned-palettes" class="pinned-palettes hidden">
+        <h3 class="section-subtitle">Pinned Palettes</h3>
+        <div id="pinned-container" class="pinned-container"></div>
+      </div>
+
+      <!-- Accessibility Section -->
+      <div class="accessibility-section">
+        <h3 class="section-subtitle">Accessibility</h3>
+
+        <!-- Contrast Checker -->
+        <div class="contrast-checker">
+          <h4 class="subsection-title">Contrast Checker</h4>
+          <div class="contrast-pickers">
+            <div class="picker-group">
+              <label>Foreground</label>
+              <input type="color" id="fg-color" value="#ffffff">
+              <span class="picker-hex" id="fg-hex">#ffffff</span>
+            </div>
+            <div class="picker-group">
+              <label>Background</label>
+              <input type="color" id="bg-color" value="#0f0f14">
+              <span class="picker-hex" id="bg-hex">#0f0f14</span>
+            </div>
+          </div>
+          <div class="contrast-preview" id="contrast-preview">
+            <span id="contrast-sample-text">Sample Text Aa</span>
+          </div>
+          <div class="contrast-result">
+            <span class="contrast-ratio-label">Contrast Ratio:</span>
+            <span class="contrast-ratio" id="contrast-ratio">—</span>
+            <div class="contrast-badges" id="contrast-badges"></div>
+          </div>
+        </div>
+
+        <!-- Color Blindness Simulator -->
+        <div class="colorblind-section">
+          <h4 class="subsection-title">Color Blindness Simulation</h4>
+          <div id="colorblind-rows" class="colorblind-rows"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" aria-live="polite" role="status"></div>
+
+  <script src="color-utils.js"></script>
+  <script src="explorer.js"></script>
+  <script src="palette.js"></script>
+  <script src="accessibility.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
