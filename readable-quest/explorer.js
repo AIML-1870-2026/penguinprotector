@@ -13,6 +13,8 @@ class ExplorerCanvas {
     this.animId      = null;
     this.cx = 0;
     this.cy = 0;
+    this.maxDist = 130;      // px from center → intensity 0
+    this.onDragUpdate = null; // callback(channel, value255) set by main.js
   }
 
   init() {
@@ -33,14 +35,18 @@ class ExplorerCanvas {
 
   initSpotlights() {
     const { cx, cy } = this;
+    // R starts at center (dist=0 → intensity=1.0).
+    // G and B start beyond maxDist so their initial intensity=0.0 is
+    // consistent with position-based mapping used during drag.
     this.spotlights = [
-      { x: cx - 90, y: cy + 70, radius: 130, channel: 'r', baseColor: [255, 0, 0], intensity: 1.0 },
-      { x: cx + 90, y: cy + 70, radius: 130, channel: 'g', baseColor: [0, 255, 0], intensity: 0.0 },
-      { x: cx,      y: cy - 80, radius: 130, channel: 'b', baseColor: [0, 0, 255], intensity: 0.0 },
+      { x: cx,       y: cy,      radius: 130, channel: 'r', baseColor: [255, 0, 0], intensity: 1.0 },
+      { x: cx - 110, y: cy + 85, radius: 130, channel: 'g', baseColor: [0, 255, 0], intensity: 0.0 },
+      { x: cx + 110, y: cy + 85, radius: 130, channel: 'b', baseColor: [0, 0, 255], intensity: 0.0 },
     ];
   }
 
-  // Called from main.js when sliders change
+  // Called from main.js when sliders change.
+  // Also repositions the spotlight so drag → slider and slider → drag stay in sync.
   setChannelIntensity(channel, value255) {
     const intensity = value255 / 255;
     const s = this.spotlights.find(sp => sp.channel === channel);
@@ -49,6 +55,22 @@ class ExplorerCanvas {
       this.emitParticles(18 + Math.round(Math.abs(intensity - s.intensity) * 25));
     }
     s.intensity = intensity;
+
+    // Move spotlight to the position that encodes this intensity.
+    const targetDist   = (1 - intensity) * this.maxDist;
+    const currentDist  = Math.hypot(s.x - this.cx, s.y - this.cy);
+    if (currentDist > 1) {
+      // Scale along existing direction
+      const scale = targetDist / currentDist;
+      s.x = this.cx + (s.x - this.cx) * scale;
+      s.y = this.cy + (s.y - this.cy) * scale;
+    } else if (targetDist > 0) {
+      // At center with no direction — use per-channel default direction
+      const dirs = { r: [-0.5, 0.866], g: [0.5, 0.866], b: [0, -1] };
+      const [dx, dy] = dirs[channel] ?? [0, 1];
+      s.x = this.cx + dx * targetDist;
+      s.y = this.cy + dy * targetDist;
+    }
   }
 
   emitParticles(count) {
@@ -168,27 +190,31 @@ class ExplorerCanvas {
 
   drawSpotlightRings() {
     const { ctx } = this;
-    const labels = [
-      { s: this.spotlights[0], label: 'R', stroke: 'rgba(255,80,80,0.5)' },
-      { s: this.spotlights[1], label: 'G', stroke: 'rgba(80,255,80,0.5)' },
-      { s: this.spotlights[2], label: 'B', stroke: 'rgba(80,120,255,0.5)' },
+    const channels = [
+      { s: this.spotlights[0], label: 'R', r: 255, g: 80,  b: 80  },
+      { s: this.spotlights[1], label: 'G', r: 80,  g: 255, b: 80  },
+      { s: this.spotlights[2], label: 'B', r: 80,  g: 120, b: 255 },
     ];
     ctx.save();
-    for (const { s, label, stroke } of labels) {
-      if (s.intensity < 0.02) continue;
+    for (const { s, label, r, g, b } of channels) {
+      // Always draw rings so dim/off spotlights remain discoverable
+      const ringAlpha  = Math.max(0.18, s.intensity * 0.5);
+      const labelAlpha = Math.max(0.45, s.intensity * 0.9);
+
       // Dashed outer ring
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${ringAlpha})`;
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 6]);
       ctx.stroke();
       ctx.setLineDash([]);
+
       // Label
       ctx.font = 'bold 13px system-ui';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = stroke.replace('0.5', '0.9');
+      ctx.fillStyle = `rgba(${r},${g},${b},${labelAlpha})`;
       ctx.fillText(label, s.x, s.y);
     }
     ctx.restore();
@@ -261,8 +287,18 @@ class ExplorerCanvas {
 
   onMove({ x, y }) {
     if (this.dragging) {
-      this.dragging.s.x = x + this.dragging.ox;
-      this.dragging.s.y = y + this.dragging.oy;
+      const s = this.dragging.s;
+      s.x = x + this.dragging.ox;
+      s.y = y + this.dragging.oy;
+
+      // Derive intensity from distance to center and update slider
+      const dist        = Math.hypot(s.x - this.cx, s.y - this.cy);
+      const newIntensity = Math.max(0, Math.min(1, 1 - dist / this.maxDist));
+      if (Math.abs(newIntensity - s.intensity) > 0.08) {
+        this.emitParticles(10 + Math.round(Math.abs(newIntensity - s.intensity) * 18));
+      }
+      s.intensity = newIntensity;
+      if (this.onDragUpdate) this.onDragUpdate(s.channel, Math.round(newIntensity * 255));
     } else {
       this.canvas.style.cursor = this.hitTest(x, y) ? 'grab' : 'default';
     }

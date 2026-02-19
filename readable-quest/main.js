@@ -219,6 +219,18 @@ document.addEventListener('DOMContentLoaded', () => {
   explorerCanvas.init();
   window.explorerCanvas = explorerCanvas;
 
+  // Two-way sync: dragging a spotlight updates the corresponding slider
+  explorerCanvas.onDragUpdate = (channel, value255) => {
+    colorState[channel] = value255;
+    const sliderMap = { r: rSlider, g: gSlider, b: bSlider };
+    const valMap    = { r: rVal,    g: gVal,    b: bVal    };
+    sliderMap[channel].value    = value255;
+    valMap[channel].textContent = value255;
+    updateReadouts();
+    const hsl = rgbToHsl(colorState.r, colorState.g, colorState.b);
+    palettePanel.generate(hsl.h, hsl.s, hsl.l);
+  };
+
   // Palette panel
   palettePanel = new PalettePanel();
   palettePanel.init();
