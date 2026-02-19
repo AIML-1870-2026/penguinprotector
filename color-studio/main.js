@@ -4,7 +4,8 @@ const colorState = {
     r: 200, g: 100, b: 150,
     harmony: 'complementary',
     accessibleMode: false,
-    accessibleBg: '#0f0f14'
+    accessibleBg: '#0f0f14',
+    paletteContrastMode: false
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,12 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.backgroundColor = hex;
         siteHeader.style.backgroundColor = darkenHex(hex, 0.6);
 
-        // Switch to dark text on light backgrounds
+        // Switch to dark text on light body backgrounds
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
         document.body.classList.toggle('theme-light', brightness > 128);
+
+        // Separate check for header (which is 60% darker than preset)
+        const hr = Math.round(r * 0.6), hg = Math.round(g * 0.6), hb = Math.round(b * 0.6);
+        const headerBrightness = (hr * 299 + hg * 587 + hb * 114) / 1000;
+        siteHeader.classList.toggle('header-light', headerBrightness > 100);
     }
 
     applyPreset('#000000'); // match initial active preset
@@ -132,6 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePalette();
     });
 
+    // Palette pair contrast mode
+    document.getElementById('palette-contrast-toggle').addEventListener('change', e => {
+        colorState.paletteContrastMode = e.target.checked;
+        updatePalette();
+    });
+
     accessibleBgInput.addEventListener('input', () => {
         colorState.accessibleBg = accessibleBgInput.value;
         accessibleBgHex.textContent = accessibleBgInput.value;
@@ -192,13 +204,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePalette() {
         const base = { r: colorState.r, g: colorState.g, b: colorState.b };
-        const palette = Palette.generate(base, colorState.harmony, colorState.accessibleMode, colorState.accessibleBg);
-        Palette.renderSwatches(swatchesEl, palette, colorState.accessibleMode);
+        const palette = Palette.generate(base, colorState.harmony, colorState.accessibleMode, colorState.accessibleBg, colorState.paletteContrastMode);
+        Palette.renderSwatches(swatchesEl, palette, colorState.accessibleMode, colorState.paletteContrastMode);
         Palette.updateSampleCard(sampleCard, palette);
         Palette.renderCVD(palette);
 
         if (palette.length > 0) {
-            document.querySelector('.rainbow-text').style.color = rgbToHex(palette[0].r, palette[0].g, palette[0].b);
+            const rainbowEl = document.querySelector('.rainbow-text');
+            rainbowEl.style.color = siteHeader.classList.contains('header-light')
+                ? '#3a1f5c'
+                : rgbToHex(palette[0].r, palette[0].g, palette[0].b);
         }
     }
 

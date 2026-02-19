@@ -1128,6 +1128,78 @@ body.theme-light .export-bar {
     border-top-color: rgba(0, 0, 0, 0.08);
 }
 
+/* Palette panel AA pair contrast toggle */
+.palette-a11y-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.palette-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+
+.palette-toggle:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.palette-toggle input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #a78bfa;
+    cursor: pointer;
+}
+
+.palette-a11y-hint {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+body.theme-light .palette-toggle {
+    color: rgba(20, 10, 40, 0.45);
+}
+
+body.theme-light .palette-toggle:hover {
+    color: rgba(20, 10, 40, 0.7);
+}
+
+body.theme-light .palette-a11y-hint {
+    color: rgba(20, 10, 40, 0.25);
+}
+
+/* Header light theme — header is 60% darker than preset, needs stronger contrast */
+header.header-light .subtitle {
+    color: rgba(20, 10, 40, 0.65);
+}
+
+header.header-light .tab {
+    color: rgba(20, 10, 40, 0.7);
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+header.header-light .tab:hover {
+    color: rgba(20, 10, 40, 0.9);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+header.header-light .tab.active {
+    color: #3730a3;
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .panels {

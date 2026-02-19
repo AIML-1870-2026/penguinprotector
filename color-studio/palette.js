@@ -11,7 +11,7 @@ const Palette = (() => {
         onSwatchClick = swatchClickCb;
     }
 
-    function generate(baseRgb, harmonyType, accessibleMode, accessibleBg) {
+    function generate(baseRgb, harmonyType, accessibleMode, accessibleBg, pairContrastMode) {
         const hsl = rgbToHsl(baseRgb.r, baseRgb.g, baseRgb.b);
         let colors = generateHarmony(hsl.h, hsl.s, hsl.l, harmonyType);
 
@@ -21,7 +21,7 @@ const Palette = (() => {
             return { ...rgb, h: c.h, s: c.s, l: c.l };
         });
 
-        // Accessible mode: adjust lightness to meet AA contrast
+        // Accessible mode: adjust lightness to meet AA contrast against background
         if (accessibleMode && accessibleBg) {
             const bgRgb = hexToRgb(accessibleBg);
             currentPalette = currentPalette.map(c => {
@@ -52,10 +52,45 @@ const Palette = (() => {
             });
         }
 
+        // Pair contrast mode: adjust each color so it has AA contrast with the previous one
+        if (pairContrastMode) {
+            currentPalette = enforcePairContrast(currentPalette);
+        }
+
         return currentPalette;
     }
 
-    function renderSwatches(container, palette, accessibleMode) {
+    function enforcePairContrast(palette) {
+        if (palette.length < 2) return palette;
+        const result = [{ ...palette[0], pairRatio: null, pairOk: true }];
+
+        for (let i = 1; i < palette.length; i++) {
+            let { h, s, l } = palette[i];
+            const prev = result[i - 1];
+            let rgb = hslToRgb(h, s, l);
+            let ratio = contrastRatio(rgb, prev);
+
+            if (ratio < 4.5) {
+                // Push lightness away from the previous color's luminance
+                const prevLum = relativeLuminance(prev.r, prev.g, prev.b);
+                const direction = prevLum < 0.5 ? 1 : -1; // lighter if prev is dark, darker if prev is light
+                let attempts = 0;
+                while (ratio < 4.5 && attempts < 100) {
+                    l = Math.max(0, Math.min(100, l + direction * 1));
+                    rgb = hslToRgb(h, s, l);
+                    ratio = contrastRatio(rgb, prev);
+                    attempts++;
+                }
+            }
+
+            const rounded = Math.round(ratio * 10) / 10;
+            result.push({ ...rgb, h, s, l, pairRatio: rounded, pairOk: ratio >= 4.5 });
+        }
+
+        return result;
+    }
+
+    function renderSwatches(container, palette, accessibleMode, pairContrastMode) {
         container.innerHTML = '';
         palette.forEach((c, i) => {
             const hex = rgbToHex(c.r, c.g, c.b);
@@ -66,7 +101,11 @@ const Palette = (() => {
             swatch.style.animationDelay = `${i * 80}ms`;
 
             let badgeHtml = '';
-            if (accessibleMode) {
+            if (pairContrastMode && i > 0) {
+                const ratio = c.pairRatio ?? 0;
+                const passes = c.pairOk !== false;
+                badgeHtml = `<span class="swatch-badge" style="color:${passes ? '#4ade80' : '#f87171'}">${ratio}:1</span>`;
+            } else if (accessibleMode) {
                 badgeHtml = c.meetsAA
                     ? '<span class="swatch-badge" style="color:#4ade80">&#10003;</span>'
                     : '<span class="swatch-badge" style="color:#f87171">&#9888;</span>';
