@@ -132,6 +132,20 @@ function makeClickToCopyEl(el) {
   makeClickToCopy(el, () => el.textContent.trim());
 }
 
+// ── Background Presets ────────────────────────────────────────
+function darkenHex(hex, factor) {
+  const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
+  const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor);
+  const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function applyBgPreset(hex) {
+  document.getElementById('explorer-panel').style.backgroundColor = hex;
+  document.body.style.backgroundColor = hex;
+  document.querySelector('.app-header').style.backgroundColor = darkenHex(hex, 0.75);
+}
+
 // ── Tab Switching ─────────────────────────────────────────────
 function initTabs() {
   const panels = document.getElementById('main-panels');
@@ -240,6 +254,16 @@ document.addEventListener('DOMContentLoaded', () => {
   accessibilityPanel = new AccessibilityPanel();
   accessibilityPanel.init();
   window.accessibilityPanel = accessibilityPanel;
+
+  // Background preset buttons
+  applyBgPreset('#000000');
+  document.querySelectorAll('.bg-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.bg-preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyBgPreset(btn.dataset.bg);
+    });
+  });
 
   // Tabs
   initTabs();

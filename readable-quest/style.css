@@ -109,6 +109,40 @@ canvas { display: block; }
   padding-bottom: 0.5rem;
 }
 
+/* ── Background Presets ─────────────────────────────────────── */
+.bg-presets {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.bg-preset-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-right: 0.25rem;
+}
+.bg-preset {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.bg-preset:hover {
+  transform: scale(1.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.bg-preset.active {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
 /* ── Canvas ──────────────────────────────────────────────────── */
 .canvas-wrapper {
   border-radius: var(--radius);
