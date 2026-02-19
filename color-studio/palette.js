@@ -221,11 +221,29 @@ const Palette = (() => {
     return { init, generate, renderSwatches, drawWheel, updateSampleCard, renderCVD, getPalette };
 })();
 
+/* ─── Confetti ──────────────────────────────────────────────────────────── */
+let _confettiX = 0, _confettiY = 0;
+document.addEventListener('click', e => { _confettiX = e.clientX; _confettiY = e.clientY; });
+
+function spawnConfetti(x, y) {
+    const colors = ['#ff6b6b','#ff9f43','#ffd32a','#6bcb77','#4ea8de','#a29bfe','#fd79a8','#fdcb6e'];
+    for (let i = 0; i < 22; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-particle';
+        const vx = (Math.random() - 0.5) * 170;
+        const vy = -(Math.random() * 150 + 40);
+        el.style.cssText = `left:${x}px;top:${y}px;background:${colors[Math.floor(Math.random()*colors.length)]};--vx:${vx}px;--vy:${vy}px;`;
+        document.body.appendChild(el);
+        el.addEventListener('animationend', () => el.remove());
+    }
+}
+
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         const toast = document.getElementById('toast');
         toast.textContent = `Copied ${text}`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 1500);
+        spawnConfetti(_confettiX, _confettiY);
     });
 }

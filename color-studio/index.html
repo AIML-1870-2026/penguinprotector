@@ -19,6 +19,8 @@
             <button class="tab" data-tab="palette">Palette</button>
             <button class="tab" data-tab="accessibility">Accessibility</button>
             <button class="tab" data-tab="custom">Custom</button>
+            <button class="tab" data-tab="gradient">Gradient</button>
+            <button class="tab" data-tab="game">Game</button>
         </nav>
     </header>
 
@@ -39,8 +41,15 @@
             </div>
             <div class="color-output" id="color-output">
                 <span class="color-preview" id="color-preview"></span>
-                <span class="hex-code" id="hex-code" title="Click to copy">#000000</span>
-                <span class="rgb-code" id="rgb-code">rgb(0, 0, 0)</span>
+                <div class="color-codes">
+                    <div class="color-codes-top">
+                        <span class="hex-code" id="hex-code" title="Click to copy">#000000</span>
+                        <span class="color-name-tag" id="color-name-tag">Black</span>
+                    </div>
+                    <span class="rgb-code" id="rgb-code">rgb(0, 0, 0)</span>
+                    <span class="hsl-code" id="hsl-code">hsl(0, 0%, 0%)</span>
+                    <span class="cmyk-code" id="cmyk-code">cmyk(0%, 0%, 0%, 100%)</span>
+                </div>
             </div>
             <div class="tints-shades-wrapper">
                 <span class="tints-label">Tints &amp; Shades</span>
@@ -171,6 +180,78 @@
                 <button id="export-css-btn" class="export-btn">Copy as CSS Variables</button>
             </div>
         </section>
+        <!-- Gradient Builder Panel -->
+        <section class="panel gradient-panel" id="gradient-panel">
+            <h2>Gradient Builder</h2>
+            <div class="gradient-stops">
+                <div class="gradient-stop">
+                    <div class="grad-stop-swatch" id="grad-stop-a"></div>
+                    <span class="grad-stop-label">Color A</span>
+                    <span class="grad-stop-hex" id="grad-hex-a">#c86496</span>
+                    <span class="grad-stop-hint">← from explorer</span>
+                </div>
+                <button class="grad-swap-btn" id="grad-swap" title="Swap colors">⇄</button>
+                <div class="gradient-stop">
+                    <label class="grad-stop-b-wrap">
+                        <div class="grad-stop-swatch-inner" id="grad-stop-b"></div>
+                        <input type="color" id="grad-color-b" value="#6496c8">
+                    </label>
+                    <span class="grad-stop-label">Color B</span>
+                    <span class="grad-stop-hex" id="grad-hex-b">#6496c8</span>
+                    <span class="grad-stop-hint">click to pick</span>
+                </div>
+            </div>
+            <div class="gradient-directions">
+                <button class="grad-dir-btn active" data-dir="to right">→ Horizontal</button>
+                <button class="grad-dir-btn" data-dir="to bottom">↓ Vertical</button>
+                <button class="grad-dir-btn" data-dir="135deg">↗ Diagonal</button>
+                <button class="grad-dir-btn" data-dir="radial">◉ Radial</button>
+            </div>
+            <div class="gradient-preview" id="gradient-preview"></div>
+            <div class="gradient-code-row">
+                <code class="gradient-code" id="gradient-code"></code>
+                <button class="gradient-copy-btn" id="gradient-copy-btn">Copy CSS</button>
+            </div>
+        </section>
+
+        <!-- Color Match Game Panel -->
+        <section class="panel game-panel" id="game-panel">
+            <h2>Color Match Game</h2>
+            <div class="game-arena">
+                <div class="game-color-box">
+                    <div class="game-swatch" id="game-target-swatch"></div>
+                    <span class="game-label">Target</span>
+                </div>
+                <div class="game-vs">vs</div>
+                <div class="game-color-box">
+                    <div class="game-swatch" id="game-guess-swatch"></div>
+                    <span class="game-label">Your Mix</span>
+                </div>
+            </div>
+            <div class="game-sliders">
+                <div class="slider-row">
+                    <label class="slider-label red">R</label>
+                    <input type="range" id="game-slider-r" min="0" max="255" value="128" class="slider red">
+                    <span class="slider-value" id="game-val-r">128</span>
+                </div>
+                <div class="slider-row">
+                    <label class="slider-label green">G</label>
+                    <input type="range" id="game-slider-g" min="0" max="255" value="128" class="slider green">
+                    <span class="slider-value" id="game-val-g">128</span>
+                </div>
+                <div class="slider-row">
+                    <label class="slider-label blue">B</label>
+                    <input type="range" id="game-slider-b" min="0" max="255" value="128" class="slider blue">
+                    <span class="slider-value" id="game-val-b">128</span>
+                </div>
+            </div>
+            <div class="game-actions">
+                <button class="game-btn game-check-btn" id="game-check-btn">Check Match</button>
+                <button class="game-btn game-new-btn" id="game-new-btn">New Color</button>
+            </div>
+            <div class="game-score" id="game-score"></div>
+            <div class="game-reveal" id="game-reveal"></div>
+        </section>
     </main>
 
     <div class="toast" id="toast">Copied!</div>
@@ -179,6 +260,8 @@
     <script src="explorer.js"></script>
     <script src="palette.js"></script>
     <script src="accessibility.js"></script>
+    <script src="gradient.js"></script>
+    <script src="game.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

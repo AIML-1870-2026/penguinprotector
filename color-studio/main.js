@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     Explorer.initWheel(document.getElementById('explorer-wheel'));
     Palette.init(null, onSwatchClick);
     Accessibility.init();
+    GradientBuilder.init();
+    ColorGame.init();
 
     // Background preset buttons — change the explorer panel, page, and header background
     const explorerPanel = document.getElementById('explorer-panel');
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Tab switching
-    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel'];
+    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel'];
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -85,17 +87,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = tab.dataset.tab;
             allPanelIds.forEach(id => document.getElementById(id).classList.remove('hidden'));
             const hide = (...ids) => ids.forEach(id => document.getElementById(id).classList.add('hidden'));
-            if (mode === 'both')          hide('accessibility-panel', 'custom-panel');
-            else if (mode === 'explorer') hide('palette-panel', 'accessibility-panel', 'custom-panel');
-            else if (mode === 'palette')  hide('explorer-panel', 'accessibility-panel', 'custom-panel');
-            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel');
-            else if (mode === 'custom')   hide('explorer-panel', 'palette-panel', 'accessibility-panel');
+            if (mode === 'both')               hide('accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
+            else if (mode === 'explorer')      hide('palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
+            else if (mode === 'palette')       hide('explorer-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel');
+            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel', 'gradient-panel', 'game-panel');
+            else if (mode === 'custom')        hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'gradient-panel', 'game-panel');
+            else if (mode === 'gradient')      hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'game-panel');
+            else if (mode === 'game')          hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel');
         });
     });
 
     // Set initial tab state — hide secondary panels
     document.getElementById('accessibility-panel').classList.add('hidden');
     document.getElementById('custom-panel').classList.add('hidden');
+    document.getElementById('gradient-panel').classList.add('hidden');
+    document.getElementById('game-panel').classList.add('hidden');
 
     // Harmony buttons
     document.querySelectorAll('.harmony-btn').forEach(btn => {
@@ -173,6 +179,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const hex = rgbToHex(colorState.r, colorState.g, colorState.b);
         hexCode.textContent = hex;
         rgbCode.textContent = `rgb(${colorState.r}, ${colorState.g}, ${colorState.b})`;
+
+        const hsl  = rgbToHsl(colorState.r, colorState.g, colorState.b);
+        const cmyk = rgbToCmyk(colorState.r, colorState.g, colorState.b);
+        document.getElementById('hsl-code').textContent =
+            `hsl(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%)`;
+        document.getElementById('cmyk-code').textContent =
+            `cmyk(${cmyk.c}%, ${cmyk.m}%, ${cmyk.y}%, ${cmyk.k}%)`;
+        document.getElementById('color-name-tag').textContent =
+            `≈ ${nearestColorName(colorState.r, colorState.g, colorState.b)}`;
+
+        GradientBuilder.setColorA(colorState.r, colorState.g, colorState.b);
         colorPreview.style.backgroundColor = hex;
 
         // Dynamic slider fill: filled portion shows actual channel shade, unfilled is dark
@@ -212,12 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         Palette.updateSampleCard(sampleCard, palette);
         Palette.renderCVD(palette);
 
-        if (palette.length > 0) {
-            const rainbowEl = document.querySelector('.rainbow-text');
-            rainbowEl.style.color = siteHeader.classList.contains('header-light')
-                ? '#3a1f5c'
-                : rgbToHex(palette[0].r, palette[0].g, palette[0].b);
-        }
     }
 
     // Window resize (reserved for future use)

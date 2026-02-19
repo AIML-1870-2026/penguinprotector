@@ -201,6 +201,19 @@ function nearestColorName(r, g, b) {
     return name;
 }
 
+function rgbToCmyk(r, g, b) {
+    if (r === 0 && g === 0 && b === 0) return { c: 0, m: 0, y: 0, k: 100 };
+    const rp = r / 255, gp = g / 255, bp = b / 255;
+    const k = 1 - Math.max(rp, gp, bp);
+    if (k >= 1) return { c: 0, m: 0, y: 0, k: 100 };
+    return {
+        c: Math.round(((1 - rp - k) / (1 - k)) * 100),
+        m: Math.round(((1 - gp - k) / (1 - k)) * 100),
+        y: Math.round(((1 - bp - k) / (1 - k)) * 100),
+        k: Math.round(k * 100)
+    };
+}
+
 /* Harmony generation */
 function generateHarmony(h, s, l, type) {
     const wrap = deg => ((deg % 360) + 360) % 360;
