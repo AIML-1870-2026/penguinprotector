@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyPreset(hex) {
         explorerPanel.style.backgroundColor = hex;
         document.body.style.backgroundColor = hex;
-        siteHeader.style.backgroundColor = darkenHex(hex, 0.6);
+        siteHeader.style.backgroundColor = darkenHex(hex, 0.75);
 
         // Switch to dark text on light body backgrounds
         const r = parseInt(hex.slice(1, 3), 16);
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('theme-light', brightness > 128);
 
         // Separate check for header (which is 60% darker than preset)
-        const hr = Math.round(r * 0.6), hg = Math.round(g * 0.6), hb = Math.round(b * 0.6);
+        const hr = Math.round(r * 0.75), hg = Math.round(g * 0.75), hb = Math.round(b * 0.75);
         const headerBrightness = (hr * 299 + hg * 587 + hb * 114) / 1000;
         siteHeader.classList.toggle('header-light', headerBrightness > 100);
 
