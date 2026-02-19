@@ -141,8 +141,9 @@ function darkenHex(hex, factor) {
 }
 
 function applyBgPreset(hex) {
-  document.getElementById('explorer-panel').style.backgroundColor = hex;
   document.body.style.backgroundColor = hex;
+  document.getElementById('main-panels').style.background = hex;
+  document.querySelectorAll('.panel').forEach(p => p.style.backgroundColor = hex);
   document.querySelector('.app-header').style.backgroundColor = darkenHex(hex, 0.75);
   if (explorerCanvas) explorerCanvas.setBgColor(darkenHex(hex, 0.08));
 }
