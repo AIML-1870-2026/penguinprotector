@@ -10,9 +10,9 @@ and a live readability tester with color-vision simulation.
 - `style.css` — Deep ocean/jellyfish dark theme, bioluminescent accents, responsive
 - `color-utils.js` — HSL/RGB/CMYK conversion, color naming, WCAG contrast, shade scale, color blindness matrices
 - `explorer.js` — Canvas spotlight rendering, drag-to-move, scroll-to-resize, particles, additive blending
-- `palette.js` — Harmony algorithms, swatch rendering, color wheel canvas, shade/tint scale, palette comparison, UI preview
+- `palette.js` — Harmony algorithms, swatch rendering, color wheel canvas, shade/tint scale, palette comparison, UI preview, temperature shift, Fix My Palette
 - `accessibility.js` — Contrast checker, color blindness simulator, accessible palette mode
-- `main.js` — Shared `colorState` + `rdState` objects, UI wiring, two-way sync, Readable Lab logic
+- `main.js` — Shared `colorState` + `rdState` objects, UI wiring, two-way sync, Readable Lab logic, custom text toggle, font picker
 
 ## Jellyfish Theme Colors
 - Background: `#040d1e` (deep ocean)
@@ -26,12 +26,14 @@ and a live readability tester with color-vision simulation.
 
 ## Readable Lab (4th Tab)
 Live readability tester with jellyfish-themed text passage (about Aurelia aurita).
-- `rdState` in `main.js`: `{ bgR, bgG, bgB, txtR, txtG, txtB, fontSize, vision }`
-- Default: deep ocean background (#040d1e), pale blue text (#c8e8ff)
+- `rdState` in `main.js`: `{ bgR, bgG, bgB, txtR, txtG, txtB, fontSize, vision, fontFamily }`
+- Default: deep ocean background (#040d1e), pale blue text (#c8e8ff), sans-serif font
 - Vision types: Normal | Protanopia | Deuteranopia | Tritanopia | Monochromacy
 - Vision simulation via 3×3 RGB matrix transforms (Brettel/Viénot) — same as Explorer
 - Live stats: BG luminosity, Text luminosity, Contrast ratio, WCAG grade (AAA/AA/AA Large/Fail)
 - WCAG contrast: (L1 + 0.05) / (L2 + 0.05), L = linearized 0.2126R + 0.7152G + 0.0722B
+- **Font Family Picker**: Sans | Serif | Mono | Cursive buttons; sets `rdState.fontFamily`
+- **Custom Text Toggle**: ✏ button swaps jellyfish passage for a `contenteditable` div; toggle off restores original; colors/font/vision still apply
 
 ## Color Presets (Explorer Panel)
 Built-in preset categories: Pure | Warm | Cool | Pastel | Earthy (8 colors each)
@@ -45,10 +47,15 @@ Custom presets: save current color to `localStorage` key `colorquest-custom-pres
 - Monochromatic: same hue, varied lightness and saturation
 - Tetradic/Square: base hue + 90°, + 180°, + 270°
 
+## Palette Tab Features
+- **Temperature Shift Slider**: –60° to +60° hue shift applied on top of any harmony; `colorState.tempShift`; `PalettePanel.applyTempShift(palette, shift)`; double-click or ↺ button resets to 0°
+- **Fix My Palette**: collapsible `<details>` panel; up to 6 hex colors; Analyze checks all N*(N-1)/2 pairs for WCAG AA (4.5:1); failing pairs highlighted red with Fix button; Fix sweeps lightness of the lighter color toward white (then dark) until ratio ≥ 4.5, then re-analyzes; `fixColors[]` array in `palette.js`, functions: `initFixMyPalette`, `addFixColorRow`, `runFixAnalysis`, `fixPair`, `updateFixColorRow`
+
 ## Technical Notes
 - No external dependencies — vanilla HTML/CSS/JS, Canvas 2D API
 - `globalCompositeOperation = 'screen'` for additive spotlight blending
-- Main color state: `colorState` object (Explorer ↔ Palette sync)
-- Readable state: `rdState` object (self-contained, independent of colorState)
+- Main color state: `colorState` object (Explorer ↔ Palette sync); includes `tempShift: 0`
+- Readable state: `rdState` object (self-contained, independent of colorState); includes `fontFamily`
 - Color temperature: hue 0–60° and 300–360° = Warm; 120–240° = Cool; else Neutral; saturation < 15% = always Neutral
 - Shade scale: 9 steps, lightness 95% → 15% (Tailwind 50–900 style)
+- `colorFromHsl(h, s, l)` in `palette.js` — canonical way to build a full color object `{h,s,l,r,g,b,hex,name}`; used by `applyTempShift`
