@@ -71,6 +71,7 @@ class PalettePanel {
     this.currentPalette = [];
     this.pinnedPalettes = [];
     this.expandedSwatchIdx = null;
+    this.lockedColors = {};   // { idx: colorObject }
   }
 
   init() {
@@ -138,6 +139,13 @@ class PalettePanel {
     // Fix My Palette
     initFixMyPalette();
 
+    // Clear Locks button
+    document.getElementById('clear-locks-btn')?.addEventListener('click', () => {
+      this.lockedColors = {};
+      this.updateLockClearBtn();
+      this.generate(colorState.h, colorState.s, colorState.l);
+    });
+
     // Gradient Generator
     this.gradientState = { stopA: null, stopB: null, type: 'linear', angle: 135, activeStop: 'A' };
     this.initGradientPanel();
@@ -158,9 +166,16 @@ class PalettePanel {
       palette = this.makeAccessible(palette, colorState.accessibleBg);
     }
 
+    // Restore locked colors
+    for (const [idxStr, lockedColor] of Object.entries(this.lockedColors)) {
+      const idx = parseInt(idxStr);
+      if (idx < palette.length) palette[idx] = lockedColor;
+    }
+
     this.currentPalette = palette;
     this.renderSwatches(palette);
     this.renderScoreCard(palette);
+    this.renderContrastMatrix(palette);
     this.drawColorWheel(palette);
     this.renderUIPreview(palette);
     this.expandedSwatchIdx = null;
@@ -303,9 +318,12 @@ class PalettePanel {
       const passAA  = ratio >= 4.5;
       const passAAA = ratio >= 7.0;
 
+      const isLocked = idx in this.lockedColors;
+
       const swatch = document.createElement('div');
       swatch.className = 'swatch';
       swatch.style.animationDelay = `${idx * 80}ms`;
+      if (isLocked) swatch.classList.add('swatch-locked');
 
       const badgesHtml = colorState.accessibleMode
         ? `<div class="swatch-badges">
@@ -319,7 +337,11 @@ class PalettePanel {
         <div class="swatch-hex">${color.hex}</div>
         <div class="swatch-name">${color.name}</div>
         ${badgesHtml}
+        <button class="swatch-lock-btn" title="${isLocked ? 'Unlock color' : 'Lock color'}">${isLocked ? '🔒' : '🔓'}</button>
       `;
+
+      const lockBtn = swatch.querySelector('.swatch-lock-btn');
+      lockBtn.addEventListener('click', e => { e.stopPropagation(); this.toggleLock(idx, color); });
 
       // Click: copy hex + seed explorer
       swatch.addEventListener('click', () => {
@@ -341,6 +363,20 @@ class PalettePanel {
 
       this.swatchesEl.appendChild(swatch);
     });
+  }
+
+  // ── Palette Locking ───────────────────────────────────────
+  toggleLock(idx, color) {
+    if (idx in this.lockedColors) delete this.lockedColors[idx];
+    else this.lockedColors[idx] = color;
+    this.shadeScaleEl.classList.add('hidden');
+    this.renderSwatches(this.currentPalette);
+    this.updateLockClearBtn();
+  }
+
+  updateLockClearBtn() {
+    const btn = document.getElementById('clear-locks-btn');
+    if (btn) btn.style.display = Object.keys(this.lockedColors).length > 0 ? '' : 'none';
   }
 
   // ── Palette Score Card ────────────────────────────────────
@@ -415,6 +451,52 @@ class PalettePanel {
         </div>
       </div>
     `;
+  }
+
+  // ── Contrast Matrix ───────────────────────────────────────
+  renderContrastMatrix(palette) {
+    const el = document.getElementById('contrast-matrix');
+    if (!el) return;
+    const n = palette.length;
+    if (n < 2) { el.classList.add('hidden'); return; }
+
+    el.classList.remove('hidden');
+
+    let html = `<div class="matrix-title">Contrast Matrix <span class="matrix-subtitle">(row = text, col = background)</span></div>`;
+    html += `<div class="matrix-grid" style="grid-template-columns: 26px repeat(${n}, 1fr);">`;
+
+    // Header row: corner + background color swatches
+    html += `<div class="matrix-corner"></div>`;
+    palette.forEach(c => {
+      html += `<div class="matrix-swatch-cell" style="background:${c.hex}" title="${c.name} ${c.hex}"></div>`;
+    });
+
+    // Data rows: text swatch + contrast cells
+    palette.forEach((rowC, i) => {
+      html += `<div class="matrix-swatch-cell" style="background:${rowC.hex}" title="${rowC.name} ${rowC.hex}"></div>`;
+      palette.forEach((colC, j) => {
+        if (i === j) {
+          html += `<div class="matrix-cell matrix-cell-same" title="Same color">—</div>`;
+        } else {
+          const r = contrastRatio(rowC.r, rowC.g, rowC.b, colC.r, colC.g, colC.b);
+          const cls = r >= 7.0 ? 'matrix-cell-aaa'
+                    : r >= 4.5 ? 'matrix-cell-aa'
+                    : r >= 3.0 ? 'matrix-cell-large'
+                    : 'matrix-cell-fail';
+          html += `<div class="matrix-cell ${cls}" title="${rowC.name} text on ${colC.name} bg: ${r.toFixed(2)}:1">${r.toFixed(1)}</div>`;
+        }
+      });
+    });
+
+    html += `</div>`;
+    html += `<div class="matrix-legend">
+      <span class="matrix-legend-item matrix-cell-aaa">AAA \u22657</span>
+      <span class="matrix-legend-item matrix-cell-aa">AA \u22654.5</span>
+      <span class="matrix-legend-item matrix-cell-large">Large \u22653</span>
+      <span class="matrix-legend-item matrix-cell-fail">Fail</span>
+    </div>`;
+
+    el.innerHTML = html;
   }
 
   // ── Shade Scale ───────────────────────────────────────────

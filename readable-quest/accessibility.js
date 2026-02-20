@@ -11,6 +11,7 @@ class AccessibilityPanel {
     this.preview  = document.getElementById('contrast-preview');
     this.sampleEl = document.getElementById('contrast-sample-text');
     this.ratioEl  = document.getElementById('contrast-ratio');
+    this.apcaEl   = document.getElementById('apca-ratio');
     this.badgesEl = document.getElementById('contrast-badges');
     this.cbRows   = document.getElementById('colorblind-rows');
 
@@ -37,6 +38,12 @@ class AccessibilityPanel {
     this.ratioEl.textContent = ratio.toFixed(2) + ':1';
 
     this.renderContrastBadges(ratio);
+
+    const lc = apcaContrast(fg.r, fg.g, fg.b, bg.r, bg.g, bg.b);
+    if (this.apcaEl) {
+      this.apcaEl.textContent = lc + ' Lc';
+      this.apcaEl.style.color = lc >= 75 ? '#00ff9d' : lc >= 60 ? '#44ddaa' : lc >= 45 ? '#ffcc44' : '#ff5566';
+    }
   }
 
   renderContrastBadges(ratio) {

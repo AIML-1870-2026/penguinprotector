@@ -310,3 +310,21 @@ function getColorName(r, g, b) {
   }
   return bestName;
 }
+
+// ── APCA Contrast (WCAG 3 draft, simplified) ──────────────
+// Returns Lc magnitude (0–~108). Thresholds: ≥75 body text, ≥60 large text, ≥45 large bold.
+// txtR/G/B = text color, bgR/G/B = background color (0–255 each).
+function apcaContrast(txtR, txtG, txtB, bgR, bgG, bgB) {
+  function lin(c) { return Math.pow(c / 255, 2.2); }
+  const txtY = 0.2126 * lin(txtR) + 0.7152 * lin(txtG) + 0.0722 * lin(txtB);
+  const bgY  = 0.2126 * lin(bgR)  + 0.7152 * lin(bgG)  + 0.0722 * lin(bgB);
+  const Ytxt = Math.max(txtY, 0.0001);
+  const Ybg  = Math.max(bgY,  0.0001);
+  let Lc;
+  if (Ybg >= Ytxt) {
+    Lc = (Math.pow(Ybg, 0.56) - Math.pow(Ytxt, 0.57)) * 1.14 * 100;
+  } else {
+    Lc = (Math.pow(Ybg, 0.65) - Math.pow(Ytxt, 0.62)) * 1.14 * 100;
+  }
+  return Math.abs(Lc) < 7.5 ? 0 : Math.round(Math.abs(Lc));
+}

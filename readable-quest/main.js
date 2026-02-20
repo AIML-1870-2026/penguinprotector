@@ -514,6 +514,31 @@ function updateReadableDisplay() {
   wcagEl.textContent = grade;
   wcagEl.style.color = gradeColor;
 
+  // APCA (WCAG 3 draft)
+  const apcaLc = apcaContrast(vTxtR, vTxtG, vTxtB, vBgR, vBgG, vBgB);
+  const apcaEl = document.getElementById('rd-apca');
+  if (apcaEl) {
+    apcaEl.textContent = apcaLc + ' Lc';
+    apcaEl.style.color = apcaLc >= 75 ? '#00ff9d' : apcaLc >= 60 ? '#44ddaa' : apcaLc >= 45 ? '#ffcc44' : '#ff5566';
+  }
+
+  // Font size class warning
+  const fontWarnEl = document.getElementById('rd-font-warn');
+  if (fontWarnEl) {
+    const isLarge = fontSize >= 24;
+    const passes  = ratio >= (isLarge ? 3.0 : 4.5);
+    if (isLarge) {
+      fontWarnEl.textContent = 'Large text (\u226524px) \u2014 3:1 min';
+      fontWarnEl.style.color = passes ? '#00ff9d' : '#ff5566';
+    } else if (ratio >= 3.0 && ratio < 4.5) {
+      fontWarnEl.textContent = '\u26a0 Normal text needs 4.5:1';
+      fontWarnEl.style.color = '#ff9944';
+    } else {
+      fontWarnEl.textContent = 'Normal text \u2014 4.5:1 min';
+      fontWarnEl.style.color = passes ? '#00ff9d' : '#ff5566';
+    }
+  }
+
   updateVisionGrid();
   updateTextSuggestions();
 }
