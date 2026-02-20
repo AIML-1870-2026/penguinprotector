@@ -516,10 +516,12 @@ function parseHex(val) {
 }
 
 function openSchemesPopup() {
-  document.getElementById('schemes-popup-overlay').classList.add('open');
+  const el = document.getElementById('schemes-popup-overlay');
+  if (el) el.style.display = 'flex';
 }
 function closeSchemesPopup() {
-  document.getElementById('schemes-popup-overlay').classList.remove('open');
+  const el = document.getElementById('schemes-popup-overlay');
+  if (el) el.style.display = 'none';
 }
 
 function initReadablePanel() {
@@ -590,11 +592,17 @@ function initReadablePanel() {
 
   // Preset schemes popup
   renderSchemesPopup();
-  document.getElementById('rd-presets-btn')?.addEventListener('click', openSchemesPopup);
-  document.getElementById('schemes-popup-close')?.addEventListener('click', closeSchemesPopup);
-  document.getElementById('schemes-popup-overlay')?.addEventListener('click', e => {
-    if (e.target.id === 'schemes-popup-overlay') closeSchemesPopup();
-  });
+
+  const rdPresetsBtn = document.getElementById('rd-presets-btn');
+  const schemesOverlay = document.getElementById('schemes-popup-overlay');
+  const schemesClose = document.getElementById('schemes-popup-close');
+
+  if (rdPresetsBtn) rdPresetsBtn.onclick = openSchemesPopup;
+  if (schemesClose) schemesClose.onclick = closeSchemesPopup;
+  if (schemesOverlay) {
+    schemesOverlay.onclick = e => { if (e.target === schemesOverlay) closeSchemesPopup(); };
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSchemesPopup(); });
 
   // Swap + Auto-contrast buttons
   document.getElementById('rd-swap-btn')    ?.addEventListener('click', swapRdColors);

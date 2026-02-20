@@ -1126,12 +1126,12 @@ canvas { display: block; }
   inset: 0;
   background: rgba(2, 8, 20, 0.78);
   backdrop-filter: blur(5px);
-  z-index: 400;
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 1000;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
 }
-.schemes-popup-overlay.open { display: flex; }
 .schemes-popup {
   background: var(--panel);
   border: 1px solid var(--border);
