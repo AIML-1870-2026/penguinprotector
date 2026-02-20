@@ -291,28 +291,33 @@ function applyRdScheme(scheme) {
   showToast(`Scheme: ${scheme.name}`);
 }
 
-function renderSchemeCards() {
-  const row = document.getElementById('rd-schemes-row');
-  if (!row) return;
-  row.innerHTML = '';
+function renderSchemesPopup() {
+  const grid = document.getElementById('schemes-popup-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
   RD_SCHEMES.forEach(scheme => {
     const card = document.createElement('div');
-    card.className = 'rd-scheme-card';
+    card.className = 'popup-scheme-card';
 
     const preview = document.createElement('div');
-    preview.className = 'rd-scheme-preview';
+    preview.className = 'popup-scheme-preview';
     preview.style.background = toHex(scheme.bgR, scheme.bgG, scheme.bgB);
     preview.style.color       = toHex(scheme.txtR, scheme.txtG, scheme.txtB);
-    preview.textContent = 'Aa';
+    preview.innerHTML = '<span class="popup-scheme-big">Aa</span><span class="popup-scheme-small">jellyfish</span>';
 
     const name = document.createElement('div');
-    name.className = 'rd-scheme-name';
+    name.className = 'popup-scheme-name';
     name.textContent = scheme.name;
 
     card.appendChild(preview);
     card.appendChild(name);
-    card.addEventListener('click', () => applyRdScheme(scheme));
-    row.appendChild(card);
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.popup-scheme-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      applyRdScheme(scheme);
+      setTimeout(closeSchemesPopup, 300);
+    });
+    grid.appendChild(card);
   });
 }
 
@@ -476,8 +481,10 @@ function updateReadableDisplay() {
 
   document.getElementById('rd-bg-swatch').style.background  = toHex(bgR,  bgG,  bgB);
   document.getElementById('rd-txt-swatch').style.background = toHex(txtR, txtG, txtB);
-  document.getElementById('rd-bg-hex').textContent  = toHex(bgR,  bgG,  bgB).toUpperCase();
-  document.getElementById('rd-txt-hex').textContent = toHex(txtR, txtG, txtB).toUpperCase();
+  const _bgHexEl  = document.getElementById('rd-bg-hex-input');
+  const _txtHexEl = document.getElementById('rd-txt-hex-input');
+  if (_bgHexEl  && _bgHexEl  !== document.activeElement) _bgHexEl.value  = toHex(bgR,  bgG,  bgB).toUpperCase();
+  if (_txtHexEl && _txtHexEl !== document.activeElement) _txtHexEl.value = toHex(txtR, txtG, txtB).toUpperCase();
 
   const lumBg  = rdLuminance(vBgR,  vBgG,  vBgB);
   const lumTxt = rdLuminance(vTxtR, vTxtG, vTxtB);
@@ -499,6 +506,20 @@ function updateReadableDisplay() {
 
   updateVisionGrid();
   updateTextSuggestions();
+}
+
+function parseHex(val) {
+  val = val.trim().replace(/^#/, '');
+  if (val.length === 3) val = val[0]+val[0]+val[1]+val[1]+val[2]+val[2];
+  if (!/^[0-9a-fA-F]{6}$/.test(val)) return null;
+  return { r: parseInt(val.slice(0,2),16), g: parseInt(val.slice(2,4),16), b: parseInt(val.slice(4,6),16) };
+}
+
+function openSchemesPopup() {
+  document.getElementById('schemes-popup-overlay').classList.add('open');
+}
+function closeSchemesPopup() {
+  document.getElementById('schemes-popup-overlay').classList.remove('open');
 }
 
 function initReadablePanel() {
@@ -536,8 +557,44 @@ function initReadablePanel() {
     });
   });
 
-  // Scheme cards
-  renderSchemeCards();
+  // Hex inputs for bg and text color
+  function wireHexInput(inputId, type) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    function apply() {
+      const parsed = parseHex(el.value);
+      if (!parsed) {
+        const { bgR, bgG, bgB, txtR, txtG, txtB } = rdState;
+        el.value = toHex(type === 'bg' ? bgR : txtR, type === 'bg' ? bgG : txtG, type === 'bg' ? bgB : txtB).toUpperCase();
+        return;
+      }
+      const { r, g, b } = parsed;
+      if (type === 'bg') { rdState.bgR = r; rdState.bgG = g; rdState.bgB = b; syncRdSliders('bg', r, g, b); }
+      else               { rdState.txtR = r; rdState.txtG = g; rdState.txtB = b; syncRdSliders('txt', r, g, b); }
+      updateReadableDisplay();
+    }
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { apply(); el.blur(); } });
+    el.addEventListener('blur', apply);
+    el.addEventListener('input', () => {
+      const parsed = parseHex(el.value);
+      if (parsed) {
+        const { r, g, b } = parsed;
+        if (type === 'bg') { rdState.bgR = r; rdState.bgG = g; rdState.bgB = b; syncRdSliders('bg', r, g, b); }
+        else               { rdState.txtR = r; rdState.txtG = g; rdState.txtB = b; syncRdSliders('txt', r, g, b); }
+        updateReadableDisplay();
+      }
+    });
+  }
+  wireHexInput('rd-bg-hex-input', 'bg');
+  wireHexInput('rd-txt-hex-input', 'txt');
+
+  // Preset schemes popup
+  renderSchemesPopup();
+  document.getElementById('rd-presets-btn')?.addEventListener('click', openSchemesPopup);
+  document.getElementById('schemes-popup-close')?.addEventListener('click', closeSchemesPopup);
+  document.getElementById('schemes-popup-overlay')?.addEventListener('click', e => {
+    if (e.target.id === 'schemes-popup-overlay') closeSchemesPopup();
+  });
 
   // Swap + Auto-contrast buttons
   document.getElementById('rd-swap-btn')    ?.addEventListener('click', swapRdColors);
@@ -736,7 +793,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Floating Jellyfish ──────────────────────────────────────
   const JELLY_EMOJIS = ['🪼', '🪼', '🪼', '🌊', '✨'];
+  let jellyEnabled = true;
+  let jellyInterval = null;
+
   function spawnJellyfish() {
+    if (!jellyEnabled) return;
     const el = document.createElement('div');
     el.className = 'jellyfish-float';
     el.textContent = JELLY_EMOJIS[Math.floor(Math.random() * JELLY_EMOJIS.length)];
@@ -751,6 +812,22 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('animationend', () => el.remove(), { once: true });
   }
 
+  function toggleJellyfish() {
+    jellyEnabled = !jellyEnabled;
+    const btn = document.getElementById('jelly-toggle');
+    if (jellyEnabled) {
+      jellyInterval = setInterval(spawnJellyfish, 2800);
+      spawnJellyfish();
+      if (btn) { btn.classList.remove('jelly-off'); btn.title = 'Pause jellyfish'; }
+    } else {
+      clearInterval(jellyInterval);
+      document.querySelectorAll('.jellyfish-float').forEach(j => j.remove());
+      if (btn) { btn.classList.add('jelly-off'); btn.title = 'Resume jellyfish'; }
+    }
+  }
+
+  document.getElementById('jelly-toggle')?.addEventListener('click', toggleJellyfish);
+
   spawnJellyfish();
-  setInterval(spawnJellyfish, 2800);
+  jellyInterval = setInterval(spawnJellyfish, 2800);
 });

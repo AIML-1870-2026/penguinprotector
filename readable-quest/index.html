@@ -10,6 +10,7 @@
 
   <header class="app-header">
     <h1 class="app-title">🪼 Readable Quest</h1>
+    <button id="jelly-toggle" class="jelly-toggle-btn" title="Pause jellyfish">🪼</button>
     <nav class="tab-nav">
       <button class="tab-btn" data-tab="both">Both</button>
       <button class="tab-btn" data-tab="explorer">Explorer</button>
@@ -242,7 +243,7 @@
               <button id="rd-auto-aaa-btn" class="action-btn" title="Auto-adjust text for WCAG AAA (7:1)">✓ Auto AAA</button>
             </div>
           </div>
-          <div class="rd-schemes-row" id="rd-schemes-row"></div>
+          <button id="rd-presets-btn" class="action-btn">🎨 Preset Schemes</button>
         </div>
 
         <!-- Controls -->
@@ -267,7 +268,7 @@
             </div>
             <div class="rd-swatch-row">
               <div id="rd-bg-swatch" class="rd-mini-swatch"></div>
-              <span id="rd-bg-hex" class="rd-mini-hex">#040d1e</span>
+              <input type="text" id="rd-bg-hex-input" class="rd-hex-input" value="#040D1E" maxlength="7" spellcheck="false" autocomplete="off" placeholder="#RRGGBB">
             </div>
           </div>
 
@@ -290,7 +291,7 @@
             </div>
             <div class="rd-swatch-row">
               <div id="rd-txt-swatch" class="rd-mini-swatch"></div>
-              <span id="rd-txt-hex" class="rd-mini-hex">#c8e8ff</span>
+              <input type="text" id="rd-txt-hex-input" class="rd-hex-input" value="#C8E8FF" maxlength="7" spellcheck="false" autocomplete="off" placeholder="#RRGGBB">
             </div>
           </div>
 
@@ -349,6 +350,17 @@
     </section>
 
   </main>
+
+  <!-- Color Scheme Presets Popup -->
+  <div id="schemes-popup-overlay" class="schemes-popup-overlay">
+    <div class="schemes-popup" role="dialog" aria-modal="true" aria-label="Preset Color Schemes">
+      <div class="schemes-popup-header">
+        <span class="schemes-popup-title">🎨 Preset Color Schemes</span>
+        <button id="schemes-popup-close" class="schemes-popup-close" aria-label="Close">✕</button>
+      </div>
+      <div class="schemes-popup-grid" id="schemes-popup-grid"></div>
+    </div>
+  </div>
 
   <!-- Toast Notification -->
   <div id="toast" class="toast" aria-live="polite" role="status"></div>

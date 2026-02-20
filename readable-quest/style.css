@@ -64,6 +64,21 @@ canvas { display: block; }
   to   { background-position: 200% center; }
 }
 
+/* ── Jellyfish Toggle ────────────────────────────────────────── */
+.jelly-toggle-btn {
+  font-size: 1.15rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background 0.18s, border-color 0.18s, opacity 0.25s, filter 0.25s;
+}
+.jelly-toggle-btn:hover { background: var(--panel-alt); border-color: var(--border); }
+.jelly-toggle-btn.jelly-off { opacity: 0.28; filter: grayscale(1); }
+
 /* ── Tab Navigation ─────────────────────────────────────────── */
 .tab-nav {
   display: flex;
@@ -840,6 +855,26 @@ canvas { display: block; }
   font-size: 0.82rem;
   color: var(--text-muted);
 }
+.rd-hex-input {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.22rem 0.45rem;
+  width: 82px;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.rd-hex-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+}
+.rd-hex-input:hover:not(:focus) { border-color: var(--text-muted); }
 
 .rd-font-size-val {
   font-size: 0.82rem;
@@ -1083,6 +1118,121 @@ canvas { display: block; }
   .readable-display  { padding: 1.25rem; }
   .vision-grid       { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Schemes Popup ───────────────────────────────────────────── */
+.schemes-popup-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 20, 0.78);
+  backdrop-filter: blur(5px);
+  z-index: 400;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.schemes-popup-overlay.open { display: flex; }
+.schemes-popup {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 680px;
+  width: 100%;
+  max-height: 82vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+  animation: popupIn 0.22s ease;
+}
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+.schemes-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.schemes-popup-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.schemes-popup-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.schemes-popup-close:hover {
+  background: rgba(255, 80, 80, 0.2);
+  color: #ff6666;
+  border-color: rgba(255, 80, 80, 0.45);
+}
+.schemes-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+.popup-scheme-card {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.popup-scheme-card:hover {
+  border-color: var(--text-muted);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+.popup-scheme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 20px rgba(0, 212, 255, 0.2);
+}
+.popup-scheme-preview {
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-height: 78px;
+  transition: background 0.2s, color 0.2s;
+}
+.popup-scheme-big {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.popup-scheme-small {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+.popup-scheme-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.4rem 0.5rem;
+  background: var(--panel);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--border);
+}
+.popup-scheme-card.active .popup-scheme-name { color: var(--accent); }
 
 /* ── Floating Jellyfish ──────────────────────────────────────── */
 .jellyfish-float {
