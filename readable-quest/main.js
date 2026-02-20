@@ -12,6 +12,13 @@ const colorState = {
   tempShift: 0,
 };
 
+// ── Mixer State ───────────────────────────────────────────────
+const mixerState = {
+  hexA: '#FF0000',
+  hexB: '#0000FF',
+  ratio: 50,
+};
+
 // ── Toast ─────────────────────────────────────────────────────
 let toastTimer = null;
 function showToast(msg) {
@@ -547,6 +554,136 @@ function disableCustomText() {
   showToast('Restored jellyfish text');
 }
 
+// ── Color Mixer ───────────────────────────────────────────────
+
+function mixAdditive(r1, g1, b1, r2, g2, b2, t) {
+  return {
+    r: Math.round((1 - t) * r1 + t * r2),
+    g: Math.round((1 - t) * g1 + t * g2),
+    b: Math.round((1 - t) * b1 + t * b2),
+  };
+}
+
+function kubelkaMunkKS(channel255) {
+  const r = Math.max(0.001, channel255 / 255);
+  return (1 - r) * (1 - r) / (2 * r);
+}
+
+function kubelkaMunkBack(ks) {
+  return 1 + ks - Math.sqrt(ks * ks + 2 * ks);
+}
+
+function mixSubtractive(r1, g1, b1, r2, g2, b2, t) {
+  const mix = (c1, c2) => {
+    const ksMix = (1 - t) * kubelkaMunkKS(c1) + t * kubelkaMunkKS(c2);
+    return Math.max(0, Math.min(255, Math.round(kubelkaMunkBack(ksMix) * 255)));
+  };
+  return { r: mix(r1, r2), g: mix(g1, g2), b: mix(b1, b2) };
+}
+
+function updateMixer() {
+  const { hexA, hexB, ratio } = mixerState;
+  const t = ratio / 100;
+  const cA = hexToRgb(hexA);
+  const cB = hexToRgb(hexB);
+  if (!cA || !cB) return;
+
+  document.getElementById('mixer-swatch-a').style.background = hexA;
+  document.getElementById('mixer-swatch-b').style.background = hexB;
+
+  const addResult = mixAdditive(cA.r, cA.g, cA.b, cB.r, cB.g, cB.b, t);
+  const addHex    = rgbToHex(addResult.r, addResult.g, addResult.b);
+  document.getElementById('mixer-result-add-swatch').style.background = addHex;
+  document.getElementById('mixer-result-add-hex').textContent = addHex;
+  document.getElementById('mixer-result-add-name').textContent = getColorName(addResult.r, addResult.g, addResult.b);
+
+  const pigResult = mixSubtractive(cA.r, cA.g, cA.b, cB.r, cB.g, cB.b, t);
+  const pigHex    = rgbToHex(pigResult.r, pigResult.g, pigResult.b);
+  document.getElementById('mixer-result-pig-swatch').style.background = pigHex;
+  document.getElementById('mixer-result-pig-hex').textContent = pigHex;
+  document.getElementById('mixer-result-pig-name').textContent = getColorName(pigResult.r, pigResult.g, pigResult.b);
+}
+
+function setMixerColor(slot, hex) {
+  const upper = hex.toUpperCase();
+  if (slot === 'a') {
+    mixerState.hexA = hex;
+    document.getElementById('mixer-picker-a').value = hex.toLowerCase();
+    document.getElementById('mixer-hex-a').value = upper;
+  } else {
+    mixerState.hexB = hex;
+    document.getElementById('mixer-picker-b').value = hex.toLowerCase();
+    document.getElementById('mixer-hex-b').value = upper;
+  }
+  updateMixer();
+}
+
+function parseMixerHex(val) {
+  val = val.trim().replace(/^#/, '');
+  if (val.length === 3) val = val[0]+val[0]+val[1]+val[1]+val[2]+val[2];
+  if (!/^[0-9a-fA-F]{6}$/.test(val)) return null;
+  return '#' + val.toLowerCase();
+}
+
+function initColorMixer() {
+  if (!document.getElementById('color-mixer-panel')) return;
+
+  const wireColorInput = (pickerEl, hexEl, slot) => {
+    pickerEl.addEventListener('input', e => {
+      if (slot === 'a') mixerState.hexA = e.target.value;
+      else              mixerState.hexB = e.target.value;
+      hexEl.value = e.target.value.toUpperCase();
+      updateMixer();
+    });
+    hexEl.addEventListener('input', () => {
+      const parsed = parseMixerHex(hexEl.value);
+      if (parsed) {
+        pickerEl.value = parsed;
+        if (slot === 'a') mixerState.hexA = parsed;
+        else              mixerState.hexB = parsed;
+        updateMixer();
+      }
+    });
+    hexEl.addEventListener('blur', () => {
+      const parsed = parseMixerHex(hexEl.value);
+      hexEl.value = (parsed || (slot === 'a' ? mixerState.hexA : mixerState.hexB)).toUpperCase();
+    });
+  };
+
+  wireColorInput(
+    document.getElementById('mixer-picker-a'),
+    document.getElementById('mixer-hex-a'),
+    'a'
+  );
+  wireColorInput(
+    document.getElementById('mixer-picker-b'),
+    document.getElementById('mixer-hex-b'),
+    'b'
+  );
+
+  const ratioSlider = document.getElementById('mixer-ratio');
+  const ratioVal    = document.getElementById('mixer-ratio-val');
+  ratioSlider.addEventListener('input', () => {
+    mixerState.ratio = parseInt(ratioSlider.value);
+    ratioVal.textContent = mixerState.ratio + '%';
+    updateMixer();
+  });
+
+  document.getElementById('mixer-use-a').addEventListener('click', () => {
+    const hex = rgbToHex(colorState.r, colorState.g, colorState.b);
+    setMixerColor('a', hex);
+    showToast('Color A set from Explorer');
+  });
+
+  document.getElementById('mixer-use-b').addEventListener('click', () => {
+    const hex = rgbToHex(colorState.r, colorState.g, colorState.b);
+    setMixerColor('b', hex);
+    showToast('Color B set from Explorer');
+  });
+
+  updateMixer();
+}
+
 function initReadablePanel() {
   const bind = (sliderId, valId, key) => {
     const slider = document.getElementById(sliderId);
@@ -824,6 +961,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Color presets
   initColorPresets();
+
+  // Color Mixer
+  initColorMixer();
 
   // Readable lab
   initReadablePanel();

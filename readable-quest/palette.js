@@ -160,6 +160,7 @@ class PalettePanel {
 
     this.currentPalette = palette;
     this.renderSwatches(palette);
+    this.renderScoreCard(palette);
     this.drawColorWheel(palette);
     this.renderUIPreview(palette);
     this.expandedSwatchIdx = null;
@@ -340,6 +341,80 @@ class PalettePanel {
 
       this.swatchesEl.appendChild(swatch);
     });
+  }
+
+  // ── Palette Score Card ────────────────────────────────────
+  renderScoreCard(palette) {
+    const el = document.getElementById('palette-scorecard');
+    if (!el) return;
+
+    const n = palette.length;
+    if (n < 2) {
+      el.classList.add('hidden');
+      el.innerHTML = '';
+      return;
+    }
+
+    let aaPasses = 0, aaaPasses = 0, totalRatio = 0, pairCount = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const ratio = contrastRatio(
+          palette[i].r, palette[i].g, palette[i].b,
+          palette[j].r, palette[j].g, palette[j].b
+        );
+        totalRatio += ratio;
+        pairCount++;
+        if (ratio >= 4.5) aaPasses++;
+        if (ratio >= 7.0) aaaPasses++;
+      }
+    }
+
+    const passRate = aaPasses / pairCount;
+    const avgRatio = totalRatio / pairCount;
+
+    let grade, gradeClass;
+    if      (passRate >= 0.8) { grade = 'A'; gradeClass = 'scorecard-grade-a'; }
+    else if (passRate >= 0.6) { grade = 'B'; gradeClass = 'scorecard-grade-b'; }
+    else if (passRate >= 0.4) { grade = 'C'; gradeClass = 'scorecard-grade-c'; }
+    else if (passRate >= 0.2) { grade = 'D'; gradeClass = 'scorecard-grade-d'; }
+    else                      { grade = 'F'; gradeClass = 'scorecard-grade-f'; }
+
+    const tempCounts = { warm: 0, cool: 0, neutral: 0 };
+    palette.forEach(c => { tempCounts[colorTemperature(c.h, c.s)]++; });
+
+    let tempLabel = 'Balanced', tempBadgeClass = 'scorecard-temp-neutral';
+    if (tempCounts.warm > tempCounts.cool && tempCounts.warm > tempCounts.neutral) {
+      tempLabel = `Warm (${tempCounts.warm})`;
+      tempBadgeClass = 'scorecard-temp-warm';
+    } else if (tempCounts.cool > tempCounts.warm && tempCounts.cool > tempCounts.neutral) {
+      tempLabel = `Cool (${tempCounts.cool})`;
+      tempBadgeClass = 'scorecard-temp-cool';
+    }
+
+    el.classList.remove('hidden');
+    el.innerHTML = `
+      <div class="scorecard-inner">
+        <div class="scorecard-grade ${gradeClass}" title="Grade based on WCAG AA pass rate">${grade}</div>
+        <div class="scorecard-stats">
+          <div class="scorecard-stat">
+            <span class="scorecard-stat-value">${aaPasses}/${pairCount}</span>
+            <span class="scorecard-stat-label">Pass AA</span>
+          </div>
+          <div class="scorecard-stat">
+            <span class="scorecard-stat-value">${avgRatio.toFixed(1)}:1</span>
+            <span class="scorecard-stat-label">Avg Contrast</span>
+          </div>
+          <div class="scorecard-stat">
+            <span class="scorecard-stat-value">${aaaPasses}/${pairCount}</span>
+            <span class="scorecard-stat-label">Pass AAA</span>
+          </div>
+          <div class="scorecard-stat">
+            <span class="scorecard-temp-badge ${tempBadgeClass}">${tempLabel}</span>
+            <span class="scorecard-stat-label">Temperature</span>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // ── Shade Scale ───────────────────────────────────────────

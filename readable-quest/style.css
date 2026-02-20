@@ -1479,3 +1479,190 @@ canvas { display: block; }
   cursor: pointer;
   text-decoration: underline;
 }
+
+/* ── Palette Score Card ──────────────────────────────────── */
+.palette-scorecard {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.9rem;
+  animation: swatchIn 0.3s ease forwards;
+}
+.palette-scorecard.hidden { display: none; }
+
+.scorecard-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.scorecard-grade {
+  font-size: 2.2rem;
+  font-weight: 900;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: -0.03em;
+  border: 2px solid transparent;
+  transition: color var(--transition), background var(--transition);
+}
+.scorecard-grade-a { background: rgba(0,255,120,0.12);  color: #00ff9d; border-color: rgba(0,255,120,0.3);  }
+.scorecard-grade-b { background: rgba(80,220,120,0.12); color: #44ddaa; border-color: rgba(80,220,120,0.3); }
+.scorecard-grade-c { background: rgba(255,200,50,0.12); color: #ffcc44; border-color: rgba(255,200,50,0.3); }
+.scorecard-grade-d { background: rgba(255,140,40,0.12); color: #ff9944; border-color: rgba(255,140,40,0.3); }
+.scorecard-grade-f { background: rgba(255,80,80,0.12);  color: #ff5566; border-color: rgba(255,80,80,0.3);  }
+
+.scorecard-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.scorecard-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 60px;
+}
+
+.scorecard-stat-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--text);
+  line-height: 1;
+}
+
+.scorecard-stat-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scorecard-temp-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  display: inline-block;
+}
+.scorecard-temp-warm    { background: rgba(255,100,0,0.2);    color: #ff8844; border: 1px solid rgba(255,100,0,0.4);    }
+.scorecard-temp-cool    { background: rgba(0,120,255,0.2);    color: #66aaff; border: 1px solid rgba(0,120,255,0.4);   }
+.scorecard-temp-neutral { background: rgba(160,160,180,0.15); color: #aaaacc; border: 1px solid rgba(160,160,180,0.3); }
+
+/* ── Color Mixer ─────────────────────────────────────────── */
+.mixer-content {
+  padding: 0.75rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mixer-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.mixer-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.mixer-input-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mixer-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mixer-use-btn {
+  font-size: 0.72rem;
+  padding: 0.22rem 0.55rem;
+  flex-shrink: 0;
+}
+
+.mixer-ratio-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mixer-ratio-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  min-width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mixer-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.65rem;
+}
+
+.mixer-result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.mixer-result-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.12);
+  flex-shrink: 0;
+  transition: background 0.25s;
+}
+
+.mixer-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mixer-result-mode {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mixer-result-hex {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--accent);
+}
+
+.mixer-result-name {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}

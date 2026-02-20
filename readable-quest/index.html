@@ -109,6 +109,66 @@
         <summary>Color Presets</summary>
         <div class="presets-content" id="color-presets-grid"></div>
       </details>
+
+      <!-- Color Mixer -->
+      <details id="color-mixer-panel" class="recipe-panel">
+        <summary>Color Mixer</summary>
+        <div class="mixer-content">
+          <p class="fix-palette-hint">Mix two colors additively (light/screen) or subtractively (pigment/paint).</p>
+
+          <div class="mixer-inputs">
+            <!-- Color A -->
+            <div class="mixer-input-group">
+              <span class="mixer-input-label">Color A</span>
+              <div class="mixer-input-row">
+                <div class="fix-color-swatch" id="mixer-swatch-a" style="background:#ff0000"></div>
+                <input type="color" class="fix-color-picker" id="mixer-picker-a" value="#ff0000">
+                <input type="text" class="rd-hex-input" id="mixer-hex-a" value="#FF0000" maxlength="7" spellcheck="false" autocomplete="off">
+                <button class="action-btn mixer-use-btn" id="mixer-use-a" title="Use current Explorer color">Use Current</button>
+              </div>
+            </div>
+
+            <!-- Color B -->
+            <div class="mixer-input-group">
+              <span class="mixer-input-label">Color B</span>
+              <div class="mixer-input-row">
+                <div class="fix-color-swatch" id="mixer-swatch-b" style="background:#0000ff"></div>
+                <input type="color" class="fix-color-picker" id="mixer-picker-b" value="#0000ff">
+                <input type="text" class="rd-hex-input" id="mixer-hex-b" value="#0000FF" maxlength="7" spellcheck="false" autocomplete="off">
+                <button class="action-btn mixer-use-btn" id="mixer-use-b" title="Use current Explorer color">Use Current</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ratio Slider -->
+          <div class="mixer-ratio-row">
+            <span class="mixer-ratio-label">A</span>
+            <input type="range" id="mixer-ratio" class="slider" min="0" max="100" value="50">
+            <span class="mixer-ratio-label">B</span>
+            <span id="mixer-ratio-val" class="temp-shift-val">50%</span>
+          </div>
+
+          <!-- Results -->
+          <div class="mixer-results">
+            <div class="mixer-result-row">
+              <div class="mixer-result-swatch" id="mixer-result-add-swatch"></div>
+              <div class="mixer-result-info">
+                <span class="mixer-result-mode">Additive (Light)</span>
+                <code class="mixer-result-hex" id="mixer-result-add-hex">#000000</code>
+                <span class="mixer-result-name" id="mixer-result-add-name"></span>
+              </div>
+            </div>
+            <div class="mixer-result-row">
+              <div class="mixer-result-swatch" id="mixer-result-pig-swatch"></div>
+              <div class="mixer-result-info">
+                <span class="mixer-result-mode">Subtractive (Pigment)</span>
+                <code class="mixer-result-hex" id="mixer-result-pig-hex">#000000</code>
+                <span class="mixer-result-name" id="mixer-result-pig-name"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -156,6 +216,9 @@
 
       <!-- Swatches -->
       <div id="swatches-container" class="swatches-container"></div>
+
+      <!-- Palette Score Card -->
+      <div id="palette-scorecard" class="palette-scorecard hidden"></div>
 
       <!-- Shade / Tint Scale -->
       <div id="shade-scale" class="shade-scale hidden"></div>
