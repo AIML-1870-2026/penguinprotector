@@ -137,6 +137,10 @@ class PalettePanel {
 
     // Fix My Palette
     initFixMyPalette();
+
+    // Gradient Generator
+    this.gradientState = { stopA: null, stopB: null, type: 'linear', angle: 135, activeStop: 'A' };
+    this.initGradientPanel();
   }
 
   applyTempShift(palette, shift) {
@@ -161,8 +165,112 @@ class PalettePanel {
     this.expandedSwatchIdx = null;
     this.shadeScaleEl.classList.add('hidden');
 
+    if (this.gradientState) this.updateGradientStops();
+
     // Sync accessibility simulator
     if (window.accessibilityPanel) accessibilityPanel.updateSimulator(palette);
+  }
+
+  // ── Gradient Generator ────────────────────────────────────
+  initGradientPanel() {
+    const gs = this.gradientState;
+
+    // Type buttons
+    document.querySelectorAll('.gradient-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.gradient-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        gs.type = btn.dataset.type;
+        const angleRow = document.getElementById('grad-angle-row');
+        if (angleRow) angleRow.style.display = gs.type === 'linear' ? '' : 'none';
+        this.renderGradientPreview();
+      });
+    });
+
+    // Stop well toggle
+    document.getElementById('grad-stop-a')?.addEventListener('click', () => {
+      gs.activeStop = 'A';
+      document.getElementById('grad-stop-a').classList.add('active');
+      document.getElementById('grad-stop-b').classList.remove('active');
+    });
+    document.getElementById('grad-stop-b')?.addEventListener('click', () => {
+      gs.activeStop = 'B';
+      document.getElementById('grad-stop-b').classList.add('active');
+      document.getElementById('grad-stop-a').classList.remove('active');
+    });
+
+    // Angle slider
+    const angleSlider = document.getElementById('grad-angle');
+    const angleVal    = document.getElementById('grad-angle-val');
+    angleSlider?.addEventListener('input', () => {
+      gs.angle = parseInt(angleSlider.value);
+      if (angleVal) angleVal.textContent = gs.angle + '°';
+      this.renderGradientPreview();
+    });
+
+    // Copy button
+    document.getElementById('grad-copy-btn')?.addEventListener('click', () => {
+      if (!gs.stopA || !gs.stopB) return;
+      navigator.clipboard.writeText(this.buildGradientCSS()).catch(() => {});
+      showToast('CSS copied!');
+    });
+  }
+
+  updateGradientStops() {
+    const gs = this.gradientState;
+    if (!this.currentPalette.length) return;
+    gs.stopA = this.currentPalette[0];
+    gs.stopB = this.currentPalette[this.currentPalette.length - 1];
+
+    // Rebuild mini swatches
+    const miniEl = document.getElementById('grad-mini-swatches');
+    if (miniEl) {
+      miniEl.innerHTML = '';
+      this.currentPalette.forEach(color => {
+        const sw = document.createElement('div');
+        sw.className = 'gradient-mini-swatch';
+        sw.style.background = color.hex;
+        sw.title = color.hex;
+        sw.addEventListener('click', () => {
+          if (gs.activeStop === 'A') gs.stopA = color;
+          else gs.stopB = color;
+          this.renderGradientPreview();
+        });
+        miniEl.appendChild(sw);
+      });
+    }
+
+    this.renderGradientPreview();
+  }
+
+  buildGradientCSS() {
+    const { stopA, stopB, type, angle } = this.gradientState;
+    if (!stopA || !stopB) return '';
+    let grad;
+    if (type === 'linear')  grad = `linear-gradient(${angle}deg, ${stopA.hex}, ${stopB.hex})`;
+    else if (type === 'radial') grad = `radial-gradient(circle, ${stopA.hex}, ${stopB.hex})`;
+    else                    grad = `conic-gradient(from 0deg, ${stopA.hex}, ${stopB.hex}, ${stopA.hex})`;
+    return `background: ${grad};`;
+  }
+
+  renderGradientPreview() {
+    const gs = this.gradientState;
+    if (!gs.stopA || !gs.stopB) return;
+
+    const css = this.buildGradientCSS();
+    const preview = document.getElementById('grad-preview');
+    const codeEl  = document.getElementById('grad-css-code');
+    if (preview) preview.style.cssText = css;
+    if (codeEl)  codeEl.textContent = css;
+
+    const swA = document.getElementById('grad-swatch-a');
+    const swB = document.getElementById('grad-swatch-b');
+    const hexA = document.getElementById('grad-hex-a');
+    const hexB = document.getElementById('grad-hex-b');
+    if (swA) swA.style.background = gs.stopA.hex;
+    if (swB) swB.style.background = gs.stopB.hex;
+    if (hexA) hexA.textContent = gs.stopA.hex;
+    if (hexB) hexB.textContent = gs.stopB.hex;
   }
 
   // ── Accessible Mode ───────────────────────────────────────
@@ -453,6 +561,44 @@ function initFixMyPalette() {
   });
 
   analyzeBtn.addEventListener('click', runFixAnalysis);
+
+  // Palette from Image — drop zone
+  const dropZone    = document.getElementById('fix-img-drop');
+  const fixImgInput = document.getElementById('fix-img-input');
+
+  if (dropZone) {
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) handleImageFile(file);
+      else showToast('Please drop an image file');
+    });
+  }
+  if (fixImgInput) {
+    fixImgInput.addEventListener('change', () => {
+      if (fixImgInput.files[0]) handleImageFile(fixImgInput.files[0]);
+      fixImgInput.value = '';
+    });
+  }
+
+  // Palette-actions "From Image" button
+  const fromImgBtn     = document.getElementById('palette-from-img-btn');
+  const paletteImgInput = document.getElementById('palette-img-input');
+  if (fromImgBtn) {
+    fromImgBtn.addEventListener('click', () => {
+      document.getElementById('fix-palette-panel').open = true;
+      paletteImgInput?.click();
+    });
+  }
+  if (paletteImgInput) {
+    paletteImgInput.addEventListener('change', () => {
+      if (paletteImgInput.files[0]) handleImageFile(paletteImgInput.files[0]);
+      paletteImgInput.value = '';
+    });
+  }
 }
 
 function addFixColorRow(defaultHex) {
@@ -647,4 +793,89 @@ function updateFixColorRow(idx, newHex) {
   if (swatch) swatch.style.background = newHex;
   if (picker) picker.value = newHex.toLowerCase();
   if (hexIn)  hexIn.value  = newHex.toUpperCase();
+}
+
+// ── Palette from Image ─────────────────────────────────────────
+function extractColorsFromImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const canvas = document.getElementById('img-extract-canvas');
+        const maxDim = 100;
+        const scale  = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        const w = Math.max(1, Math.round(img.width  * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        canvas.width  = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const data = ctx.getImageData(0, 0, w, h).data;
+        const buckets = new Map();
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue; // skip transparent
+          const rQ = Math.round(data[i]     / 16) * 16;
+          const gQ = Math.round(data[i + 1] / 16) * 16;
+          const bQ = Math.round(data[i + 2] / 16) * 16;
+          const key = `${rQ},${gQ},${bQ}`;
+          if (!buckets.has(key)) buckets.set(key, { count: 0, rSum: 0, gSum: 0, bSum: 0 });
+          const b = buckets.get(key);
+          b.count++;
+          b.rSum += data[i];
+          b.gSum += data[i + 1];
+          b.bSum += data[i + 2];
+        }
+
+        let sorted = [...buckets.values()].sort((a, b) => b.count - a.count);
+
+        // Filter near-black and near-white unless they're all we have
+        const filtered = sorted.filter(b => {
+          const r = b.rSum / b.count, g = b.gSum / b.count, bv = b.bSum / b.count;
+          return !(r < 25 && g < 25 && bv < 25) && !(r > 230 && g > 230 && bv > 230);
+        });
+        if (filtered.length >= 2) sorted = filtered;
+
+        const top = sorted.slice(0, 5);
+        const hexColors = top.map(b => {
+          const r = Math.round(b.rSum / b.count);
+          const g = Math.round(b.gSum / b.count);
+          const bv = Math.round(b.bSum / b.count);
+          return rgbToHex(r, g, bv);
+        });
+
+        resolve(hexColors);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function seedFixFromImage(hexArray) {
+  fixColors = [];
+  document.getElementById('fix-palette-inputs').innerHTML = '';
+  const resultsEl = document.getElementById('fix-palette-results');
+  resultsEl.innerHTML = '';
+  resultsEl.classList.add('hidden');
+  hexArray.forEach(hex => addFixColorRow(hex));
+  document.getElementById('fix-palette-panel').open = true;
+  const dominant = hexToRgb(hexArray[0]);
+  if (dominant && window.mainSetColor) mainSetColor(dominant.r, dominant.g, dominant.b);
+  showToast(`Extracted ${hexArray.length} colors from image`);
+}
+
+async function handleImageFile(file) {
+  try {
+    showToast('Extracting colors…');
+    const colors = await extractColorsFromImage(file);
+    if (!colors.length) { showToast('No colors found in image'); return; }
+    seedFixFromImage(colors);
+  } catch {
+    showToast('Could not read image');
+  }
 }

@@ -143,6 +143,8 @@
       <div class="palette-actions">
         <button id="randomize-btn" class="action-btn">⟳ Randomize</button>
         <button id="pin-btn" class="action-btn">📌 Pin Palette</button>
+        <button id="palette-from-img-btn" class="action-btn" title="Extract palette from image">🖼 From Image</button>
+        <input type="file" id="palette-img-input" accept="image/*" style="display:none">
         <label class="accessible-toggle">
           <input type="checkbox" id="accessible-mode-toggle">
           <span>Accessible Mode</span>
@@ -193,11 +195,51 @@
         <div id="pinned-container" class="pinned-container"></div>
       </div>
 
+      <!-- Gradient Generator -->
+      <details id="gradient-panel" class="recipe-panel">
+        <summary>Gradient Generator</summary>
+        <div class="gradient-content">
+          <div class="gradient-type-btns">
+            <button class="gradient-type-btn active" data-type="linear">Linear</button>
+            <button class="gradient-type-btn" data-type="radial">Radial</button>
+            <button class="gradient-type-btn" data-type="conic">Conic</button>
+          </div>
+          <div class="gradient-stops">
+            <div class="gradient-stop-well active" id="grad-stop-a">
+              <div class="gradient-stop-swatch" id="grad-swatch-a"></div>
+              <span class="gradient-stop-label">Stop A</span>
+              <span class="gradient-stop-hex" id="grad-hex-a">#000000</span>
+            </div>
+            <div class="gradient-stop-arrow">→</div>
+            <div class="gradient-stop-well" id="grad-stop-b">
+              <div class="gradient-stop-swatch" id="grad-swatch-b"></div>
+              <span class="gradient-stop-label">Stop B</span>
+              <span class="gradient-stop-hex" id="grad-hex-b">#ffffff</span>
+            </div>
+          </div>
+          <div class="gradient-mini-swatches" id="grad-mini-swatches"></div>
+          <div class="gradient-angle-row" id="grad-angle-row">
+            <label class="rd-ctrl-title" for="grad-angle">Angle</label>
+            <input type="range" id="grad-angle" class="slider" min="0" max="360" value="135">
+            <span id="grad-angle-val" class="temp-shift-val">135°</span>
+          </div>
+          <div id="grad-preview" class="gradient-preview"></div>
+          <div class="gradient-css-row">
+            <code id="grad-css-code" class="gradient-css-block"></code>
+            <button id="grad-copy-btn" class="action-btn">Copy CSS</button>
+          </div>
+        </div>
+      </details>
+
       <!-- Fix My Palette -->
       <details id="fix-palette-panel" class="recipe-panel">
         <summary>Fix My Palette</summary>
         <div class="fix-palette-content">
           <p class="fix-palette-hint">Add up to 6 colors and check WCAG contrast between all pairs.</p>
+          <div id="fix-img-drop" class="fix-img-drop">
+            Drop image here or <label for="fix-img-input" class="fix-img-label">browse</label>
+            <input type="file" id="fix-img-input" accept="image/*" style="display:none">
+          </div>
           <div class="fix-palette-inputs" id="fix-palette-inputs"></div>
           <div class="fix-palette-toolbar">
             <button id="fix-palette-add-btn" class="action-btn">+ Add Color</button>
@@ -401,6 +443,7 @@
   <!-- Toast Notification -->
   <div id="toast" class="toast" aria-live="polite" role="status"></div>
 
+  <canvas id="img-extract-canvas" style="display:none" width="100" height="100"></canvas>
   <script src="color-utils.js"></script>
   <script src="explorer.js"></script>
   <script src="palette.js"></script>
