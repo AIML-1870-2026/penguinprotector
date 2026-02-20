@@ -379,6 +379,99 @@ class PalettePanel {
     if (btn) btn.style.display = Object.keys(this.lockedColors).length > 0 ? '' : 'none';
   }
 
+  // ── Named Palette Save ────────────────────────────────────
+  initSavedPalettes() {
+    this.renderSavedPalettesList();
+
+    document.getElementById('save-palette-btn')?.addEventListener('click', () => {
+      const input = document.getElementById('palette-name-input');
+      const name  = (input?.value || '').trim() || 'Untitled Palette';
+      this.savePalette(name);
+      if (input) input.value = '';
+    });
+
+    document.getElementById('palette-name-input')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('save-palette-btn')?.click();
+    });
+  }
+
+  savePalette(name) {
+    if (!this.currentPalette.length) { showToast('No palette to save'); return; }
+    const saved  = this.loadSavedPalettesFromStorage();
+    const colors = this.currentPalette.map(({ h, s, l, r, g, b, hex, name: n }) =>
+      ({ h, s, l, r, g, b, hex, name: n }));
+    saved.unshift({ name, colors, savedAt: Date.now() });
+    if (saved.length > 20) saved.length = 20;
+    localStorage.setItem('readable-quest-saved-palettes', JSON.stringify(saved));
+    this.renderSavedPalettesList();
+    showToast(`Saved "${name}"`);
+  }
+
+  loadSavedPalettesFromStorage() {
+    try {
+      return JSON.parse(localStorage.getItem('readable-quest-saved-palettes') || '[]');
+    } catch { return []; }
+  }
+
+  renderSavedPalettesList() {
+    const el = document.getElementById('saved-palettes-list');
+    if (!el) return;
+    const saved = this.loadSavedPalettesFromStorage();
+    if (!saved.length) {
+      el.innerHTML = '<p class="fix-palette-hint">No palettes saved yet.</p>';
+      return;
+    }
+    el.innerHTML = saved.map((entry, idx) => {
+      const swatches = entry.colors
+        .map(c => `<div class="saved-palette-swatch" style="background:${c.hex}" title="${c.name} ${c.hex}"></div>`)
+        .join('');
+      return `
+        <div class="saved-palette-row">
+          <div class="saved-palette-info">
+            <span class="saved-palette-name">${entry.name}</span>
+            <div class="saved-palette-swatches">${swatches}</div>
+          </div>
+          <div class="saved-palette-actions">
+            <button class="action-btn saved-load-btn" data-idx="${idx}">Load</button>
+            <button class="action-btn saved-delete-btn" data-idx="${idx}" title="Delete">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    el.querySelectorAll('.saved-load-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx   = parseInt(btn.dataset.idx);
+        const entry = this.loadSavedPalettesFromStorage()[idx];
+        if (entry) { this.loadSavedPalette(entry.colors); showToast(`Loaded "${entry.name}"`); }
+      });
+    });
+    el.querySelectorAll('.saved-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx   = parseInt(btn.dataset.idx);
+        const saved = this.loadSavedPalettesFromStorage();
+        const name  = saved[idx]?.name || '';
+        saved.splice(idx, 1);
+        localStorage.setItem('readable-quest-saved-palettes', JSON.stringify(saved));
+        this.renderSavedPalettesList();
+        showToast(`Deleted "${name}"`);
+      });
+    });
+  }
+
+  loadSavedPalette(colors) {
+    this.currentPalette    = colors;
+    this.expandedSwatchIdx = null;
+    this.shadeScaleEl.classList.add('hidden');
+    this.renderSwatches(colors);
+    this.renderScoreCard(colors);
+    this.renderContrastMatrix(colors);
+    this.drawColorWheel(colors);
+    this.renderUIPreview(colors);
+    if (this.gradientState) this.updateGradientStops();
+    if (window.accessibilityPanel) accessibilityPanel.updateSimulator(colors);
+  }
+
   // ── Palette Score Card ────────────────────────────────────
   renderScoreCard(palette) {
     const el = document.getElementById('palette-scorecard');

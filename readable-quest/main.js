@@ -12,6 +12,9 @@ const colorState = {
   tempShift: 0,
 };
 
+// ── Snapshot State ────────────────────────────────────────────
+let snapshotColor = null;  // { r, g, b, h, s, l, hex, name } or null
+
 // ── Mixer State ───────────────────────────────────────────────
 const mixerState = {
   hexA: '#FF0000',
@@ -27,6 +30,56 @@ function showToast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── EyeDropper ────────────────────────────────────────────────
+async function activateEyeDropper() {
+  if (!('EyeDropper' in window)) { showToast('EyeDropper not supported in this browser'); return; }
+  try {
+    const result = await new EyeDropper().open();
+    const rgb = hexToRgb(result.sRGBHex);
+    if (rgb) { mainSetColor(rgb.r, rgb.g, rgb.b); showToast('Color picked!'); }
+  } catch { /* user cancelled */ }
+}
+
+// ── Snapshot Compare ──────────────────────────────────────────
+function takeSnapshot() {
+  const { r, g, b, h, s, l } = colorState;
+  snapshotColor = { r, g, b, h, s, l, hex: rgbToHex(r, g, b), name: getColorName(r, g, b) };
+  updateSnapshotCompare();
+  showToast('Snapshot saved');
+}
+
+function clearSnapshot() {
+  snapshotColor = null;
+  document.getElementById('snapshot-compare').classList.add('hidden');
+}
+
+function updateSnapshotCompare() {
+  const panel = document.getElementById('snapshot-compare');
+  if (!panel || !snapshotColor) return;
+  panel.classList.remove('hidden');
+
+  const { r, g, b, h, s, l } = colorState;
+  const curHex  = rgbToHex(r, g, b);
+  const curName = getColorName(r, g, b);
+
+  document.getElementById('snap-swatch-a').style.background = snapshotColor.hex;
+  document.getElementById('snap-hex-a').textContent = snapshotColor.hex;
+  document.getElementById('snap-name-a').textContent = snapshotColor.name;
+
+  document.getElementById('snap-swatch-b').style.background = curHex;
+  document.getElementById('snap-hex-b').textContent = curHex;
+  document.getElementById('snap-name-b').textContent = curName;
+
+  const ratio = contrastRatio(snapshotColor.r, snapshotColor.g, snapshotColor.b, r, g, b);
+  const rawDh = Math.round(((h - snapshotColor.h) + 360) % 360);
+  const dh    = rawDh > 180 ? rawDh - 360 : rawDh;
+  const dl    = Math.round(l - snapshotColor.l);
+
+  document.getElementById('snap-ratio').textContent   = ratio.toFixed(2) + ':1';
+  document.getElementById('snap-delta-h').textContent = 'Δh ' + (dh >= 0 ? '+' : '') + dh + '°';
+  document.getElementById('snap-delta-l').textContent = 'Δl ' + (dl >= 0 ? '+' : '') + dl + '%';
 }
 
 // ── DOM Refs ──────────────────────────────────────────────────
@@ -99,6 +152,8 @@ function updateReadouts() {
   recipeFmtRgb.textContent  = `RGB  ${r}, ${g}, ${b}`;
   recipeFmtHsl.textContent  = `HSL  ${Math.round(hsl.h)}° ${Math.round(hsl.s)}% ${Math.round(hsl.l)}%`;
   recipeFmtCmyk.textContent = `CMYK ${cmyk.c} ${cmyk.m} ${cmyk.y} ${cmyk.k}`;
+
+  updateSnapshotCompare();
 }
 
 // ── Set Color (called by palette clicks, randomize, etc.) ─────
@@ -965,6 +1020,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('snap-home-btn').addEventListener('click', () => {
     explorerCanvas.snapToHome();
   });
+
+  // EyeDropper
+  const eyedropperBtn = document.getElementById('eyedropper-btn');
+  if (eyedropperBtn) {
+    if (!('EyeDropper' in window)) eyedropperBtn.style.display = 'none';
+    else eyedropperBtn.addEventListener('click', activateEyeDropper);
+  }
+
+  // Snapshot compare
+  document.getElementById('snapshot-btn')?.addEventListener('click', takeSnapshot);
+  document.getElementById('snapshot-clear-btn')?.addEventListener('click', clearSnapshot);
   explorerCanvas.onSnapHome = () => {
     colorState.r = 255; colorState.g = 0; colorState.b = 0;
     rSlider.value = 255; rVal.textContent = 255;
@@ -989,6 +1055,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Color Mixer
   initColorMixer();
+
+  // Saved Palettes
+  palettePanel.initSavedPalettes();
 
   // Readable lab
   initReadablePanel();

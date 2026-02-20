@@ -37,6 +37,8 @@
           <button class="bg-preset" data-bg="#f5c2d0" style="background:#f5c2d0" title="Light Pink"></button>
         </div>
         <button id="snap-home-btn" class="snap-home-btn" title="Reset spotlights to starting positions">↺ Reset</button>
+        <button id="eyedropper-btn" class="action-btn" title="Pick any color from your screen">🖰 Pick Color</button>
+        <button id="snapshot-btn" class="action-btn" title="Snapshot current color for comparison">📸 Snapshot</button>
       </div>
 
       <div class="canvas-wrapper">
@@ -70,6 +72,29 @@
           <div class="readout" id="rgb-readout" title="Click to copy">rgb(255, 0, 0)</div>
           <div class="readout" id="hsl-readout" title="Click to copy">hsl(0°, 100%, 50%)</div>
           <div class="readout" id="cmyk-readout" title="Click to copy">C:0 M:100 Y:100 K:0</div>
+        </div>
+      </div>
+
+      <!-- Snapshot Compare -->
+      <div id="snapshot-compare" class="snapshot-compare hidden">
+        <button class="snapshot-clear-btn" id="snapshot-clear-btn" title="Clear snapshot">✕</button>
+        <div class="snapshot-col">
+          <div class="snapshot-swatch" id="snap-swatch-a"></div>
+          <div class="snapshot-hex" id="snap-hex-a"></div>
+          <div class="snapshot-name" id="snap-name-a"></div>
+          <div class="snapshot-col-label">Snapshot</div>
+        </div>
+        <div class="snapshot-delta">
+          <div class="snapshot-ratio-val" id="snap-ratio"></div>
+          <div class="snapshot-ratio-label">contrast</div>
+          <div class="snapshot-delta-row" id="snap-delta-h"></div>
+          <div class="snapshot-delta-row" id="snap-delta-l"></div>
+        </div>
+        <div class="snapshot-col">
+          <div class="snapshot-swatch" id="snap-swatch-b"></div>
+          <div class="snapshot-hex" id="snap-hex-b"></div>
+          <div class="snapshot-name" id="snap-name-b"></div>
+          <div class="snapshot-col-label">Current</div>
         </div>
       </div>
 
@@ -261,6 +286,19 @@
         <h3 class="section-subtitle">Pinned Palettes</h3>
         <div id="pinned-container" class="pinned-container"></div>
       </div>
+
+      <!-- Saved Palettes -->
+      <details id="saved-palettes-panel" class="recipe-panel">
+        <summary>Saved Palettes</summary>
+        <div class="saved-palettes-content">
+          <div class="saved-palette-save-row">
+            <input type="text" id="palette-name-input" class="rd-hex-input palette-name-input"
+                   placeholder="Palette name…" maxlength="30" spellcheck="false" autocomplete="off">
+            <button id="save-palette-btn" class="action-btn">Save</button>
+          </div>
+          <div id="saved-palettes-list" class="saved-palettes-list"></div>
+        </div>
+      </details>
 
       <!-- Gradient Generator -->
       <details id="gradient-panel" class="recipe-panel">
