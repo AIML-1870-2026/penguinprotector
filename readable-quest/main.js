@@ -132,6 +132,93 @@ function makeClickToCopyEl(el) {
   makeClickToCopy(el, () => el.textContent.trim());
 }
 
+// ── Color Presets ─────────────────────────────────────────────
+const COLOR_PRESETS = [
+  { label: 'Pure', colors: [
+    { name: 'Red',     r: 255, g: 0,   b: 0   },
+    { name: 'Green',   r: 0,   g: 255, b: 0   },
+    { name: 'Blue',    r: 0,   g: 0,   b: 255 },
+    { name: 'Yellow',  r: 255, g: 255, b: 0   },
+    { name: 'Cyan',    r: 0,   g: 255, b: 255 },
+    { name: 'Magenta', r: 255, g: 0,   b: 255 },
+    { name: 'White',   r: 255, g: 255, b: 255 },
+    { name: 'Black',   r: 0,   g: 0,   b: 0   },
+  ]},
+  { label: 'Warm', colors: [
+    { name: 'Coral',       r: 255, g: 127, b: 80  },
+    { name: 'Orange',      r: 255, g: 165, b: 0   },
+    { name: 'Gold',        r: 255, g: 215, b: 0   },
+    { name: 'Crimson',     r: 220, g: 20,  b: 60  },
+    { name: 'Salmon',      r: 250, g: 128, b: 114 },
+    { name: 'Amber',       r: 255, g: 191, b: 0   },
+    { name: 'Tomato',      r: 255, g: 99,  b: 71  },
+    { name: 'Hot Pink',    r: 255, g: 105, b: 180 },
+  ]},
+  { label: 'Cool', colors: [
+    { name: 'Sky Blue',   r: 135, g: 206, b: 235 },
+    { name: 'Teal',       r: 0,   g: 128, b: 128 },
+    { name: 'Indigo',     r: 75,  g: 0,   b: 130 },
+    { name: 'Violet',     r: 138, g: 43,  b: 226 },
+    { name: 'Mint',       r: 62,  g: 180, b: 137 },
+    { name: 'Steel Blue', r: 70,  g: 130, b: 180 },
+    { name: 'Periwinkle', r: 102, g: 130, b: 255 },
+    { name: 'Turquoise',  r: 64,  g: 224, b: 208 },
+  ]},
+  { label: 'Pastel', colors: [
+    { name: 'Lavender',   r: 230, g: 190, b: 255 },
+    { name: 'Peach',      r: 255, g: 218, b: 185 },
+    { name: 'Mint Cream', r: 185, g: 240, b: 200 },
+    { name: 'Rose',       r: 255, g: 182, b: 193 },
+    { name: 'Baby Blue',  r: 173, g: 216, b: 230 },
+    { name: 'Lemon',      r: 255, g: 250, b: 170 },
+    { name: 'Lilac',      r: 200, g: 162, b: 200 },
+    { name: 'Blush',      r: 255, g: 200, b: 200 },
+  ]},
+  { label: 'Earthy', colors: [
+    { name: 'Terracotta', r: 204, g: 78,  b: 44  },
+    { name: 'Olive',      r: 107, g: 142, b: 35  },
+    { name: 'Chocolate',  r: 123, g: 63,  b: 0   },
+    { name: 'Sand',       r: 194, g: 178, b: 128 },
+    { name: 'Forest',     r: 34,  g: 85,  b: 34  },
+    { name: 'Rust',       r: 183, g: 65,  b: 14  },
+    { name: 'Sienna',     r: 160, g: 82,  b: 45  },
+    { name: 'Khaki',      r: 189, g: 183, b: 107 },
+  ]},
+];
+
+function initColorPresets() {
+  const grid = document.getElementById('color-presets-grid');
+  COLOR_PRESETS.forEach(({ label, colors }) => {
+    const row = document.createElement('div');
+    row.className = 'preset-category';
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'preset-category-label';
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const swatchesEl = document.createElement('div');
+    swatchesEl.className = 'preset-swatches';
+
+    colors.forEach(({ name, r, g, b }) => {
+      const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+      const btn = document.createElement('button');
+      btn.className = 'color-preset';
+      btn.style.background = hex;
+      btn.title = name;
+      btn.setAttribute('aria-label', name);
+      btn.addEventListener('click', () => {
+        mainSetColor(r, g, b);
+        showToast(`Preset: ${name}`);
+      });
+      swatchesEl.appendChild(btn);
+    });
+
+    row.appendChild(swatchesEl);
+    grid.appendChild(row);
+  });
+}
+
 // ── Background Presets ────────────────────────────────────────
 function darkenHex(hex, factor) {
   const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
@@ -302,6 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
       applyBgPreset(btn.dataset.bg);
     });
   });
+
+  // Color presets
+  initColorPresets();
 
   // Tabs
   initTabs();
