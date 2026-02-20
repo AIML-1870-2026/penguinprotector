@@ -219,6 +219,118 @@ function initColorPresets() {
   });
 }
 
+// ── Readable Lab ──────────────────────────────────────────────
+const VISION_MATRICES = {
+  normal:       null,
+  protanopia:   [[0.567,0.433,0],[0.558,0.442,0],[0,0.242,0.758]],
+  deuteranopia: [[0.625,0.375,0],[0.7,0.3,0],[0,0.3,0.7]],
+  tritanopia:   [[0.95,0.05,0],[0,0.433,0.567],[0,0.475,0.525]],
+  monochromacy: [[0.299,0.587,0.114],[0.299,0.587,0.114],[0.299,0.587,0.114]],
+};
+
+function applyVision(r, g, b, type) {
+  const m = VISION_MATRICES[type];
+  if (!m) return [r, g, b];
+  return [
+    Math.min(255, Math.round(m[0][0]*r + m[0][1]*g + m[0][2]*b)),
+    Math.min(255, Math.round(m[1][0]*r + m[1][1]*g + m[1][2]*b)),
+    Math.min(255, Math.round(m[2][0]*r + m[2][1]*g + m[2][2]*b)),
+  ];
+}
+
+function rdLinearize(c) {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+function rdLuminance(r, g, b) {
+  return 0.2126 * rdLinearize(r) + 0.7152 * rdLinearize(g) + 0.0722 * rdLinearize(b);
+}
+
+const rdState = {
+  bgR: 4, bgG: 13, bgB: 30,
+  txtR: 200, txtG: 232, txtB: 255,
+  fontSize: 18,
+  vision: 'normal',
+};
+
+function toHex(r, g, b) {
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function updateReadableDisplay() {
+  const { bgR, bgG, bgB, txtR, txtG, txtB, fontSize, vision } = rdState;
+
+  const [vBgR,  vBgG,  vBgB]  = applyVision(bgR,  bgG,  bgB,  vision);
+  const [vTxtR, vTxtG, vTxtB] = applyVision(txtR, txtG, txtB, vision);
+
+  const display = document.getElementById('rd-display');
+  if (!display) return;
+  display.style.background = toHex(vBgR, vBgG, vBgB);
+  display.style.color       = toHex(vTxtR, vTxtG, vTxtB);
+  display.style.fontSize    = fontSize + 'px';
+
+  document.getElementById('rd-bg-swatch').style.background  = toHex(bgR,  bgG,  bgB);
+  document.getElementById('rd-txt-swatch').style.background = toHex(txtR, txtG, txtB);
+  document.getElementById('rd-bg-hex').textContent  = toHex(bgR,  bgG,  bgB).toUpperCase();
+  document.getElementById('rd-txt-hex').textContent = toHex(txtR, txtG, txtB).toUpperCase();
+
+  const lumBg  = rdLuminance(vBgR,  vBgG,  vBgB);
+  const lumTxt = rdLuminance(vTxtR, vTxtG, vTxtB);
+  const [hi, lo] = lumBg > lumTxt ? [lumBg, lumTxt] : [lumTxt, lumBg];
+  const ratio    = (hi + 0.05) / (lo + 0.05);
+
+  document.getElementById('rd-lum-bg').textContent  = lumBg.toFixed(3);
+  document.getElementById('rd-lum-txt').textContent = lumTxt.toFixed(3);
+  document.getElementById('rd-contrast').textContent = ratio.toFixed(2);
+
+  let grade = 'Fail', gradeColor = '#ff5566';
+  if (ratio >= 7)   { grade = 'AAA';      gradeColor = '#00ff9d'; }
+  else if (ratio >= 4.5) { grade = 'AA'; gradeColor = '#44ddaa'; }
+  else if (ratio >= 3)   { grade = 'AA\u2009Large'; gradeColor = '#ffcc44'; }
+
+  const wcagEl = document.getElementById('rd-wcag');
+  wcagEl.textContent = grade;
+  wcagEl.style.color = gradeColor;
+}
+
+function initReadablePanel() {
+  const bind = (sliderId, valId, key) => {
+    const slider = document.getElementById(sliderId);
+    const valEl  = document.getElementById(valId);
+    if (!slider) return;
+    slider.addEventListener('input', () => {
+      rdState[key] = parseInt(slider.value);
+      valEl.textContent = slider.value;
+      updateReadableDisplay();
+    });
+  };
+  bind('rd-bg-r',  'rd-bg-rv',  'bgR');
+  bind('rd-bg-g',  'rd-bg-gv',  'bgG');
+  bind('rd-bg-b',  'rd-bg-bv',  'bgB');
+  bind('rd-txt-r', 'rd-txt-rv', 'txtR');
+  bind('rd-txt-g', 'rd-txt-gv', 'txtG');
+  bind('rd-txt-b', 'rd-txt-bv', 'txtB');
+
+  const fontSlider = document.getElementById('rd-font-size');
+  const fontVal    = document.getElementById('rd-font-size-v');
+  if (fontSlider) {
+    fontSlider.addEventListener('input', () => {
+      rdState.fontSize = parseInt(fontSlider.value);
+      fontVal.textContent = fontSlider.value + 'px';
+      updateReadableDisplay();
+    });
+  }
+
+  document.querySelectorAll('input[name="rd-vision"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      rdState.vision = radio.value;
+      updateReadableDisplay();
+    });
+  });
+
+  updateReadableDisplay();
+}
+
 // ── Background Presets ────────────────────────────────────────
 function darkenHex(hex, factor) {
   const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
@@ -267,7 +379,7 @@ function initTabs() {
       btn.classList.add('active');
       const tab = btn.dataset.tab;
       panels.className = `dual-panel${tab !== 'both' ? ' tab-' + tab : ''}`;
-      if (tab !== 'palette') {
+      if (tab === 'explorer' || tab === 'both') {
         // Re-size canvas after layout changes
         setTimeout(() => {
           explorerCanvas.resize();
@@ -392,6 +504,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Color presets
   initColorPresets();
+
+  // Readable lab
+  initReadablePanel();
 
   // Tabs
   initTabs();

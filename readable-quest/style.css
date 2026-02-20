@@ -1,18 +1,18 @@
 /* ============================================================
-   Color Quest — Dark Theme Stylesheet
+   Readable Quest — Jellyfish Deep Ocean Theme
    ============================================================ */
 
 /* ── Custom Properties ──────────────────────────────────────── */
 :root {
-  --bg:        #0f0f14;
-  --panel:     #1a1a24;
-  --panel-alt: #22222e;
-  --border:    #2e2e3e;
-  --text:      #e0e0f0;
-  --text-muted:#888898;
-  --accent:    #7c6fff;
-  --radius:    10px;
-  --radius-sm: 6px;
+  --bg:        #040d1e;
+  --panel:     #071527;
+  --panel-alt: #0c1e38;
+  --border:    #1a3a5c;
+  --text:      #c8e8ff;
+  --text-muted:#5a8eb8;
+  --accent:    #00d4ff;
+  --radius:    12px;
+  --radius-sm: 7px;
   --transition: 300ms ease;
 }
 
@@ -37,7 +37,7 @@ canvas { display: block; }
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1.5rem;
-  background: #13131e;
+  background: #020a18;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -49,12 +49,19 @@ canvas { display: block; }
   font-weight: 800;
   letter-spacing: -0.02em;
   background: linear-gradient(90deg,
-    #ff5555 0%, #ffaa00 18%, #ffff00 36%,
-    #55ff55 54%, #55aaff 72%, #aa55ff 90%);
+    #00e5ff 0%, #40c4ff 20%, #b060ff 45%,
+    #ff6eb4 65%, #40c4ff 85%, #00e5ff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   white-space: nowrap;
+  background-size: 200% auto;
+  animation: jellyShimmer 6s linear infinite;
+}
+
+@keyframes jellyShimmer {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
 }
 
 /* ── Tab Navigation ─────────────────────────────────────────── */
@@ -91,6 +98,13 @@ canvas { display: block; }
 .dual-panel.tab-palette  #explorer-panel { display: none; }
 .dual-panel.tab-explorer,
 .dual-panel.tab-palette  { grid-template-columns: 1fr; background: var(--bg); }
+
+/* Readable Lab tab */
+#readable-panel { display: none; }
+.dual-panel.tab-readable #explorer-panel,
+.dual-panel.tab-readable #palette-panel  { display: none; }
+.dual-panel.tab-readable #readable-panel { display: flex; }
+.dual-panel.tab-readable { grid-template-columns: 1fr; background: var(--bg); }
 
 .panel {
   background: var(--bg);
@@ -131,7 +145,7 @@ canvas { display: block; }
 .snap-home-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(124, 111, 255, 0.08);
+  background: rgba(0, 212, 255, 0.08);
 }
 
 /* ── Background Presets ─────────────────────────────────────── */
@@ -756,12 +770,141 @@ canvas { display: block; }
   pointer-events: none;
   transition: opacity 0.25s, transform 0.25s;
   z-index: 999;
-  border: 1px solid rgba(124,111,255,0.4);
+  border: 1px solid rgba(0,212,255,0.35);
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ── Readable Lab Panel ──────────────────────────────────────── */
+.readable-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.readable-display {
+  padding: 2rem 2.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  line-height: 1.8;
+  font-size: 18px;
+  transition: background 0.35s ease, color 0.35s ease, font-size 0.2s;
+  min-height: 210px;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.3);
+}
+.readable-display p + p { margin-top: 1em; }
+
+.readable-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.rd-ctrl-group {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rd-ctrl-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.25rem;
+}
+
+.rd-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.rd-mini-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rd-mini-hex {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.rd-font-size-val {
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vision-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.vision-radios label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.vision-radios label:hover { color: var(--text); }
+.vision-radios input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
+
+.readable-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+.rd-stat {
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  text-align: center;
+  border: 1px solid transparent;
+}
+.rd-stat-bg      { background: rgba(0,212,255,0.08);   border-color: rgba(0,212,255,0.2);   }
+.rd-stat-txt     { background: rgba(176,96,255,0.08);  border-color: rgba(176,96,255,0.2);  }
+.rd-stat-ratio   { background: rgba(255,110,180,0.08); border-color: rgba(255,110,180,0.2); }
+.rd-stat-wcag    { background: rgba(0,255,160,0.08);   border-color: rgba(0,255,160,0.2);   }
+.rd-stat-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.3rem;
+}
+.rd-stat-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Readable panel responsive */
+@media (max-width: 900px) {
+  .readable-controls { grid-template-columns: 1fr 1fr; }
+  .readable-stats    { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .readable-controls { grid-template-columns: 1fr; }
+  .readable-stats    { grid-template-columns: repeat(2, 1fr); }
+  .readable-display  { padding: 1.25rem; }
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────── */

@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Color Quest: RGB Color Studio</title>
+  <title>Readable Quest: Jellyfish Lab</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <header class="app-header">
-    <h1 class="app-title">Color Quest</h1>
+    <h1 class="app-title">🪼 Readable Quest</h1>
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="both">Both</button>
       <button class="tab-btn" data-tab="explorer">Explorer</button>
       <button class="tab-btn" data-tab="palette">Palette</button>
+      <button class="tab-btn" data-tab="readable">Readable</button>
     </nav>
   </header>
 
@@ -216,6 +217,112 @@
       </div>
 
     </section>
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- READABLE LAB PANEL                          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section id="readable-panel" class="panel">
+      <h2 class="panel-title">🪼 Readability Lab</h2>
+
+      <div class="readable-layout">
+
+        <!-- Text Display -->
+        <div id="rd-display" class="readable-display">
+          <p>The moon jellyfish (<em>Aurelia aurita</em>) drifts through the ocean's midnight blue with a grace that has defied the passage of time itself. Among the oldest animals on Earth, jellyfish have pulsed through the seas for over 500 million years — long before dinosaurs walked the land, before fish grew legs, before the first breath was drawn on dry ground.</p>
+          <p>A jellyfish has no brain, no heart, no bones, and yet it survives. It thrives. It blooms in great shimmering swarms called <em>smacks</em>, filling entire bays with translucent, pulsing life. Each creature is roughly 95% water — a ghostly bell of living tissue propelled by the rhythmic contraction of radial muscles, trailing lace-like tentacles in its wake.</p>
+          <p>What does it mean to perceive the world without a central nervous system? The jellyfish senses light, gravity, and chemical signals through a distributed network of nerves — awareness without a center, sensation without a self. Perhaps consciousness is not a single room, but an ocean — and we have only ever glimpsed the surface.</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="readable-controls">
+
+          <!-- Background Color -->
+          <div class="rd-ctrl-group">
+            <h4 class="rd-ctrl-title">Background Color</h4>
+            <div class="sliders">
+              <div class="slider-row">
+                <label class="slider-label">R <span id="rd-bg-rv">4</span></label>
+                <input type="range" id="rd-bg-r" class="slider slider-r" min="0" max="255" value="4">
+              </div>
+              <div class="slider-row">
+                <label class="slider-label">G <span id="rd-bg-gv">13</span></label>
+                <input type="range" id="rd-bg-g" class="slider slider-g" min="0" max="255" value="13">
+              </div>
+              <div class="slider-row">
+                <label class="slider-label">B <span id="rd-bg-bv">30</span></label>
+                <input type="range" id="rd-bg-b" class="slider slider-b" min="0" max="255" value="30">
+              </div>
+            </div>
+            <div class="rd-swatch-row">
+              <div id="rd-bg-swatch" class="rd-mini-swatch"></div>
+              <span id="rd-bg-hex" class="rd-mini-hex">#040d1e</span>
+            </div>
+          </div>
+
+          <!-- Text Color -->
+          <div class="rd-ctrl-group">
+            <h4 class="rd-ctrl-title">Text Color</h4>
+            <div class="sliders">
+              <div class="slider-row">
+                <label class="slider-label">R <span id="rd-txt-rv">200</span></label>
+                <input type="range" id="rd-txt-r" class="slider slider-r" min="0" max="255" value="200">
+              </div>
+              <div class="slider-row">
+                <label class="slider-label">G <span id="rd-txt-gv">232</span></label>
+                <input type="range" id="rd-txt-g" class="slider slider-g" min="0" max="255" value="232">
+              </div>
+              <div class="slider-row">
+                <label class="slider-label">B <span id="rd-txt-bv">255</span></label>
+                <input type="range" id="rd-txt-b" class="slider slider-b" min="0" max="255" value="255">
+              </div>
+            </div>
+            <div class="rd-swatch-row">
+              <div id="rd-txt-swatch" class="rd-mini-swatch"></div>
+              <span id="rd-txt-hex" class="rd-mini-hex">#c8e8ff</span>
+            </div>
+          </div>
+
+          <!-- Size + Vision -->
+          <div class="rd-ctrl-group">
+            <h4 class="rd-ctrl-title">Text Size</h4>
+            <div class="slider-row">
+              <input type="range" id="rd-font-size" class="slider" min="12" max="40" value="18" style="flex:1">
+              <span id="rd-font-size-v" class="rd-font-size-val">18px</span>
+            </div>
+
+            <h4 class="rd-ctrl-title" style="margin-top:0.75rem">Vision Type</h4>
+            <div class="vision-radios" id="rd-vision-radios">
+              <label><input type="radio" name="rd-vision" value="normal" checked> Normal</label>
+              <label><input type="radio" name="rd-vision" value="protanopia"> Protanopia</label>
+              <label><input type="radio" name="rd-vision" value="deuteranopia"> Deuteranopia</label>
+              <label><input type="radio" name="rd-vision" value="tritanopia"> Tritanopia</label>
+              <label><input type="radio" name="rd-vision" value="monochromacy"> Monochromacy</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="readable-stats">
+          <div class="rd-stat rd-stat-bg">
+            <span class="rd-stat-label">Luminosity (Background)</span>
+            <span class="rd-stat-value" id="rd-lum-bg">—</span>
+          </div>
+          <div class="rd-stat rd-stat-txt">
+            <span class="rd-stat-label">Luminosity (Text)</span>
+            <span class="rd-stat-value" id="rd-lum-txt">—</span>
+          </div>
+          <div class="rd-stat rd-stat-ratio">
+            <span class="rd-stat-label">Contrast Ratio</span>
+            <span class="rd-stat-value" id="rd-contrast">—</span>
+          </div>
+          <div class="rd-stat rd-stat-wcag">
+            <span class="rd-stat-label">WCAG Grade</span>
+            <span class="rd-stat-value" id="rd-wcag">—</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
   </main>
 
   <!-- Toast Notification -->
