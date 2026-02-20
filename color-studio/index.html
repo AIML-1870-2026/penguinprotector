@@ -23,6 +23,8 @@
             <button class="tab" data-tab="game">Game</button>
             <button class="tab" data-tab="mix">Mix</button>
             <button class="tab" data-tab="image">Image</button>
+            <button class="tab" data-tab="moodboard">Mood Board</button>
+            <button class="tab" data-tab="templates">Templates</button>
         </nav>
     </header>
 
@@ -313,6 +315,37 @@
             </div>
             <canvas id="image-canvas" style="display:none"></canvas>
         </section>
+
+        <!-- Mood Board Panel -->
+        <section class="panel moodboard-panel hidden" id="moodboard-panel">
+            <h2>Mood Board</h2>
+            <p class="panel-desc">Select a zone in the mock UI, then pick a color from your palette to apply it.</p>
+            <div class="moodboard-layout">
+                <div class="mock-ui-wrapper">
+                    <div class="mock-ui" id="mock-ui"></div>
+                </div>
+                <div class="moodboard-sidebar">
+                    <p class="mb-hint" id="mb-hint">Click a zone to select it, then pick a color below</p>
+                    <div class="mb-zone-list" id="mb-zone-list"></div>
+                    <div class="mb-swatches-section">
+                        <span class="mb-swatches-label">Available Colors</span>
+                        <div class="mb-swatches" id="mb-swatches"></div>
+                    </div>
+                    <div class="mb-actions">
+                        <button class="mb-export-btn" id="mb-export-btn">Copy CSS Variables</button>
+                        <button class="mb-clear-btn" id="mb-clear-btn">Reset Zones</button>
+                    </div>
+                    <pre class="mb-export-output hidden" id="mb-export-output"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Color Scheme Templates Panel -->
+        <section class="panel templates-panel hidden" id="templates-panel">
+            <h2>Color Scheme Templates</h2>
+            <p class="panel-desc">Pick a preset palette and load it straight into the Palette Builder.</p>
+            <div class="templates-grid" id="templates-grid"></div>
+        </section>
     </main>
 
     <div class="toast" id="toast">Copied!</div>
@@ -325,6 +358,8 @@
     <script src="game.js"></script>
     <script src="mixer.js"></script>
     <script src="image-extractor.js"></script>
+    <script src="mood-board.js"></script>
+    <script src="templates.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

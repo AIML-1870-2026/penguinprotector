@@ -43,6 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAll();
     });
     ImageExtractor.init();
+    MoodBoard.init();
+    ColorTemplates.init(hexColors => {
+        customPalette.fill(null);
+        targetCount = Math.min(hexColors.length, 8);
+        document.getElementById('target-count').textContent = targetCount;
+        hexColors.forEach((hex, i) => {
+            if (i >= 8) return;
+            const rgb = hexToRgb(hex);
+            customPalette[i] = { r: rgb.r, g: rgb.g, b: rgb.b, hex };
+        });
+        renderCustomPalette();
+        document.querySelector('[data-tab="custom"]').click();
+    });
     ImageExtractor.setOnColorPick(rgb => {
         colorState.r = rgb.r; colorState.g = rgb.g; colorState.b = rgb.b;
         document.getElementById('slider-r').value = rgb.r;
@@ -96,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Tab switching
-    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel'];
+    const allPanelIds = ['explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel'];
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -104,15 +117,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = tab.dataset.tab;
             allPanelIds.forEach(id => document.getElementById(id).classList.remove('hidden'));
             const hide = (...ids) => ids.forEach(id => document.getElementById(id).classList.add('hidden'));
-            if (mode === 'both')               hide('accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'explorer')      hide('palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'palette')       hide('explorer-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'custom')        hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'gradient')      hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'game-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'game')          hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'mix-panel', 'image-panel');
-            else if (mode === 'mix')           hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'image-panel');
-            else if (mode === 'image')         hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel');
+            if (mode === 'both')               hide('accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'explorer')      hide('palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'palette')       hide('explorer-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'accessibility') hide('explorer-panel', 'palette-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'custom')        hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'gradient')      hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'game')          hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'mix-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'mix')           hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'image-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'image')         hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'moodboard-panel', 'templates-panel');
+            else if (mode === 'moodboard')     hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'templates-panel');
+            else if (mode === 'templates')     hide('explorer-panel', 'palette-panel', 'accessibility-panel', 'custom-panel', 'gradient-panel', 'game-panel', 'mix-panel', 'image-panel', 'moodboard-panel');
         });
     });
 
@@ -123,6 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('game-panel').classList.add('hidden');
     document.getElementById('mix-panel').classList.add('hidden');
     document.getElementById('image-panel').classList.add('hidden');
+    document.getElementById('moodboard-panel').classList.add('hidden');
+    document.getElementById('templates-panel').classList.add('hidden');
 
     // Harmony buttons
     document.querySelectorAll('.harmony-btn').forEach(btn => {
@@ -244,6 +261,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePalette();
         updateFavBtn();
         updateLore();
+        const explorerEntry = { hex: rgbToHex(colorState.r, colorState.g, colorState.b), label: 'Explorer' };
+        const paletteEntries = Palette.getPalette().map((c, i) => ({ hex: rgbToHex(c.r, c.g, c.b), label: `Palette ${i + 1}` }));
+        MoodBoard.setColors([explorerEntry, ...paletteEntries]);
     }
 
     function updateLore() {
