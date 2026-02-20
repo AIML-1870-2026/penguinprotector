@@ -733,4 +733,24 @@ document.addEventListener('DOMContentLoaded', () => {
   explorerCanvas.setChannelIntensity('b', 0);
   updateReadouts();
   palettePanel.generate(0, 100, 50);
+
+  // ── Floating Jellyfish ──────────────────────────────────────
+  const JELLY_EMOJIS = ['🪼', '🪼', '🪼', '🌊', '✨'];
+  function spawnJellyfish() {
+    const el = document.createElement('div');
+    el.className = 'jellyfish-float';
+    el.textContent = JELLY_EMOJIS[Math.floor(Math.random() * JELLY_EMOJIS.length)];
+    const size = 1.2 + Math.random() * 2.2;          // 1.2rem – 3.4rem
+    const duration = 9 + Math.random() * 10;          // 9s – 19s
+    const startX = 5 + Math.random() * 90;            // 5% – 95% from left
+    el.style.fontSize  = `${size}rem`;
+    el.style.left      = `${startX}vw`;
+    el.style.animationDuration = `${duration}s`;
+    el.style.opacity   = '0';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+
+  spawnJellyfish();
+  setInterval(spawnJellyfish, 2800);
 });

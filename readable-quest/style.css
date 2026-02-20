@@ -1084,6 +1084,25 @@ canvas { display: block; }
   .vision-grid       { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Floating Jellyfish ──────────────────────────────────────── */
+.jellyfish-float {
+  position: fixed;
+  bottom: -80px;
+  pointer-events: none;
+  z-index: 10;
+  user-select: none;
+  animation: jellyfishRise linear forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes jellyfishRise {
+  0%   { transform: translateY(0)   translateX(0)    rotate(0deg);   opacity: 0;   }
+  8%   { opacity: 1; }
+  50%  { transform: translateY(-50vh) translateX(18px)  rotate(4deg);  opacity: 0.85; }
+  92%  { opacity: 0.6; }
+  100% { transform: translateY(-105vh) translateX(-10px) rotate(-3deg); opacity: 0;   }
+}
+
 /* ── Scrollbar ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
