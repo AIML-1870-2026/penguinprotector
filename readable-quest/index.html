@@ -127,6 +127,18 @@
         <button class="harmony-btn" data-harmony="tetradic">Tetradic</button>
       </div>
 
+      <!-- Temperature Shift -->
+      <div class="temp-shift-row" id="temp-shift-row">
+        <label class="rd-ctrl-title" for="temp-shift-slider">Temperature Shift</label>
+        <div class="temp-shift-controls">
+          <span class="temp-shift-label temp-shift-cool">Cool</span>
+          <input type="range" id="temp-shift-slider" class="slider" min="-60" max="60" value="0" step="1">
+          <span class="temp-shift-label temp-shift-warm">Warm</span>
+          <span id="temp-shift-val" class="temp-shift-val">0°</span>
+          <button id="temp-shift-reset" class="action-btn" title="Reset shift">↺</button>
+        </div>
+      </div>
+
       <!-- Palette Actions -->
       <div class="palette-actions">
         <button id="randomize-btn" class="action-btn">⟳ Randomize</button>
@@ -180,6 +192,21 @@
         <h3 class="section-subtitle">Pinned Palettes</h3>
         <div id="pinned-container" class="pinned-container"></div>
       </div>
+
+      <!-- Fix My Palette -->
+      <details id="fix-palette-panel" class="recipe-panel">
+        <summary>Fix My Palette</summary>
+        <div class="fix-palette-content">
+          <p class="fix-palette-hint">Add up to 6 colors and check WCAG contrast between all pairs.</p>
+          <div class="fix-palette-inputs" id="fix-palette-inputs"></div>
+          <div class="fix-palette-toolbar">
+            <button id="fix-palette-add-btn" class="action-btn">+ Add Color</button>
+            <button id="fix-palette-analyze-btn" class="action-btn">Analyze</button>
+            <button id="fix-palette-clear-btn" class="action-btn">Clear</button>
+          </div>
+          <div id="fix-palette-results" class="fix-palette-results hidden"></div>
+        </div>
+      </details>
 
       <!-- Accessibility Section -->
       <div class="accessibility-section">
@@ -241,6 +268,7 @@
               <button id="rd-swap-btn" class="action-btn" title="Swap background and text colors">⇄ Swap</button>
               <button id="rd-auto-btn" class="action-btn" title="Auto-adjust text for WCAG AA (4.5:1)">✓ Auto AA</button>
               <button id="rd-auto-aaa-btn" class="action-btn" title="Auto-adjust text for WCAG AAA (7:1)">✓ Auto AAA</button>
+              <button id="rd-custom-text-btn" class="action-btn" title="Toggle custom text input">✏ Custom Text</button>
             </div>
           </div>
           <button id="rd-presets-btn" class="action-btn">🎨 Preset Schemes</button>
@@ -301,6 +329,14 @@
             <div class="slider-row">
               <input type="range" id="rd-font-size" class="slider" min="12" max="40" value="18" style="flex:1">
               <span id="rd-font-size-v" class="rd-font-size-val">18px</span>
+            </div>
+
+            <h4 class="rd-ctrl-title" style="margin-top:0.75rem">Font Family</h4>
+            <div class="rd-font-btns" id="rd-font-btns">
+              <button class="rd-font-btn active" data-font="system-ui,-apple-system,sans-serif" data-label="Sans">Sans</button>
+              <button class="rd-font-btn" data-font="Georgia,'Times New Roman',serif" data-label="Serif">Serif</button>
+              <button class="rd-font-btn" data-font="'Courier New',Courier,monospace" data-label="Mono">Mono</button>
+              <button class="rd-font-btn" data-font="cursive" data-label="Cursive">Cursive</button>
             </div>
 
             <h4 class="rd-ctrl-title" style="margin-top:0.75rem">Vision Type</h4>

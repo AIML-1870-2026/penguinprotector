@@ -110,10 +110,45 @@ class PalettePanel {
       colorState.accessibleBg = e.target.value;
       if (colorState.accessibleMode) this.generate(colorState.h, colorState.s, colorState.l);
     });
+
+    // Temperature Shift Slider
+    const tempShiftSlider = document.getElementById('temp-shift-slider');
+    const tempShiftVal    = document.getElementById('temp-shift-val');
+    const tempShiftReset  = document.getElementById('temp-shift-reset');
+
+    const resetTempShift = () => {
+      colorState.tempShift = 0;
+      tempShiftSlider.value = 0;
+      tempShiftVal.textContent = '0°';
+      this.generate(colorState.h, colorState.s, colorState.l);
+      showToast('Temperature reset');
+    };
+
+    if (tempShiftSlider) {
+      tempShiftSlider.addEventListener('input', () => {
+        const shift = parseInt(tempShiftSlider.value);
+        colorState.tempShift = shift;
+        tempShiftVal.textContent = (shift >= 0 ? '+' : '') + shift + '°';
+        this.generate(colorState.h, colorState.s, colorState.l);
+      });
+      tempShiftSlider.addEventListener('dblclick', resetTempShift);
+    }
+    if (tempShiftReset) tempShiftReset.addEventListener('click', resetTempShift);
+
+    // Fix My Palette
+    initFixMyPalette();
+  }
+
+  applyTempShift(palette, shift) {
+    return palette.map(c => colorFromHsl(c.h + shift, c.s, c.l));
   }
 
   generate(h, s, l) {
     let palette = generateHarmony(h, s, l, colorState.harmony);
+
+    if (colorState.tempShift !== 0) {
+      palette = this.applyTempShift(palette, colorState.tempShift);
+    }
 
     if (colorState.accessibleMode) {
       palette = this.makeAccessible(palette, colorState.accessibleBg);
@@ -388,4 +423,228 @@ class PalettePanel {
     if (window.mainSetColor) mainSetColor(rgb.r, rgb.g, rgb.b);
     else this.generate(h, s, l);
   }
+}
+
+// ── Fix My Palette ─────────────────────────────────────────────
+let fixColors = [];
+
+function initFixMyPalette() {
+  const addBtn     = document.getElementById('fix-palette-add-btn');
+  const analyzeBtn = document.getElementById('fix-palette-analyze-btn');
+  const clearBtn   = document.getElementById('fix-palette-clear-btn');
+  if (!addBtn) return;
+
+  addFixColorRow('#040D1E');
+  addFixColorRow('#C8E8FF');
+
+  addBtn.addEventListener('click', () => {
+    if (fixColors.length >= 6) { showToast('Maximum 6 colors'); return; }
+    addFixColorRow('#888888');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    fixColors = [];
+    document.getElementById('fix-palette-inputs').innerHTML = '';
+    const resultsEl = document.getElementById('fix-palette-results');
+    resultsEl.innerHTML = '';
+    resultsEl.classList.add('hidden');
+    addFixColorRow('#040D1E');
+    addFixColorRow('#C8E8FF');
+  });
+
+  analyzeBtn.addEventListener('click', runFixAnalysis);
+}
+
+function addFixColorRow(defaultHex) {
+  if (fixColors.length >= 6) return;
+  const idx = fixColors.length;
+  fixColors.push(defaultHex);
+
+  const inputsEl = document.getElementById('fix-palette-inputs');
+  const row = document.createElement('div');
+  row.className = 'fix-color-row';
+  row.dataset.idx = idx;
+
+  const swatch = document.createElement('div');
+  swatch.className = 'fix-color-swatch';
+  swatch.style.background = defaultHex;
+
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.className = 'fix-color-picker';
+  picker.value = defaultHex.toLowerCase();
+
+  const hexIn = document.createElement('input');
+  hexIn.type = 'text';
+  hexIn.className = 'rd-hex-input';
+  hexIn.value = defaultHex.toUpperCase();
+  hexIn.maxLength = 7;
+  hexIn.spellcheck = false;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'fix-color-remove';
+  removeBtn.textContent = '✕';
+  removeBtn.title = 'Remove color';
+
+  picker.addEventListener('input', () => {
+    const i = parseInt(row.dataset.idx);
+    fixColors[i] = picker.value;
+    swatch.style.background = picker.value;
+    hexIn.value = picker.value.toUpperCase();
+  });
+
+  hexIn.addEventListener('input', () => {
+    const parsed = parseFixHex(hexIn.value);
+    if (parsed) {
+      const i = parseInt(row.dataset.idx);
+      fixColors[i] = parsed;
+      swatch.style.background = parsed;
+      picker.value = parsed;
+    }
+  });
+
+  hexIn.addEventListener('blur', () => {
+    const parsed = parseFixHex(hexIn.value);
+    const i = parseInt(row.dataset.idx);
+    hexIn.value = (parsed || fixColors[i]).toUpperCase();
+  });
+
+  removeBtn.addEventListener('click', () => {
+    const i = parseInt(row.dataset.idx);
+    fixColors.splice(i, 1);
+    row.remove();
+    document.querySelectorAll('.fix-color-row').forEach((r, newIdx) => { r.dataset.idx = newIdx; });
+    const resultsEl = document.getElementById('fix-palette-results');
+    resultsEl.innerHTML = '';
+    resultsEl.classList.add('hidden');
+  });
+
+  row.appendChild(swatch);
+  row.appendChild(picker);
+  row.appendChild(hexIn);
+  row.appendChild(removeBtn);
+  inputsEl.appendChild(row);
+}
+
+function parseFixHex(val) {
+  val = val.trim().replace(/^#/, '');
+  if (val.length === 3) val = val[0]+val[0]+val[1]+val[1]+val[2]+val[2];
+  if (!/^[0-9a-fA-F]{6}$/.test(val)) return null;
+  return '#' + val.toLowerCase();
+}
+
+function runFixAnalysis() {
+  const resultsEl = document.getElementById('fix-palette-results');
+  if (fixColors.length < 2) { showToast('Add at least 2 colors to analyze'); return; }
+
+  resultsEl.innerHTML = '';
+  resultsEl.classList.remove('hidden');
+
+  const pairs = [];
+  for (let i = 0; i < fixColors.length; i++) {
+    for (let j = i + 1; j < fixColors.length; j++) {
+      const c1 = hexToRgb(fixColors[i]);
+      const c2 = hexToRgb(fixColors[j]);
+      if (!c1 || !c2) continue;
+      const ratio = contrastRatio(c1.r, c1.g, c1.b, c2.r, c2.g, c2.b);
+      pairs.push({ hex1: fixColors[i], c1, hex2: fixColors[j], c2, ratio, idx1: i, idx2: j });
+    }
+  }
+
+  pairs.sort((a, b) => a.ratio - b.ratio);
+
+  const failCount = pairs.filter(p => p.ratio < 4.5).length;
+  const headerEl = document.createElement('div');
+  headerEl.className = 'fix-results-header';
+  headerEl.textContent = `${pairs.length} pair${pairs.length !== 1 ? 's' : ''} · ${failCount} fail AA`;
+  headerEl.style.color = failCount > 0 ? '#ff8888' : '#44dd99';
+  resultsEl.appendChild(headerEl);
+
+  pairs.forEach(pair => {
+    const passAA  = pair.ratio >= 4.5;
+    const passAAA = pair.ratio >= 7;
+
+    const pairEl = document.createElement('div');
+    pairEl.className = 'fix-pair-row' + (passAA ? '' : ' fix-pair-fail');
+
+    const sw1 = document.createElement('div');
+    sw1.className = 'fix-pair-swatch';
+    sw1.style.background = pair.hex1;
+    sw1.title = pair.hex1.toUpperCase();
+
+    const sw2 = document.createElement('div');
+    sw2.className = 'fix-pair-swatch';
+    sw2.style.background = pair.hex2;
+    sw2.title = pair.hex2.toUpperCase();
+
+    const ratioEl = document.createElement('div');
+    ratioEl.className = 'fix-pair-ratio';
+    ratioEl.textContent = pair.ratio.toFixed(2) + ':1';
+
+    const gradeEl = document.createElement('span');
+    gradeEl.className = passAAA ? 'swatch-badge-pass' : passAA ? 'swatch-badge-pass' : 'swatch-badge-fail';
+    gradeEl.textContent = passAAA ? 'AAA' : passAA ? 'AA' : 'Fail';
+
+    pairEl.appendChild(sw1);
+    pairEl.appendChild(sw2);
+    pairEl.appendChild(ratioEl);
+    pairEl.appendChild(gradeEl);
+
+    if (!passAA) {
+      const fixBtn = document.createElement('button');
+      fixBtn.className = 'action-btn fix-pair-fix-btn';
+      fixBtn.textContent = 'Fix';
+      fixBtn.title = 'Auto-adjust to reach WCAG AA (4.5:1)';
+      fixBtn.addEventListener('click', () => fixPair(pair.idx1, pair.idx2, pair.c1, pair.c2));
+      pairEl.appendChild(fixBtn);
+    }
+
+    resultsEl.appendChild(pairEl);
+  });
+}
+
+function fixPair(idx1, idx2, c1, c2) {
+  const lum1 = relativeLuminance(c1.r, c1.g, c1.b);
+  const lum2 = relativeLuminance(c2.r, c2.g, c2.b);
+
+  // Adjust the lighter color (push further toward white to increase contrast)
+  const adjustIdx = lum1 >= lum2 ? idx1 : idx2;
+  const adjustC   = lum1 >= lum2 ? c1 : c2;
+  const otherLum  = Math.min(lum1, lum2);
+
+  const { h, s } = rgbToHsl(adjustC.r, adjustC.g, adjustC.b);
+
+  const trySweep = (startL, step, maxSteps) => {
+    for (let i = 0; i <= maxSteps; i++) {
+      const l = Math.max(2, Math.min(98, startL + i * step));
+      const rgb = hslToRgb(h, s, l);
+      const adjLum = relativeLuminance(rgb.r, rgb.g, rgb.b);
+      const hi = Math.max(adjLum, otherLum), lo = Math.min(adjLum, otherLum);
+      if ((hi + 0.05) / (lo + 0.05) >= 4.5) return rgbToHex(rgb.r, rgb.g, rgb.b);
+    }
+    return null;
+  };
+
+  const { l: startL } = rgbToHsl(adjustC.r, adjustC.g, adjustC.b);
+  const fixed = trySweep(startL, 1, 95) || trySweep(startL, -1, 95);
+
+  if (fixed) {
+    fixColors[adjustIdx] = fixed;
+    updateFixColorRow(adjustIdx, fixed);
+    showToast('Fixed! Re-analyzing…');
+    runFixAnalysis();
+  } else {
+    showToast('Could not fix automatically');
+  }
+}
+
+function updateFixColorRow(idx, newHex) {
+  const row = document.querySelector(`.fix-color-row[data-idx="${idx}"]`);
+  if (!row) return;
+  const swatch = row.querySelector('.fix-color-swatch');
+  const picker = row.querySelector('.fix-color-picker');
+  const hexIn  = row.querySelector('.rd-hex-input');
+  if (swatch) swatch.style.background = newHex;
+  if (picker) picker.value = newHex.toLowerCase();
+  if (hexIn)  hexIn.value  = newHex.toUpperCase();
 }

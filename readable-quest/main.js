@@ -9,6 +9,7 @@ const colorState = {
   harmony: 'complementary',
   accessibleMode: false,
   accessibleBg: '#0f0f14',
+  tempShift: 0,
 };
 
 // ── Toast ─────────────────────────────────────────────────────
@@ -251,6 +252,7 @@ const rdState = {
   txtR: 200, txtG: 232, txtB: 255,
   fontSize: 18,
   vision: 'normal',
+  fontFamily: 'system-ui,-apple-system,sans-serif',
 };
 
 function toHex(r, g, b) {
@@ -478,6 +480,7 @@ function updateReadableDisplay() {
   display.style.background = toHex(vBgR, vBgG, vBgB);
   display.style.color       = toHex(vTxtR, vTxtG, vTxtB);
   display.style.fontSize    = fontSize + 'px';
+  display.style.fontFamily  = rdState.fontFamily;
 
   document.getElementById('rd-bg-swatch').style.background  = toHex(bgR,  bgG,  bgB);
   document.getElementById('rd-txt-swatch').style.background = toHex(txtR, txtG, txtB);
@@ -522,6 +525,26 @@ function openSchemesPopup() {
 function closeSchemesPopup() {
   const el = document.getElementById('schemes-popup-overlay');
   if (el) el.style.display = 'none';
+}
+
+// ── Custom Text Toggle ────────────────────────────────────────
+let rdCustomTextMode = false;
+let rdOriginalHTML = '';
+
+function enableCustomText() {
+  const display = document.getElementById('rd-display');
+  if (!rdOriginalHTML) rdOriginalHTML = display.innerHTML;
+  display.innerHTML = `<div id="rd-custom-textarea" contenteditable="true" spellcheck="false" aria-label="Custom text input">Type your text here…</div>`;
+  rdCustomTextMode = true;
+  document.getElementById('rd-custom-text-btn').classList.add('active');
+  showToast('Custom text mode on');
+}
+
+function disableCustomText() {
+  document.getElementById('rd-display').innerHTML = rdOriginalHTML;
+  rdCustomTextMode = false;
+  document.getElementById('rd-custom-text-btn').classList.remove('active');
+  showToast('Restored jellyfish text');
 }
 
 function initReadablePanel() {
@@ -608,6 +631,22 @@ function initReadablePanel() {
   document.getElementById('rd-swap-btn')    ?.addEventListener('click', swapRdColors);
   document.getElementById('rd-auto-btn')    ?.addEventListener('click', () => autoContrastText(4.5));
   document.getElementById('rd-auto-aaa-btn')?.addEventListener('click', () => autoContrastText(7));
+
+  // Custom Text Toggle
+  document.getElementById('rd-custom-text-btn')?.addEventListener('click', () => {
+    rdCustomTextMode ? disableCustomText() : enableCustomText();
+  });
+
+  // Font Family Picker
+  document.querySelectorAll('.rd-font-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rdState.fontFamily = btn.dataset.font;
+      document.querySelectorAll('.rd-font-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateReadableDisplay();
+      showToast('Font: ' + btn.dataset.label);
+    });
+  });
 
   updateReadableDisplay();
 }

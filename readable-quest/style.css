@@ -1276,3 +1276,120 @@ canvas { display: block; }
   .panel { padding: 1rem; }
   .harmony-btn { padding: 0.3rem 0.55rem; font-size: 0.72rem; }
 }
+
+/* ── Font Family Picker ──────────────────────────────────────── */
+.rd-font-btns { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.rd-font-btn {
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--panel-alt);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.rd-font-btn:hover { border-color: var(--text-muted); color: var(--text); }
+.rd-font-btn.active, .action-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Custom Text Textarea ────────────────────────────────────── */
+#rd-custom-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+  cursor: text;
+  outline: none;
+}
+
+/* ── Temperature Shift Row ───────────────────────────────────── */
+.temp-shift-row { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
+.temp-shift-controls { display: flex; align-items: center; gap: 0.5rem; }
+.temp-shift-label { font-size: 0.7rem; font-weight: 600; flex-shrink: 0; }
+.temp-shift-cool { color: #66aaff; }
+.temp-shift-warm { color: #ff8844; }
+.temp-shift-val {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: monospace;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Fix My Palette ──────────────────────────────────────────── */
+.fix-palette-content {
+  padding: 0.75rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.fix-palette-hint { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+.fix-palette-inputs { display: flex; flex-direction: column; gap: 0.45rem; }
+.fix-color-row { display: flex; align-items: center; gap: 0.5rem; }
+.fix-color-swatch {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.fix-color-picker {
+  width: 32px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+.fix-color-remove {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  margin-left: auto;
+}
+.fix-color-remove:hover { color: #ff6666; background: rgba(255,80,80,0.1); }
+.fix-palette-toolbar { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.fix-palette-results { display: flex; flex-direction: column; gap: 0.4rem; }
+.fix-palette-results.hidden { display: none; }
+.fix-results-header {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.2rem;
+}
+.fix-pair-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--panel-alt);
+  font-size: 0.78rem;
+}
+.fix-pair-fail { border-color: rgba(255,80,80,0.45); background: rgba(255,80,80,0.06); }
+.fix-pair-swatch { width: 24px; height: 24px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+.fix-pair-ratio { font-family: monospace; font-weight: 700; color: var(--text); min-width: 52px; }
+.fix-pair-fix-btn {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-color: rgba(255,80,80,0.5);
+  color: #ff8888;
+}
+.fix-pair-fix-btn:hover { background: rgba(255,80,80,0.2); border-color: rgba(255,80,80,0.8); color: #ff5555; }
