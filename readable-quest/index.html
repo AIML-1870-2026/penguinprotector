@@ -11,14 +11,14 @@
   <header class="app-header">
     <h1 class="app-title">🪼 Readable Quest</h1>
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="both">Both</button>
+      <button class="tab-btn" data-tab="both">Both</button>
       <button class="tab-btn" data-tab="explorer">Explorer</button>
       <button class="tab-btn" data-tab="palette">Palette</button>
-      <button class="tab-btn" data-tab="readable">Readable</button>
+      <button class="tab-btn active" data-tab="readable">Readable</button>
     </nav>
   </header>
 
-  <main id="main-panels" class="dual-panel">
+  <main id="main-panels" class="dual-panel tab-readable">
 
     <!-- ═══════════════════════════════════════════ -->
     <!-- EXPLORER PANEL                              -->
@@ -232,6 +232,19 @@
           <p>What does it mean to perceive the world without a central nervous system? The jellyfish senses light, gravity, and chemical signals through a distributed network of nerves — awareness without a center, sensation without a self. Perhaps consciousness is not a single room, but an ocean — and we have only ever glimpsed the surface.</p>
         </div>
 
+        <!-- Preset Schemes + Actions -->
+        <div class="rd-schemes-wrap">
+          <div class="rd-schemes-header">
+            <h4 class="rd-ctrl-title">Color Schemes</h4>
+            <div class="rd-action-row">
+              <button id="rd-swap-btn" class="action-btn" title="Swap background and text colors">⇄ Swap</button>
+              <button id="rd-auto-btn" class="action-btn" title="Auto-adjust text for WCAG AA (4.5:1)">✓ Auto AA</button>
+              <button id="rd-auto-aaa-btn" class="action-btn" title="Auto-adjust text for WCAG AAA (7:1)">✓ Auto AAA</button>
+            </div>
+          </div>
+          <div class="rd-schemes-row" id="rd-schemes-row"></div>
+        </div>
+
         <!-- Controls -->
         <div class="readable-controls">
 
@@ -298,6 +311,18 @@
               <label><input type="radio" name="rd-vision" value="monochromacy"> Monochromacy</label>
             </div>
           </div>
+        </div>
+
+        <!-- Text Color Suggestions (harmony-based) -->
+        <div class="rd-suggestions-wrap">
+          <h4 class="rd-ctrl-title">Text Color Suggestions <span class="rd-suggestions-hint">based on background harmony</span></h4>
+          <div class="rd-suggestions-row" id="rd-suggestions-row"></div>
+        </div>
+
+        <!-- Vision Comparison -->
+        <div class="vision-comparison">
+          <h4 class="rd-ctrl-title">Vision Comparison</h4>
+          <div class="vision-grid" id="rd-vision-grid"></div>
         </div>
 
         <!-- Stats -->

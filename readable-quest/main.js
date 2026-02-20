@@ -257,6 +257,211 @@ function toHex(r, g, b) {
   return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
 }
 
+// ── Preset Schemes ────────────────────────────────────────────
+const RD_SCHEMES = [
+  { name: 'Ocean',     bgR: 4,   bgG: 13,  bgB: 30,  txtR: 200, txtG: 232, txtB: 255 },
+  { name: 'Jelly',    bgR: 10,  bgG: 5,   bgB: 32,  txtR: 0,   txtG: 229, txtB: 255 },
+  { name: 'Night',    bgR: 18,  bgG: 18,  bgB: 18,  txtR: 220, txtG: 220, txtB: 220 },
+  { name: 'Paper',    bgR: 255, bgG: 252, bgB: 245, txtR: 30,  txtG: 30,  txtB: 30  },
+  { name: 'Sepia',    bgR: 244, bgG: 236, bgB: 216, txtR: 91,  txtG: 70,  txtB: 54  },
+  { name: 'Forest',   bgR: 20,  bgG: 40,  bgB: 20,  txtR: 180, txtG: 230, txtB: 180 },
+  { name: 'Sunset',   bgR: 45,  bgG: 27,  bgB: 14,  txtR: 255, txtG: 204, txtB: 153 },
+  { name: 'Slate',    bgR: 30,  bgG: 39,  bgB: 48,  txtR: 184, txtG: 208, txtB: 232 },
+  { name: 'Hi-Con',   bgR: 0,   bgG: 0,   bgB: 0,   txtR: 255, txtG: 255, txtB: 0   },
+  { name: 'Candy',    bgR: 255, bgG: 240, bgB: 245, txtR: 140, txtG: 0,   txtB: 80  },
+];
+
+function syncRdSliders(prefix, r, g, b) {
+  [['r', r], ['g', g], ['b', b]].forEach(([ch, val]) => {
+    const el  = document.getElementById(`rd-${prefix}-${ch}`);
+    const vEl = document.getElementById(`rd-${prefix}-${ch}v`);
+    if (el)  el.value = val;
+    if (vEl) vEl.textContent = val;
+  });
+}
+
+function applyRdScheme(scheme) {
+  Object.assign(rdState, {
+    bgR: scheme.bgR, bgG: scheme.bgG, bgB: scheme.bgB,
+    txtR: scheme.txtR, txtG: scheme.txtG, txtB: scheme.txtB,
+  });
+  syncRdSliders('bg',  rdState.bgR,  rdState.bgG,  rdState.bgB);
+  syncRdSliders('txt', rdState.txtR, rdState.txtG, rdState.txtB);
+  updateReadableDisplay();
+  showToast(`Scheme: ${scheme.name}`);
+}
+
+function renderSchemeCards() {
+  const row = document.getElementById('rd-schemes-row');
+  if (!row) return;
+  row.innerHTML = '';
+  RD_SCHEMES.forEach(scheme => {
+    const card = document.createElement('div');
+    card.className = 'rd-scheme-card';
+
+    const preview = document.createElement('div');
+    preview.className = 'rd-scheme-preview';
+    preview.style.background = toHex(scheme.bgR, scheme.bgG, scheme.bgB);
+    preview.style.color       = toHex(scheme.txtR, scheme.txtG, scheme.txtB);
+    preview.textContent = 'Aa';
+
+    const name = document.createElement('div');
+    name.className = 'rd-scheme-name';
+    name.textContent = scheme.name;
+
+    card.appendChild(preview);
+    card.appendChild(name);
+    card.addEventListener('click', () => applyRdScheme(scheme));
+    row.appendChild(card);
+  });
+}
+
+// ── Swap + Auto-contrast ──────────────────────────────────────
+function swapRdColors() {
+  [rdState.bgR, rdState.txtR] = [rdState.txtR, rdState.bgR];
+  [rdState.bgG, rdState.txtG] = [rdState.txtG, rdState.bgG];
+  [rdState.bgB, rdState.txtB] = [rdState.txtB, rdState.bgB];
+  syncRdSliders('bg',  rdState.bgR,  rdState.bgG,  rdState.bgB);
+  syncRdSliders('txt', rdState.txtR, rdState.txtG, rdState.txtB);
+  updateReadableDisplay();
+  showToast('Colors swapped');
+}
+
+function autoContrastText(targetRatio) {
+  const { bgR, bgG, bgB, txtR, txtG, txtB } = rdState;
+  const bgLum = rdLuminance(bgR, bgG, bgB);
+
+  // Preserve hue & saturation of current text, sweep lightness
+  const { h, s } = rgbToHsl(txtR, txtG, txtB);
+  const goLighter = bgLum < 0.18;
+
+  let found = false;
+  for (let i = 0; i <= 100; i++) {
+    const l = goLighter ? Math.min(98, 50 + i * 0.48) : Math.max(2, 50 - i * 0.48);
+    const rgb = hslToRgb(h, Math.max(s, 20), l);
+    const txtLum = rdLuminance(rgb.r, rgb.g, rgb.b);
+    const hi = Math.max(bgLum, txtLum), lo = Math.min(bgLum, txtLum);
+    if ((hi + 0.05) / (lo + 0.05) >= targetRatio) {
+      rdState.txtR = rgb.r; rdState.txtG = rgb.g; rdState.txtB = rgb.b;
+      syncRdSliders('txt', rgb.r, rgb.g, rgb.b);
+      found = true;
+      break;
+    }
+  }
+  updateReadableDisplay();
+  showToast(found ? `Auto-contrast: ${targetRatio >= 7 ? 'AAA' : 'AA'} achieved` : 'Could not reach target — try a different hue');
+}
+
+// ── Text Color Suggestions (palette harmony logic) ────────────
+function updateTextSuggestions() {
+  const row = document.getElementById('rd-suggestions-row');
+  if (!row) return;
+  const { bgR, bgG, bgB, txtR, txtG, txtB } = rdState;
+  const bgLum = rdLuminance(bgR, bgG, bgB);
+  const { h, s } = rgbToHsl(bgR, bgG, bgB);
+
+  // Harmony-based + practical candidates (palette algorithms applied to readability)
+  const goLight = bgLum < 0.18;
+  const lBase   = goLight ? 85 : 15;
+  const lAlt    = goLight ? 92 : 8;
+  const sSug    = Math.min(90, Math.max(s, 50));
+
+  const candidates = [
+    { label: 'White',       ...(() => { const rgb = { r: 255, g: 255, b: 255 }; return rgb; })() },
+    { label: 'Black',       r: 0,   g: 0,   b: 0   },
+    { label: 'Complement',  ...hslToRgb((h + 180) % 360, sSug, lBase) },
+    { label: 'Split +150',  ...hslToRgb((h + 150) % 360, sSug, lBase) },
+    { label: 'Split −150',  ...hslToRgb((h + 210) % 360, sSug, lBase) },
+    { label: 'Triadic',     ...hslToRgb((h + 120) % 360, sSug, lBase) },
+    { label: 'Analogous',   ...hslToRgb((h + 30)  % 360, sSug, lAlt)  },
+    { label: 'Current hue', ...hslToRgb(h,               sSug, lBase) },
+  ];
+
+  const currentTxtHex = toHex(txtR, txtG, txtB);
+
+  row.innerHTML = '';
+  candidates.forEach(({ label, r, g, b }) => {
+    const hex    = toHex(r, g, b);
+    const txtLum = rdLuminance(r, g, b);
+    const hi     = Math.max(bgLum, txtLum), lo = Math.min(bgLum, txtLum);
+    const ratio  = (hi + 0.05) / (lo + 0.05);
+    const grade  = ratio >= 7 ? 'AAA' : ratio >= 4.5 ? 'AA' : ratio >= 3 ? '~AA' : '✕';
+    const gradeColor = ratio >= 7 ? '#00ff9d' : ratio >= 4.5 ? '#44ddaa' : ratio >= 3 ? '#ffcc44' : '#ff5566';
+    const isActive = hex === currentTxtHex;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'rd-suggestion' + (isActive ? ' active' : '');
+    wrap.title = `${label}: ${ratio.toFixed(1)}:1 ${grade}`;
+
+    const dot = document.createElement('div');
+    dot.className = 'rd-suggestion-dot';
+    dot.style.background = hex;
+
+    const ratioEl = document.createElement('div');
+    ratioEl.className = 'rd-suggestion-ratio';
+    ratioEl.textContent = ratio.toFixed(1);
+    ratioEl.style.color = gradeColor;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rd-suggestion-label';
+    labelEl.textContent = label;
+
+    wrap.appendChild(dot);
+    wrap.appendChild(ratioEl);
+    wrap.appendChild(labelEl);
+
+    wrap.addEventListener('click', () => {
+      rdState.txtR = r; rdState.txtG = g; rdState.txtB = b;
+      syncRdSliders('txt', r, g, b);
+      updateReadableDisplay();
+      showToast(`Text: ${label} (${ratio.toFixed(1)}:1)`);
+    });
+
+    row.appendChild(wrap);
+  });
+}
+
+const VISION_LABELS = {
+  normal: 'Normal', protanopia: 'Protanopia',
+  deuteranopia: 'Deuteranopia', tritanopia: 'Tritanopia', monochromacy: 'Monochromacy',
+};
+
+function updateVisionGrid() {
+  const grid = document.getElementById('rd-vision-grid');
+  if (!grid) return;
+  const { bgR, bgG, bgB, txtR, txtG, txtB } = rdState;
+
+  grid.innerHTML = '';
+  Object.keys(VISION_LABELS).forEach(type => {
+    const [vBgR,  vBgG,  vBgB]  = applyVision(bgR,  bgG,  bgB,  type);
+    const [vTxtR, vTxtG, vTxtB] = applyVision(txtR, txtG, txtB, type);
+
+    const card = document.createElement('div');
+    card.className = 'vision-card' + (rdState.vision === type ? ' active' : '');
+
+    const preview = document.createElement('div');
+    preview.className = 'vision-card-preview';
+    preview.style.background = toHex(vBgR, vBgG, vBgB);
+    preview.style.color      = toHex(vTxtR, vTxtG, vTxtB);
+    preview.innerHTML = `<span class="vision-card-big">Aa</span><span class="vision-card-small">jellyfish</span>`;
+
+    const label = document.createElement('div');
+    label.className = 'vision-card-label';
+    label.textContent = VISION_LABELS[type];
+
+    card.appendChild(preview);
+    card.appendChild(label);
+    card.addEventListener('click', () => {
+      rdState.vision = type;
+      const radio = document.querySelector(`input[name="rd-vision"][value="${type}"]`);
+      if (radio) radio.checked = true;
+      updateReadableDisplay();
+    });
+
+    grid.appendChild(card);
+  });
+}
+
 function updateReadableDisplay() {
   const { bgR, bgG, bgB, txtR, txtG, txtB, fontSize, vision } = rdState;
 
@@ -291,6 +496,9 @@ function updateReadableDisplay() {
   const wcagEl = document.getElementById('rd-wcag');
   wcagEl.textContent = grade;
   wcagEl.style.color = gradeColor;
+
+  updateVisionGrid();
+  updateTextSuggestions();
 }
 
 function initReadablePanel() {
@@ -327,6 +535,14 @@ function initReadablePanel() {
       updateReadableDisplay();
     });
   });
+
+  // Scheme cards
+  renderSchemeCards();
+
+  // Swap + Auto-contrast buttons
+  document.getElementById('rd-swap-btn')    ?.addEventListener('click', swapRdColors);
+  document.getElementById('rd-auto-btn')    ?.addEventListener('click', () => autoContrastText(4.5));
+  document.getElementById('rd-auto-aaa-btn')?.addEventListener('click', () => autoContrastText(7));
 
   updateReadableDisplay();
 }

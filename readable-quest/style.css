@@ -896,15 +896,192 @@ canvas { display: block; }
   color: var(--text);
 }
 
+/* ── Preset Schemes ──────────────────────────────────────────── */
+.rd-schemes-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.rd-schemes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rd-action-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.rd-schemes-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.rd-scheme-card {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.rd-scheme-card:hover {
+  border-color: var(--text-muted);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.rd-scheme-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.rd-scheme-preview {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.rd-scheme-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-left: 1px solid var(--border);
+}
+
+/* ── Text Color Suggestions ──────────────────────────────────── */
+.rd-suggestions-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.rd-suggestions-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 0.4rem;
+}
+.rd-suggestions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.rd-suggestion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.rd-suggestion-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.rd-suggestion:hover .rd-suggestion-dot {
+  transform: scale(1.2);
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 0 0 8px rgba(255,255,255,0.15);
+}
+.rd-suggestion.active .rd-suggestion-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.rd-suggestion-ratio {
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.rd-suggestion-label {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Vision Comparison Grid ──────────────────────────────────── */
+.vision-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.vision-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.6rem;
+}
+.vision-card {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--border);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.vision-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--text-muted);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.vision-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 14px rgba(0,212,255,0.2);
+}
+.vision-card-preview {
+  padding: 0.85rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 70px;
+  transition: background 0.3s, color 0.3s;
+}
+.vision-card-big {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.vision-card-small {
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+.vision-card-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.3rem 0.25rem;
+  background: var(--panel);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--border);
+}
+.vision-card.active .vision-card-label { color: var(--accent); }
+
 /* Readable panel responsive */
 @media (max-width: 900px) {
   .readable-controls { grid-template-columns: 1fr 1fr; }
   .readable-stats    { grid-template-columns: repeat(2, 1fr); }
+  .vision-grid       { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 600px) {
   .readable-controls { grid-template-columns: 1fr; }
   .readable-stats    { grid-template-columns: repeat(2, 1fr); }
   .readable-display  { padding: 1.25rem; }
+  .vision-grid       { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────── */
