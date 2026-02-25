@@ -199,6 +199,82 @@ function sfxSlotJackpot() {
 }
 function sfxSlotNoWin()   { [420,320,240].forEach((f,i) => setTimeout(() => playTone(f, 0.14, 'sawtooth', 0.08), i*120)); }
 
+// ─── JAZZ MUSIC ───────────────────────────────────────────────
+let jazzPlaying = false;
+let jazzTimers  = [];
+
+function jazzClearTimers() { jazzTimers.forEach(clearTimeout); jazzTimers = []; }
+
+function jazzStop() { jazzPlaying = false; jazzClearTimers(); }
+
+function jazzNote(freq, delayMs, dur, gain = 0.07, type = 'triangle') {
+  const t = setTimeout(() => {
+    if (!jazzPlaying || state.muted) return;
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.type = type; osc.frequency.value = freq;
+      const now = ctx.currentTime;
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(gain, now + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.start(now); osc.stop(now + dur + 0.05);
+    } catch(e) {}
+  }, delayMs);
+  jazzTimers.push(t);
+}
+
+// Swinging I–V jazz loop in C major @ 168 BPM
+const J_Q   = Math.round(60000 / 168);                 // quarter note ≈ 357ms
+const J_BAR = J_Q * 4;                                 // ≈ 1428ms
+const J_E1  = Math.round(J_Q * 0.67);                  // long swung 8th ≈ 239ms
+const J_POS = [0, J_E1, J_Q, J_Q+J_E1, J_Q*2, J_Q*2+J_E1, J_Q*3, J_Q*3+J_E1];
+
+function jazzScheduleBar() {
+  if (!jazzPlaying) return;
+  const P = J_POS;
+
+  // ── Cmaj7 (beats 1–2) ──────────────────────────────────
+  // Bass walk: C3 E3 G3 A3
+  jazzNote(130.81, P[0], 0.34, 0.13);
+  jazzNote(164.81, P[1], 0.24, 0.10);
+  jazzNote(196.00, P[2], 0.30, 0.11);
+  jazzNote(220.00, P[3], 0.22, 0.09);
+  // Piano stab on beat 2
+  [261.63, 329.63, 392.00, 493.88].forEach(f => jazzNote(f, P[2], 0.16, 0.026));
+  // Melody: C5 E5 G5 A5
+  jazzNote(523.25, P[0], 0.28, 0.08, 'sine');
+  jazzNote(659.25, P[1], 0.22, 0.07, 'sine');
+  jazzNote(783.99, P[2], 0.28, 0.07, 'sine');
+  jazzNote(880.00, P[3], 0.22, 0.06, 'sine');
+
+  // ── G7 (beats 3–4) ─────────────────────────────────────
+  // Bass walk: G2 B2 D3 F3
+  jazzNote(98.00,  P[4], 0.34, 0.13);
+  jazzNote(123.47, P[5], 0.24, 0.10);
+  jazzNote(146.83, P[6], 0.30, 0.11);
+  jazzNote(174.61, P[7], 0.22, 0.09);
+  // Piano stab on beat 4
+  [196.00, 246.94, 293.66, 349.23].forEach(f => jazzNote(f, P[6], 0.16, 0.026));
+  // Melody: A5 G5 E5 C5
+  jazzNote(880.00, P[4], 0.24, 0.07, 'sine');
+  jazzNote(783.99, P[5], 0.22, 0.06, 'sine');
+  jazzNote(659.25, P[6], 0.28, 0.07, 'sine');
+  jazzNote(523.25, P[7], 0.32, 0.08, 'sine');
+
+  // Loop
+  const t = setTimeout(jazzScheduleBar, J_BAR);
+  jazzTimers.push(t);
+}
+
+function jazzStart() {
+  if (jazzPlaying || state.muted) return;
+  jazzPlaying = true;
+  jazzScheduleBar();
+}
+
 // ─── DOM REFS ─────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
@@ -458,7 +534,7 @@ function showSlotMachine() {
     });
   };
 
-  skipBtn.onclick = () => overlay.classList.add('hidden');
+  skipBtn.onclick = () => { overlay.classList.add('hidden'); jazzStop(); };
 }
 
 function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn, sideBet) {
@@ -496,7 +572,7 @@ function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn, sideBet)
   resultMsg.classList.remove('hidden');
   collectBtn.textContent  = payout > 0 ? `Collect ${fmt(payout)}!` : 'Continue';
   collectBtn.classList.remove('hidden');
-  collectBtn.onclick      = () => $('slot-overlay').classList.add('hidden');
+  collectBtn.onclick      = () => { $('slot-overlay').classList.add('hidden'); jazzStop(); };
 }
 
 // ─── RENDER ───────────────────────────────────────────────────
@@ -667,6 +743,7 @@ function updateDoubleAndSplit() {
 // ─── GAME FLOW ─────────────────────────────────────────────────
 function startRound() {
   if (state.bet === 0) return;
+  jazzStop();
 
   // Reset for new round
   state.deck = shuffle(buildDeck());
@@ -943,8 +1020,8 @@ function showResult(outcome, results) {
     banner.classList.add(results[0].outcome);
   } else {
     switch(outcome) {
-      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); setTimeout(showSlotMachine, 900); break;
-      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); launchChipRain(); setTimeout(showSlotMachine, 900); break;
+      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); break;
+      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); break;
       case 'lose':      label = 'Dealer Wins';   banner.classList.add('lose'); sfxLose(); break;
       case 'push':      label = 'Push — Tie';    banner.classList.add('push'); sfxPush(); break;
     }
@@ -1077,6 +1154,7 @@ document.addEventListener('keydown', e => {
 function toggleMute() {
   state.muted = !state.muted;
   elems.muteBtn.textContent = state.muted ? '🔇' : '🔊';
+  if (state.muted) jazzStop();
 }
 
 // ─── EVENT LISTENERS ─────────────────────────────────────────
