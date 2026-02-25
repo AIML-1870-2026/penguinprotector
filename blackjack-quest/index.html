@@ -65,6 +65,7 @@
 
     <!-- Result Banner -->
     <div class="result-banner hidden" id="result-banner"></div>
+    <div class="play-again-cta hidden" id="play-again-cta">▶ Deal Again (D) to keep playing</div>
 
     <!-- Info Bar -->
     <div class="info-bar">
@@ -145,6 +146,31 @@
       <h2>Busted!</h2>
       <p>You're out of chips. Ready to try again?</p>
       <button class="action-btn primary" id="broke-reset-btn">Reset to $1,000</button>
+    </div>
+  </div>
+
+  <!-- Slot Machine Bonus Overlay -->
+  <div class="slot-overlay hidden" id="slot-overlay">
+    <div class="slot-modal">
+      <div class="slot-header">
+        <div class="slot-title">🎰 Bonus Round!</div>
+        <div class="slot-subtitle">Spinning for bonus chips…</div>
+      </div>
+      <div class="slot-machine">
+        <div class="slot-reel"><div class="reel-symbol" id="reel-0">🎰</div></div>
+        <div class="slot-separator">|</div>
+        <div class="slot-reel"><div class="reel-symbol" id="reel-1">🎰</div></div>
+        <div class="slot-separator">|</div>
+        <div class="slot-reel"><div class="reel-symbol" id="reel-2">🎰</div></div>
+      </div>
+      <div class="slot-paytable">
+        <span>7️⃣7️⃣7️⃣ = 25× JACKPOT</span>
+        <span>💎💎💎 = 12×</span>
+        <span>⭐⭐⭐ = 6×</span>
+        <span>🔔🔔🔔 = 3×</span>
+      </div>
+      <div class="slot-result-msg hidden" id="slot-result-msg"></div>
+      <button class="action-btn primary slot-collect-btn hidden" id="slot-collect-btn">Collect!</button>
     </div>
   </div>
 

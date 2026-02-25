@@ -232,7 +232,170 @@ const elems = {
   closeSettingsBtn: $('close-settings-btn'),
   themeChips:     document.querySelectorAll('.theme-chip'),
   themeBtn:       $('theme-btn'),
+  playAgainCta:   $('play-again-cta'),
 };
+
+// ─── CHIP RAIN ────────────────────────────────────────────────
+const CHIP_RAIN_STYLES = [
+  { bg: '#b8240a', border: '#e74c3c', color: '#fff',     label: '$5'  },
+  { bg: '#1a6b3c', border: '#2ecc71', color: '#fff',     label: '$25' },
+  { bg: '#1a2f6b', border: '#3498db', color: '#fff',     label: '$10' },
+  { bg: '#1a1f3a', border: '#d4af37', color: '#d4af37',  label: '♠'  },
+  { bg: '#7b3a0a', border: '#e67e22', color: '#fff',     label: '$50' },
+  { bg: '#2c1060', border: '#9b59b6', color: '#fff',     label: '$'   },
+];
+
+function launchChipRain() {
+  const container = document.createElement('div');
+  container.className = 'chip-rain-container';
+  document.body.appendChild(container);
+
+  const count = 32;
+  for (let i = 0; i < count; i++) {
+    const chip = document.createElement('div');
+    chip.className = 'chip-falling';
+    const s = CHIP_RAIN_STYLES[Math.floor(Math.random() * CHIP_RAIN_STYLES.length)];
+    const size = 32 + Math.random() * 22;          // 32–54 px
+    const left = Math.random() * 96;               // 0–96 %
+    const dur  = 1.6 + Math.random() * 1.8;        // 1.6–3.4 s
+    const delay = Math.random() * 0.9;             // stagger 0–0.9 s
+    chip.style.cssText = [
+      `left:${left}%`,
+      `width:${size}px`,
+      `height:${size}px`,
+      `background:${s.bg}`,
+      `border-color:${s.border}`,
+      `color:${s.color}`,
+      `font-size:${Math.round(size * 0.28)}px`,
+      `animation-duration:${dur}s`,
+      `animation-delay:${delay}s`,
+    ].join(';');
+    chip.textContent = s.label;
+    container.appendChild(chip);
+  }
+
+  setTimeout(() => container.remove(), 4500);
+}
+
+// ─── SLOT MACHINE ─────────────────────────────────────────────
+const SLOT_SYMS    = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'];
+const SLOT_WEIGHTS = [  5,    4,    3,    2,   1.2,   0.8];  // heavier = more common
+
+const SLOT_PAYOUTS = {
+  '🍒': { two: 0,   three: 1    },
+  '🍋': { two: 0,   three: 1.5  },
+  '🔔': { two: 0.5, three: 3    },
+  '⭐': { two: 1,   three: 6    },
+  '💎': { two: 2,   three: 12   },
+  '7️⃣': { two: 3,   three: 25   },
+};
+
+function slotRandom() {
+  const total = SLOT_WEIGHTS.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < SLOT_SYMS.length; i++) {
+    r -= SLOT_WEIGHTS[i];
+    if (r <= 0) return SLOT_SYMS[i];
+  }
+  return SLOT_SYMS[0];
+}
+
+function animateReel(symEl, finalSym, duration, onDone) {
+  const start = Date.now();
+  symEl.parentElement.classList.add('reel-spinning');
+
+  function tick() {
+    const elapsed = Date.now() - start;
+    if (elapsed >= duration) {
+      symEl.textContent = finalSym;
+      symEl.parentElement.classList.remove('reel-spinning');
+      if (onDone) onDone();
+      return;
+    }
+    const remaining = duration - elapsed;
+    const delay = remaining > 700 ? 55 : remaining > 350 ? 120 : 210;
+    symEl.textContent = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
+    setTimeout(tick, delay);
+  }
+  tick();
+}
+
+function showSlotMachine() {
+  const overlay     = $('slot-overlay');
+  const subtitle    = overlay.querySelector('.slot-subtitle');
+  const resultMsg   = $('slot-result-msg');
+  const collectBtn  = $('slot-collect-btn');
+  const reelEls     = [$('reel-0'), $('reel-1'), $('reel-2')];
+
+  // Reset UI
+  subtitle.textContent = 'Spinning for bonus chips…';
+  resultMsg.className  = 'slot-result-msg hidden';
+  resultMsg.textContent = '';
+  collectBtn.classList.add('hidden');
+  reelEls.forEach(el => {
+    el.textContent = '🎰';
+    el.parentElement.classList.remove('reel-spinning', 'reel-matched', 'reel-matched-jackpot');
+  });
+
+  overlay.classList.remove('hidden');
+
+  // Pre-determine results and auto-spin
+  const results = [slotRandom(), slotRandom(), slotRandom()];
+
+  // Stagger reel stops: 1600ms → 1000ms → 700ms
+  animateReel(reelEls[0], results[0], 1600, () => {
+    animateReel(reelEls[1], results[1], 1000, () => {
+      animateReel(reelEls[2], results[2], 700, () => {
+        resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn);
+      });
+    });
+  });
+
+  collectBtn.onclick = () => overlay.classList.add('hidden');
+}
+
+function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn) {
+  const [a, b, c] = results;
+  let payout = 0, msgClass = 'no-win', msgText = '';
+  const isJackpot = a === '7️⃣' || a === '💎';
+
+  if (a === b && b === c) {
+    payout = Math.round(state.bet * SLOT_PAYOUTS[a].three);
+    const matchClass = (a === '7️⃣' || a === '💎') ? 'reel-matched-jackpot' : 'reel-matched';
+    reelEls.forEach(el => el.parentElement.classList.add(matchClass));
+    if (a === '7️⃣') {
+      msgClass = 'jackpot'; msgText = `💥 JACKPOT! 7️⃣7️⃣7️⃣ — +${fmt(payout)}!`;
+    } else if (a === '💎') {
+      msgClass = 'jackpot'; msgText = `💎 TRIPLE DIAMONDS — +${fmt(payout)}!`;
+    } else {
+      msgClass = 'big-win'; msgText = `${a}${b}${c} — Triple! +${fmt(payout)}!`;
+    }
+    if (payout > 0) launchChipRain();
+  } else if (a === b || b === c || a === c) {
+    const paired = a === b ? a : b === c ? b : a;
+    payout = Math.round(state.bet * SLOT_PAYOUTS[paired].two);
+    const matchIdxs = a === b ? [0,1] : b === c ? [1,2] : [0,2];
+    matchIdxs.forEach(i => reelEls[i].parentElement.classList.add('reel-matched'));
+    if (payout > 0) {
+      msgClass = 'small-win'; msgText = `Pair of ${paired}! +${fmt(payout)}!`;
+    } else {
+      msgText = 'So close — no bonus this time.';
+    }
+  } else {
+    msgText = 'No match. Better luck next round!';
+  }
+
+  state.balance += payout;
+  updateDisplays();
+
+  subtitle.textContent = payout > 0 ? `+${fmt(payout)} added to your balance!` : 'No bonus this time.';
+  resultMsg.className  = `slot-result-msg ${msgClass}`;
+  resultMsg.textContent = msgText;
+  resultMsg.classList.remove('hidden');
+
+  collectBtn.textContent = payout > 0 ? `Collect ${fmt(payout)}!` : 'Continue';
+  collectBtn.classList.remove('hidden');
+}
 
 // ─── RENDER ───────────────────────────────────────────────────
 function renderCard(card) {
@@ -376,6 +539,11 @@ function setPhaseButtons(phase) {
   if (isDone) {
     elems.dealBtn.disabled = false;
     elems.clearBetBtn.disabled = false;
+    elems.dealBtn.classList.add('deal-pulse');
+    elems.playAgainCta.classList.remove('hidden');
+  } else {
+    elems.dealBtn.classList.remove('deal-pulse');
+    elems.playAgainCta.classList.add('hidden');
   }
 
   updateDoubleAndSplit();
@@ -673,8 +841,8 @@ function showResult(outcome, results) {
     banner.classList.add(results[0].outcome);
   } else {
     switch(outcome) {
-      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); break;
-      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); break;
+      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); setTimeout(showSlotMachine, 900); break;
+      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); launchChipRain(); setTimeout(showSlotMachine, 900); break;
       case 'lose':      label = 'Dealer Wins';   banner.classList.add('lose'); sfxLose(); break;
       case 'push':      label = 'Push — Tie';    banner.classList.add('push'); sfxPush(); break;
     }
