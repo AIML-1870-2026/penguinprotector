@@ -1120,7 +1120,7 @@ function dealAgain() {
 }
 
 // ─── THEME ────────────────────────────────────────────────────
-const THEMES = ['theme-classic', 'theme-dark', 'theme-retro'];
+const THEMES = ['theme-classic', 'theme-dark', 'theme-retro', 'theme-neon', 'theme-sunset', 'theme-ice', 'theme-royal'];
 let themeIdx = 0;
 
 function applyTheme(theme) {
