@@ -22,6 +22,7 @@
       <button class="icon-btn" id="mute-btn" title="Mute (M)">&#128266;</button>
       <button class="icon-btn" id="stats-toggle-btn" title="Stats">&#9782;</button>
       <button class="icon-btn" id="settings-btn" title="Settings">&#9881;</button>
+      <button class="icon-btn help-icon-btn" id="help-btn" title="Tutorial / Help">?</button>
     </div>
   </header>
 
@@ -36,6 +37,10 @@
       <label class="setting-row">
         <input type="checkbox" id="count-toggle">
         <span>Hi-Lo Card Count <em>(educational only)</em></span>
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="practice-toggle">
+        <span>Practice Mode <em>(unlimited balance, no slots)</em></span>
       </label>
       <div class="setting-row"><span>Theme</span></div>
       <div class="theme-grid">
@@ -89,6 +94,7 @@
     <div class="result-banner hidden" id="result-banner"></div>
     <div class="play-again-cta hidden" id="play-again-cta">▶ Deal Again (D) to keep playing</div>
     <div class="daily-badge hidden" id="daily-badge">📅 Daily Challenge</div>
+    <div class="practice-badge hidden" id="practice-badge">💡 Practice Mode</div>
 
     <!-- Info Bar -->
     <div class="info-bar">
@@ -254,6 +260,36 @@
       <!-- Post-spin: result -->
       <div class="slot-result-msg hidden" id="slot-result-msg"></div>
       <button class="action-btn primary slot-collect-btn hidden" id="slot-collect-btn">Collect!</button>
+    </div>
+  </div>
+
+  <!-- Welcome Overlay (first visit) -->
+  <div class="welcome-overlay hidden" id="welcome-overlay">
+    <div class="welcome-modal">
+      <div class="welcome-icon">🃏</div>
+      <h2>Welcome to Blackjack Quest!</h2>
+      <p>New to blackjack? Take the quick tutorial to learn the basics — it only takes a minute!</p>
+      <div class="welcome-actions">
+        <button class="action-btn primary" id="welcome-tutorial-btn">Show me the tutorial</button>
+        <button class="action-btn" id="welcome-skip-btn">I know how to play</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tutorial Overlay -->
+  <div class="tutorial-overlay hidden" id="tutorial-overlay">
+    <div class="tutorial-bar">
+      <div class="tutorial-progress">
+        <div class="tutorial-progress-fill" id="tutorial-progress-fill"></div>
+      </div>
+      <div class="tutorial-step-label" id="tutorial-step-label">Step 1 of 10</div>
+      <div class="tutorial-title" id="tutorial-title"></div>
+      <div class="tutorial-text" id="tutorial-text"></div>
+      <div class="tutorial-prompt hidden" id="tutorial-prompt"></div>
+      <div class="tutorial-actions">
+        <button class="action-btn tutorial-skip" id="tutorial-skip-btn">Skip Tutorial</button>
+        <button class="action-btn primary hidden" id="tutorial-next-btn">Next →</button>
+      </div>
     </div>
   </div>
 

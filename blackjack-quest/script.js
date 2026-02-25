@@ -166,6 +166,7 @@ let state = {
   handsPlayed: 0,
   wasLowBalance: false,   // balance was < $200 before this round
   dailyMode: false,
+  practiceMode: false,
   strategyTracker: {
     decisions: 0,
     correct: 0,
@@ -1089,6 +1090,7 @@ function renderAll() {
 // ─── PLAYER ACTIONS ────────────────────────────────────────────
 function hit() {
   if (state.phase !== 'playing') return;
+  if (tutorialState.active && tutorialState.waitingFor === 'play') tutorialState.waitingFor = 'result';
   logStrategyDecision('H');
   const hand = state.playerHands[state.activeHand];
   hand.push(dealCard());
@@ -1110,6 +1112,7 @@ function hit() {
 
 function stand() {
   if (state.phase !== 'playing') return;
+  if (tutorialState.active && tutorialState.waitingFor === 'play') tutorialState.waitingFor = 'result';
   logStrategyDecision('S');
   if (state.activeHand + 1 < state.playerHands.length) {
     nextHand();
@@ -1120,6 +1123,7 @@ function stand() {
 
 function doubleDown() {
   if (state.phase !== 'playing') return;
+  if (tutorialState.active && tutorialState.waitingFor === 'play') tutorialState.waitingFor = 'result';
   const hand = state.playerHands[state.activeHand];
   if (hand.length !== 2) return;
   const curBet = state.handBets[state.activeHand] !== undefined
@@ -1221,7 +1225,11 @@ function surrender() {
   updateDisplays();
 
   if (state.balance <= 0) {
-    setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
+    if (state.practiceMode) {
+      setTimeout(refillPracticeBalance, 900);
+    } else {
+      setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
+    }
   }
 }
 
@@ -1354,7 +1362,11 @@ function resolveRound() {
   updateDisplays();
 
   if (state.balance <= 0) {
-    setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
+    if (state.practiceMode) {
+      setTimeout(refillPracticeBalance, 900);
+    } else {
+      setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
+    }
   }
 }
 
@@ -1372,13 +1384,13 @@ function showResult(outcome, results) {
     ).join('  |  ');
     banner.classList.add(netTotal > 0 ? 'win' : netTotal < 0 ? 'lose' : 'push');
     // Sound + effects for multi-hand based on net
-    if (netTotal > 0) { sfxWin(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); }
+    if (netTotal > 0) { sfxWin(); launchChipRain(); jazzStart(); if (!state.practiceMode) setTimeout(showSlotMachine, 900); }
     else if (netTotal < 0) sfxLose();
     else sfxPush();
   } else {
     switch(outcome) {
-      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); break;
-      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); break;
+      case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); jazzStart(); if (!state.practiceMode) setTimeout(showSlotMachine, 900); break;
+      case 'win':       label = 'You Win!';      banner.classList.add('win'); sfxWin(); launchChipRain(); jazzStart(); if (!state.practiceMode) setTimeout(showSlotMachine, 900); break;
       case 'lose':      label = 'Dealer Wins';   banner.classList.add('lose'); sfxLose(); break;
       case 'push':      label = 'Push — Tie';    banner.classList.add('push'); sfxPush(); break;
     }
@@ -1394,6 +1406,12 @@ function showResult(outcome, results) {
   void balEl.offsetWidth;
   if (netTotal > 0) balEl.classList.add('balance-up');
   else if (netTotal < 0) balEl.classList.add('balance-down');
+
+  // Tutorial: advance to result step after outcome shown
+  if (tutorialState.active && tutorialState.waitingFor === 'result') {
+    tutorialState.waitingFor = null;
+    setTimeout(advanceTutorial, 700);
+  }
 }
 
 function recordStats(results) {
@@ -1450,6 +1468,11 @@ function addBet(amount) {
   sfxChip();
   updateDisplays();
   elems.dealBtn.disabled = state.bet === 0;
+  // Tutorial hook — advance when first bet is placed
+  if (tutorialState.active && tutorialState.waitingFor === 'bet' && state.bet > 0) {
+    tutorialState.waitingFor = null;
+    setTimeout(advanceTutorial, 400);
+  }
 }
 
 function clearBet() {
@@ -1615,6 +1638,11 @@ elems.dealBtn.addEventListener('click', () => {
   } else if (state.phase === 'betting' && state.bet > 0) {
     state.balance -= state.bet * state.numHands;
     startRound();
+    // Tutorial hook — advance after cards are dealt
+    if (tutorialState.active && tutorialState.waitingFor === 'deal') {
+      tutorialState.waitingFor = null;
+      setTimeout(advanceTutorial, 900);
+    }
   }
 });
 
@@ -1731,6 +1759,224 @@ $('broke-reset-btn').addEventListener('click', () => {
   elems.roundStatus.textContent = 'Place your bet to begin';
 });
 
+// ─── TUTORIAL ──────────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  {
+    id: 'welcome',
+    title: 'Welcome to Blackjack Quest!',
+    text: "Let's learn how to play blackjack — the classic casino card game where you try to beat the dealer without going over 21!",
+    target: null, waitFor: null,
+  },
+  {
+    id: 'card-values',
+    title: 'Card Values',
+    text: 'Number cards = face value. Jack, Queen, King = 10. Ace = 1 or 11 — whichever helps your hand more!',
+    target: null, waitFor: null,
+  },
+  {
+    id: 'place-bet',
+    title: 'Place a Bet',
+    text: 'Choose how much to wager. Click a chip like $10, or use the + button to add chips. You need a bet before you can deal.',
+    target: 'betting-controls', waitFor: 'bet',
+    prompt: 'Click a chip to place your first bet!',
+  },
+  {
+    id: 'deal',
+    title: 'Deal Your Cards',
+    text: "Great! Now click Deal to start the round — you'll receive two cards, and so will the dealer.",
+    target: 'deal-btn', waitFor: 'deal',
+    prompt: 'Click the Deal button!',
+  },
+  {
+    id: 'your-hand',
+    title: 'Your Hand',
+    text: "These are your cards! Add up their values. Goal: get closer to 21 than the dealer without going over (that's a bust).",
+    target: 'hand-a-section', waitFor: null,
+  },
+  {
+    id: 'dealer-hand',
+    title: "The Dealer's Hand",
+    text: "The dealer has one card face-up and one hidden. You play your hand first — the dealer reveals after you're done.",
+    target: 'dealer-area', waitFor: null,
+  },
+  {
+    id: 'choices',
+    title: 'Your Choices',
+    text: 'Hit = get another card. Stand = keep your hand. Double = double bet, one more card. Surrender = fold for half your bet back.',
+    target: 'action-controls', waitFor: null,
+  },
+  {
+    id: 'make-move',
+    title: 'Make Your Move!',
+    text: "Now it's your turn. Hit if you want more cards, Stand if you're happy. Don't go over 21!",
+    target: 'action-controls', waitFor: 'play',
+    prompt: 'Hit or Stand now!',
+  },
+  {
+    id: 'result',
+    title: 'See the Result',
+    text: "The dealer reveals their hole card and draws until reaching 17+. Closest to 21 without busting wins! Blackjack (Ace + 10-value) pays 1.5×.",
+    target: 'result-banner', waitFor: null,
+  },
+  {
+    id: 'done',
+    title: "You're Ready!",
+    text: 'Those are the basics! Check Settings (⚙) for strategy hints and card counting. Use the Stats panel to track your progress. Good luck!',
+    target: null, waitFor: null,
+  },
+];
+
+let tutorialState = { active: false, stepIndex: 0, waitingFor: null };
+
+function startTutorial() {
+  $('welcome-overlay').classList.add('hidden');
+  // Reset game to a clean betting state
+  jazzStop();
+  state.balance = STARTING_BALANCE;
+  state.bet = 0;
+  state.phase = 'betting';
+  state.numHands = 1;
+  state.dailyMode = false;
+  state.practiceMode = false;
+  dailyRng = null;
+  state.handBets = [];
+  state.playerHands = [[]];
+  state.dealerCards = [];
+  state.hiLoCount = 0;
+  elems.resultBanner.classList.add('hidden');
+  elems.insuranceBar.classList.add('hidden');
+  $('daily-badge').classList.add('hidden');
+  $('practice-badge').classList.add('hidden');
+  resetHandSections();
+  syncHandCountUI();
+  setPhaseButtons('betting');
+  updateDisplays();
+
+  tutorialState.active = true;
+  tutorialState.stepIndex = 0;
+  tutorialState.waitingFor = null;
+  $('tutorial-overlay').classList.remove('hidden');
+  showTutorialStep(0);
+}
+
+function showTutorialStep(index) {
+  if (index >= TUTORIAL_STEPS.length) { endTutorial(); return; }
+  const step = TUTORIAL_STEPS[index];
+  tutorialState.stepIndex = index;
+  tutorialState.waitingFor = step.waitFor || null;
+
+  const total = TUTORIAL_STEPS.length;
+  $('tutorial-step-label').textContent = `Step ${index + 1} of ${total}`;
+  $('tutorial-title').textContent = step.title;
+  $('tutorial-text').textContent = step.text;
+  $('tutorial-progress-fill').style.width = Math.round((index / (total - 1)) * 100) + '%';
+
+  const promptEl = $('tutorial-prompt');
+  if (step.prompt) {
+    promptEl.textContent = '👉 ' + step.prompt;
+    promptEl.classList.remove('hidden');
+  } else {
+    promptEl.classList.add('hidden');
+  }
+
+  const nextBtn = $('tutorial-next-btn');
+  if (step.waitFor) {
+    nextBtn.classList.add('hidden');
+  } else {
+    nextBtn.classList.remove('hidden');
+    nextBtn.textContent = index === total - 1 ? 'Start Playing! 🃏' : 'Next →';
+  }
+
+  setTutorialHighlight(step.target);
+}
+
+function advanceTutorial() {
+  setTutorialHighlight(null);
+  showTutorialStep(tutorialState.stepIndex + 1);
+}
+
+function setTutorialHighlight(targetId) {
+  document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+  if (targetId) {
+    const el = $(targetId);
+    if (el) el.classList.add('tutorial-highlight');
+  }
+}
+
+function endTutorial() {
+  tutorialState.active = false;
+  tutorialState.waitingFor = null;
+  setTutorialHighlight(null);
+  $('tutorial-overlay').classList.add('hidden');
+  localStorage.setItem('bjq_visited', '1');
+  elems.roundStatus.textContent = 'Place your bet to begin';
+}
+
+// ─── WELCOME / FIRST VISIT ─────────────────────────────────────
+function checkFirstVisit() {
+  if (!localStorage.getItem('bjq_visited')) {
+    setTimeout(() => $('welcome-overlay').classList.remove('hidden'), 200);
+  }
+}
+
+// ─── PRACTICE MODE ─────────────────────────────────────────────
+function refillPracticeBalance() {
+  state.balance = STARTING_BALANCE;
+  state.bet = Math.min(state.bet, STARTING_BALANCE);
+  updateDisplays();
+  elems.roundStatus.textContent = '💡 Practice: balance refilled to $1,000';
+}
+
+function togglePracticeMode(on) {
+  state.practiceMode = on;
+  $('practice-badge').classList.toggle('hidden', !on);
+  if (on) {
+    // Exit daily mode if active
+    state.dailyMode = false;
+    dailyRng = null;
+    $('daily-badge').classList.add('hidden');
+    state.balance = STARTING_BALANCE;
+    state.bet = 0;
+    state.phase = 'betting';
+    resetHandSections();
+    syncHandCountUI();
+    setPhaseButtons('betting');
+    updateDisplays();
+    elems.roundStatus.textContent = '💡 Practice Mode — unlimited balance!';
+  } else {
+    elems.roundStatus.textContent = 'Place your bet to begin';
+  }
+}
+
+// ─── TUTORIAL / WELCOME EVENT LISTENERS ───────────────────────
+$('welcome-tutorial-btn').addEventListener('click', startTutorial);
+$('welcome-skip-btn').addEventListener('click', () => {
+  $('welcome-overlay').classList.add('hidden');
+  localStorage.setItem('bjq_visited', '1');
+});
+$('welcome-overlay').addEventListener('click', e => {
+  if (e.target === $('welcome-overlay')) {
+    $('welcome-overlay').classList.add('hidden');
+    localStorage.setItem('bjq_visited', '1');
+  }
+});
+
+$('tutorial-next-btn').addEventListener('click', () => {
+  if (tutorialState.stepIndex === TUTORIAL_STEPS.length - 1) {
+    endTutorial();
+  } else {
+    advanceTutorial();
+  }
+});
+$('tutorial-skip-btn').addEventListener('click', endTutorial);
+
+$('help-btn').addEventListener('click', startTutorial);
+
+// Practice mode toggle
+$('practice-toggle').addEventListener('change', e => {
+  togglePracticeMode(e.target.checked);
+});
+
 // ─── INIT ────────────────────────────────────────────────────
 function init() {
   state.phase = 'betting';
@@ -1738,6 +1984,7 @@ function init() {
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = 'Place your bet to begin';
+  checkFirstVisit();
 }
 
 init();
