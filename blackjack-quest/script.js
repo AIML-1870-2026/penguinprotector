@@ -17,6 +17,26 @@ const RED_SUITS = new Set(['♥','♦']);
 // Hi-Lo count values
 const HI_LO = { '2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':0,'J':0,'Q':0,'K':0,'A':-1 };
 
+// ─── ACHIEVEMENTS ────────────────────────────────────────────
+const ACHIEVEMENTS = [
+  { id: 'first_win',      icon: '🩸', title: 'First Blood',      desc: 'Win your first hand' },
+  { id: 'blackjack',      icon: '🃏', title: 'Natural',          desc: 'Get a Blackjack' },
+  { id: 'win_streak_5',   icon: '🔥', title: 'On a Roll',        desc: 'Win 5 hands in a row' },
+  { id: 'win_streak_10',  icon: '💥', title: 'Hot Streak',       desc: 'Win 10 hands in a row' },
+  { id: 'slots_777',      icon: '7️⃣', title: 'Jackpot!',         desc: 'Hit 7-7-7 on the bonus slots' },
+  { id: 'hands_10',       icon: '🎯', title: 'Regular',          desc: 'Play 10 hands' },
+  { id: 'hands_50',       icon: '🏅', title: 'Veteran',          desc: 'Play 50 hands' },
+  { id: 'hands_100',      icon: '🏆', title: 'Centurion',        desc: 'Play 100 hands' },
+  { id: 'big_win',        icon: '💰', title: 'High Roller',      desc: 'Win $200 or more in one hand' },
+  { id: 'surrender_used', icon: '🏳️', title: 'Tactical Retreat', desc: 'Use Surrender for the first time' },
+  { id: 'strategy_10',    icon: '📚', title: 'By the Book',      desc: 'Follow basic strategy for 10 hands in a row' },
+  { id: 'comeback',       icon: '🦅', title: 'Comeback Kid',     desc: 'Win a hand when balance was under $200' },
+];
+
+let unlockedAchievements = new Set(
+  JSON.parse(localStorage.getItem('bjq_achievements') || '[]')
+);
+
 // Basic strategy (simplified): [playerTotal][dealerUpcard] → action
 // Returns 'H'=hit, 'S'=stand, 'D'=double, 'P'=split
 function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit) {
@@ -59,7 +79,64 @@ function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit) {
 }
 
 function strategyLabel(action) {
-  return { H:'Hit', S:'Stand', D:'Double Down', P:'Split' }[action] || '';
+  return { H:'Hit', S:'Stand', D:'Double Down', P:'Split', U:'Surrender' }[action] || '';
+}
+
+// ─── ACHIEVEMENT FUNCTIONS ────────────────────────────────────
+function unlockAchievement(id) {
+  if (unlockedAchievements.has(id)) return;
+  unlockedAchievements.add(id);
+  localStorage.setItem('bjq_achievements', JSON.stringify([...unlockedAchievements]));
+  const ach = ACHIEVEMENTS.find(a => a.id === id);
+  if (ach) showAchievementToast(ach);
+}
+
+function showAchievementToast(ach) {
+  const toast = document.createElement('div');
+  toast.className = 'achievement-toast';
+  toast.innerHTML =
+    `<div class="toast-icon">${ach.icon}</div>` +
+    `<div class="toast-body"><div class="toast-label">Achievement Unlocked</div>` +
+    `<strong>${ach.title}</strong><span>${ach.desc}</span></div>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 50);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 450);
+  }, 3500);
+}
+
+function checkAchievements(ctx = {}) {
+  const { wins, streak, streakDir } = state.stats;
+  if (wins >= 1)  unlockAchievement('first_win');
+  if (ctx.blackjack) unlockAchievement('blackjack');
+  if (streakDir === 'win' && streak >= 5)  unlockAchievement('win_streak_5');
+  if (streakDir === 'win' && streak >= 10) unlockAchievement('win_streak_10');
+  if (ctx.slots777) unlockAchievement('slots_777');
+  if (state.handsPlayed >= 10)  unlockAchievement('hands_10');
+  if (state.handsPlayed >= 50)  unlockAchievement('hands_50');
+  if (state.handsPlayed >= 100) unlockAchievement('hands_100');
+  if (ctx.bigWin >= 200) unlockAchievement('big_win');
+  if (ctx.surrender) unlockAchievement('surrender_used');
+  if (state.strategyTracker.perfectHandStreak >= 10) unlockAchievement('strategy_10');
+  if (ctx.comebackWin) unlockAchievement('comeback');
+}
+
+function renderAchievementsPanel() {
+  const grid = $('achievements-grid');
+  grid.innerHTML = '';
+  const unlocked = ACHIEVEMENTS.filter(a => unlockedAchievements.has(a.id)).length;
+  $('achievements-subtitle').textContent = `${unlocked} / ${ACHIEVEMENTS.length} unlocked`;
+  ACHIEVEMENTS.forEach(ach => {
+    const isUnlocked = unlockedAchievements.has(ach.id);
+    const el = document.createElement('div');
+    el.className = `achievement-badge ${isUnlocked ? 'unlocked' : 'locked'}`;
+    el.innerHTML =
+      `<div class="badge-icon">${isUnlocked ? ach.icon : '🔒'}</div>` +
+      `<div class="badge-title">${ach.title}</div>` +
+      `<div class="badge-desc">${isUnlocked ? ach.desc : '???'}</div>`;
+    grid.appendChild(el);
+  });
 }
 
 // ─── STATE ──────────────────────────────────────────────────
@@ -77,6 +154,15 @@ let state = {
   showHints: false,
   showCount: false,
   hiLoCount: 0,
+  handsPlayed: 0,
+  wasLowBalance: false,   // balance was < $200 before this round
+  dailyMode: false,
+  strategyTracker: {
+    decisions: 0,
+    correct: 0,
+    currentHandDecisions: [],  // booleans: was each decision correct?
+    perfectHandStreak: 0,       // consecutive hands where all decisions were correct
+  },
   stats: {
     wins: 0, losses: 0, pushes: 0,
     biggestWin: 0,
@@ -85,6 +171,85 @@ let state = {
     history: []
   }
 };
+
+// ─── SEEDED PRNG (Daily Challenge) ───────────────────────────
+function mulberry32(seed) {
+  let s = seed;
+  return function() {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function getDailyDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDailySeed(dateStr) {
+  return dateStr.split('').reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0);
+}
+
+function getDailyRecord() {
+  return JSON.parse(localStorage.getItem(`bjq_daily_${getDailyDateStr()}`) || '{"bestBalance":0,"handsPlayed":0}');
+}
+
+function saveDailyRecord() {
+  const rec = getDailyRecord();
+  localStorage.setItem(`bjq_daily_${getDailyDateStr()}`, JSON.stringify({
+    bestBalance: Math.max(rec.bestBalance, state.balance),
+    handsPlayed: state.handsPlayed,
+  }));
+}
+
+let dailyRng = null;
+
+function shuffleSeeded(deck, rng) {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+function startDailyChallenge() {
+  const dateStr = getDailyDateStr();
+  dailyRng = mulberry32(getDailySeed(dateStr));
+  state.dailyMode = true;
+  // Full reset for the challenge
+  state.balance = STARTING_BALANCE;
+  state.bet = 0;
+  state.phase = 'betting';
+  state.handsPlayed = 0;
+  state.strategyTracker = { decisions: 0, correct: 0, currentHandDecisions: [], perfectHandStreak: 0 };
+  state.stats = { wins: 0, losses: 0, pushes: 0, biggestWin: 0, streak: 0, streakDir: null, history: [] };
+  $('daily-overlay').classList.add('hidden');
+  $('daily-badge').classList.remove('hidden');
+  elems.resultBanner.classList.add('hidden');
+  setPhaseButtons('betting');
+  updateDisplays();
+  elems.roundStatus.textContent = '📅 Daily Challenge — place your bet!';
+}
+
+function showDailyDialog() {
+  const dateStr = getDailyDateStr();
+  const rec = getDailyRecord();
+  $('daily-date-label').textContent = `Today: ${dateStr}`;
+  const box = $('daily-record-box');
+  if (rec.bestBalance > 0) {
+    const net = rec.bestBalance - STARTING_BALANCE;
+    const cls = net >= 0 ? 'profit' : 'loss';
+    const sign = net >= 0 ? '+' : '';
+    box.innerHTML =
+      `Personal best: <strong>${fmt(rec.bestBalance)}</strong><br>` +
+      `Net: <span class="${cls}">${sign}${fmt(net)}</span> &nbsp;·&nbsp; Hands: <strong>${rec.handsPlayed}</strong>`;
+  } else {
+    box.innerHTML = '<span style="color:var(--text-dim)">No record yet — be the first to set one!</span>';
+  }
+  $('daily-overlay').classList.remove('hidden');
+}
 
 // ─── DECK ────────────────────────────────────────────────────
 function buildDeck() {
@@ -322,6 +487,17 @@ const elems = {
   themeChips:     document.querySelectorAll('.theme-chip'),
   themeBtn:       $('theme-btn'),
   playAgainCta:   $('play-again-cta'),
+  // New features
+  surrenderBtn:        $('surrender-btn'),
+  achievementsBtn:     $('achievements-btn'),
+  achievementsOverlay: $('achievements-overlay'),
+  closeAchievementsBtn: $('close-achievements-btn'),
+  dailyBtn:        $('daily-btn'),
+  dailyOverlay:    $('daily-overlay'),
+  dailyStartBtn:   $('daily-start-btn'),
+  dailyCloseBtn:   $('daily-close-btn'),
+  dailyBadge:      $('daily-badge'),
+  statStrategy:    $('stat-strategy'),
 };
 
 // ─── CHIP RAIN ────────────────────────────────────────────────
@@ -546,7 +722,7 @@ function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn, sideBet)
     const isJackpot = a === '7️⃣' || a === '💎';
     const matchClass = isJackpot ? 'reel-matched-jackpot' : 'reel-matched';
     reelEls.forEach(el => el.parentElement.classList.add(matchClass));
-    if (a === '7️⃣')      { msgClass = 'jackpot'; msgText = `💥 JACKPOT! 7️⃣7️⃣7️⃣ — +${fmt(payout)}!`; sfxSlotJackpot(); }
+    if (a === '7️⃣')      { msgClass = 'jackpot'; msgText = `💥 JACKPOT! 7️⃣7️⃣7️⃣ — +${fmt(payout)}!`; sfxSlotJackpot(); checkAchievements({ slots777: true }); }
     else if (a === '💎') { msgClass = 'jackpot'; msgText = `💎 TRIPLE DIAMONDS — +${fmt(payout)}!`; sfxSlotJackpot(); }
     else                  { msgClass = 'big-win'; msgText = `${a}${b}${c} — Triple! +${fmt(payout)}!`; sfxSlotBigWin(); }
     if (payout > 0) launchChipRain();
@@ -675,6 +851,58 @@ function updateHints() {
   });
 }
 
+// ─── STRATEGY TRACKING ───────────────────────────────────────
+function shouldSurrender(playerCards, dealerUpRank) {
+  if (playerCards.length !== 2) return false;
+  if (isSoft(playerCards)) return false;
+  const total = handValue(playerCards);
+  const du = rankValue(dealerUpRank);
+  if (total === 16 && [9, 10, 11].includes(du)) return true;
+  if (total === 15 && du === 10) return true;
+  return false;
+}
+
+function getCorrectAction() {
+  if (state.phase !== 'playing') return null;
+  const hand = state.playerHands[state.activeHand];
+  const du = state.dealerCards.find(c => !c.hidden);
+  if (!hand || hand.length === 0 || !du) return null;
+
+  const canDouble   = hand.length === 2 && state.bet * 2 <= state.balance;
+  const canSplit    = hand.length === 2 &&
+    rankValue(hand[0].rank) === rankValue(hand[1].rank) &&
+    state.bet * 2 <= state.balance && !state.playerHands[1];
+  const canSurrender = hand.length === 2 && !state.playerHands[1];
+
+  // Split takes priority — check it first
+  if (canSplit) {
+    const splitAction = basicStrategy(hand, du.rank, canDouble, true);
+    if (splitAction === 'P') return 'P';
+  }
+  // Then surrender
+  if (canSurrender && shouldSurrender(hand, du.rank)) return 'U';
+  // Otherwise standard strategy (no split re-check)
+  return basicStrategy(hand, du.rank, canDouble, false);
+}
+
+function logStrategyDecision(playerAction) {
+  const correct = getCorrectAction();
+  if (correct === null) return;
+  const isCorrect = correct === playerAction;
+  state.strategyTracker.decisions++;
+  if (isCorrect) state.strategyTracker.correct++;
+  state.strategyTracker.currentHandDecisions.push(isCorrect);
+}
+
+function recordStrategyHand() {
+  const decisions = state.strategyTracker.currentHandDecisions;
+  if (decisions.length > 0) {
+    if (decisions.every(d => d)) state.strategyTracker.perfectHandStreak++;
+    else state.strategyTracker.perfectHandStreak = 0;
+  }
+  state.strategyTracker.currentHandDecisions = [];
+}
+
 function updateStatsPanel() {
   const { wins, losses, pushes, biggestWin, streak, streakDir, history } = state.stats;
   const total = wins + losses + pushes;
@@ -683,11 +911,17 @@ function updateStatsPanel() {
   const sign = streakDir === 'win' ? '+' : streakDir === 'lose' ? '-' : '';
   elems.statStreak.textContent = streak ? `${sign}${streak}` : '0';
 
+  // Strategy accuracy
+  const { decisions, correct } = state.strategyTracker;
+  elems.statStrategy.textContent = decisions > 0
+    ? `${Math.round(correct / decisions * 100)}% (${correct}/${decisions})`
+    : '—';
+
   elems.historyList.innerHTML = '';
   [...history].reverse().slice(0, 10).forEach(r => {
     const div = document.createElement('div');
     div.className = `history-item ${r.outcome}`;
-    div.textContent = `${r.outcome.toUpperCase()}  ${r.bet >= 0 ? '+' : ''}${fmt(r.net)}`;
+    div.textContent = `${r.outcome.toUpperCase()}  ${r.net >= 0 ? '+' : ''}${fmt(r.net)}`;
     elems.historyList.appendChild(div);
   });
 }
@@ -732,12 +966,13 @@ function updateDoubleAndSplit() {
   const hand = state.playerHands[state.activeHand];
   const isFirstTwo = hand && hand.length === 2;
 
-  elems.doubleBtn.disabled = !(isPlaying && isFirstTwo && state.bet * 2 <= state.balance);
-  elems.splitBtn.disabled  = !(isPlaying && isFirstTwo &&
+  elems.doubleBtn.disabled   = !(isPlaying && isFirstTwo && state.bet * 2 <= state.balance);
+  elems.splitBtn.disabled    = !(isPlaying && isFirstTwo &&
     hand && rankValue(hand[0].rank) === rankValue(hand[1].rank) &&
     state.bet * 2 <= state.balance &&
     !state.playerHands[1]
   );
+  elems.surrenderBtn.disabled = !(isPlaying && isFirstTwo && !state.playerHands[1]);
 }
 
 // ─── GAME FLOW ─────────────────────────────────────────────────
@@ -745,14 +980,18 @@ function startRound() {
   if (state.bet === 0) return;
   jazzStop();
 
+  // Track if balance was low before this round (pre-bet balance)
+  state.wasLowBalance = (state.balance + state.bet) < 200;
+
   // Reset for new round
-  state.deck = shuffle(buildDeck());
+  state.deck = (state.dailyMode && dailyRng) ? shuffleSeeded(buildDeck(), dailyRng) : shuffle(buildDeck());
   state.dealerCards = [];
   state.playerHands = [[]];
   state.activeHand = 0;
   state.insuranceBet = 0;
   state.result = null;
   state.hiLoCount = 0;
+  state.strategyTracker.currentHandDecisions = [];
 
   // Hide elements
   elems.resultBanner.classList.add('hidden');
@@ -799,6 +1038,7 @@ function renderAll() {
 // ─── PLAYER ACTIONS ────────────────────────────────────────────
 function hit() {
   if (state.phase !== 'playing') return;
+  logStrategyDecision('H');
   const hand = state.playerHands[state.activeHand];
   hand.push(dealCard());
   renderAll();
@@ -820,6 +1060,7 @@ function hit() {
 
 function stand() {
   if (state.phase !== 'playing') return;
+  logStrategyDecision('S');
   if (state.activeHand === 0 && state.playerHands[1]) {
     nextHand();
   } else {
@@ -831,6 +1072,7 @@ function doubleDown() {
   if (state.phase !== 'playing') return;
   const hand = state.playerHands[state.activeHand];
   if (hand.length !== 2 || state.bet * 2 > state.balance) return;
+  logStrategyDecision('D');
   state.balance -= state.bet;
   state.bet *= 2;
   updateDisplays();
@@ -846,7 +1088,7 @@ function split() {
   const hand = state.playerHands[0];
   if (hand.length !== 2 || rankValue(hand[0].rank) !== rankValue(hand[1].rank)) return;
   if (state.bet * 2 > state.balance) return;
-
+  logStrategyDecision('P');
   state.balance -= state.bet;
   const cardB = hand.splice(1, 1)[0];
   state.playerHands[1] = [cardB];
@@ -873,6 +1115,51 @@ function split() {
   state.activeHand = 0;
   updateDisplays();
   updateDoubleAndSplit();
+}
+
+function surrender() {
+  if (state.phase !== 'playing') return;
+  const hand = state.playerHands[state.activeHand];
+  if (hand.length !== 2 || state.playerHands[1]) return; // only on original first 2 cards
+
+  logStrategyDecision('U');
+
+  const returned = Math.floor(state.bet / 2);
+  state.balance += returned;
+  state.phase = 'roundComplete';
+  state.handsPlayed++;
+
+  recordStrategyHand();
+
+  // Stats — count surrender as a loss
+  state.stats.losses++;
+  if (state.stats.streakDir === 'lose') state.stats.streak++;
+  else { state.stats.streak = 1; state.stats.streakDir = 'lose'; }
+  state.stats.history.push({ outcome: 'surrender', bet: state.bet, net: -returned });
+  if (state.stats.history.length > 20) state.stats.history.shift();
+
+  setPhaseButtons('roundComplete');
+  elems.insuranceBar.classList.add('hidden');
+
+  const banner = elems.resultBanner;
+  banner.className = 'result-banner push';
+  banner.textContent = `Surrender — ${fmt(returned)} returned`;
+  banner.classList.remove('hidden');
+  elems.roundStatus.textContent = 'Place your bet to play again';
+
+  const balEl = elems.balanceDisplay;
+  balEl.classList.remove('balance-up', 'balance-down');
+  void balEl.offsetWidth;
+  balEl.classList.add('balance-down');
+
+  sfxLose();
+  checkAchievements({ surrender: true });
+  if (state.dailyMode) saveDailyRecord();
+  updateDisplays();
+
+  if (state.balance <= 0) {
+    setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
+  }
 }
 
 function nextHand() {
@@ -1044,7 +1331,12 @@ function recordStats(results) {
   const primary = results[0];
   const net = results.reduce((s, r) => s + r.net, 0);
 
-  if (primary.outcome === 'win' || primary.outcome === 'blackjack') {
+  state.handsPlayed++;
+  recordStrategyHand();
+
+  const isWin = primary.outcome === 'win' || primary.outcome === 'blackjack';
+
+  if (isWin) {
     state.stats.wins++;
     if (net > state.stats.biggestWin) state.stats.biggestWin = net;
     if (state.stats.streakDir === 'win') state.stats.streak++;
@@ -1064,6 +1356,14 @@ function recordStats(results) {
     net
   });
   if (state.stats.history.length > 20) state.stats.history.shift();
+
+  checkAchievements({
+    blackjack:   primary.outcome === 'blackjack',
+    bigWin:      isWin ? net : 0,
+    comebackWin: isWin && state.wasLowBalance,
+  });
+
+  if (state.dailyMode) saveDailyRecord();
 }
 
 // ─── BETTING ───────────────────────────────────────────────────
@@ -1135,8 +1435,9 @@ document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const key = e.key.toUpperCase();
   switch(key) {
-    case 'H': if (!elems.hitBtn.disabled)    hit();       break;
-    case 'S': if (!elems.standBtn.disabled)  stand();     break;
+    case 'H': if (!elems.hitBtn.disabled)        hit();       break;
+    case 'S': if (!elems.standBtn.disabled)      stand();     break;
+    case 'U': if (!elems.surrenderBtn.disabled)  surrender(); break;
     case 'D':
       if (!elems.dealBtn.disabled) {
         if (state.phase === 'roundComplete') dealAgain();
@@ -1172,6 +1473,7 @@ elems.hitBtn.addEventListener('click', hit);
 elems.standBtn.addEventListener('click', stand);
 elems.doubleBtn.addEventListener('click', doubleDown);
 elems.splitBtn.addEventListener('click', split);
+elems.surrenderBtn.addEventListener('click', surrender);
 elems.betMinus.addEventListener('click', () => { state.bet = Math.max(0, state.bet - BET_STEP); sfxChip(); updateDisplays(); elems.dealBtn.disabled = state.bet === 0; });
 elems.betPlus.addEventListener('click', () => addBet(BET_STEP));
 elems.muteBtn.addEventListener('click', toggleMute);
@@ -1213,12 +1515,35 @@ elems.themeBtn.addEventListener('click', () => {
   applyTheme(THEMES[themeIdx]);
 });
 
+// Achievements
+elems.achievementsBtn.addEventListener('click', () => {
+  renderAchievementsPanel();
+  elems.achievementsOverlay.classList.remove('hidden');
+});
+elems.closeAchievementsBtn.addEventListener('click', () => {
+  elems.achievementsOverlay.classList.add('hidden');
+});
+elems.achievementsOverlay.addEventListener('click', e => {
+  if (e.target === elems.achievementsOverlay) elems.achievementsOverlay.classList.add('hidden');
+});
+
+// Daily Challenge
+elems.dailyBtn.addEventListener('click', showDailyDialog);
+elems.dailyStartBtn.addEventListener('click', startDailyChallenge);
+elems.dailyCloseBtn.addEventListener('click', () => elems.dailyOverlay.classList.add('hidden'));
+elems.dailyOverlay.addEventListener('click', e => {
+  if (e.target === elems.dailyOverlay) elems.dailyOverlay.classList.add('hidden');
+});
+
 // ─── BROKE RESET ─────────────────────────────────────────────
 $('broke-reset-btn').addEventListener('click', () => {
   $('broke-overlay').classList.add('hidden');
   state.balance = STARTING_BALANCE;
   state.bet = 0;
   state.phase = 'betting';
+  state.dailyMode = false;
+  dailyRng = null;
+  elems.dailyBadge.classList.add('hidden');
   elems.resultBanner.classList.add('hidden');
   setPhaseButtons('betting');
   updateDisplays();

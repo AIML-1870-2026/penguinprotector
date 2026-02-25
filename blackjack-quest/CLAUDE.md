@@ -20,4 +20,10 @@ A fully-featured browser Blackjack game with classic casino aesthetics.
 1. betting → 2. playing → 3. dealerTurn → 4. roundComplete → back to 1
 
 ## Keyboard Shortcuts
-- H = Hit, S = Stand, D = Deal/Double Down, B = Increase Bet, M = Mute
+- H = Hit, S = Stand, D = Deal/Double Down, B = Increase Bet, M = Mute, U = Surrender
+
+## Features Added
+- **Achievements** — 12 unlockable badges (trophy wall via 🏆 button), persisted in localStorage
+- **Daily Challenge** — seeded PRNG deck (same for everyone each day), personal best tracked in localStorage
+- **Surrender** — forfeit half your bet; available only on initial 2-card hand before any action
+- **Strategy Accuracy Tracker** — logs every decision vs. basic strategy, shows % in stats panel

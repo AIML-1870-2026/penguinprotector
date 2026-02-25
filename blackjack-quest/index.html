@@ -15,6 +15,8 @@
   <header class="site-header">
     <h1 class="site-title">Blackjack Quest</h1>
     <div class="header-controls">
+      <button class="icon-btn" id="achievements-btn" title="Achievements">🏆</button>
+      <button class="icon-btn" id="daily-btn" title="Daily Challenge">📅</button>
       <button class="icon-btn" id="theme-btn" title="Change Theme">&#9680;</button>
       <button class="icon-btn" id="mute-btn" title="Mute (M)">&#128266;</button>
       <button class="icon-btn" id="stats-toggle-btn" title="Stats">&#9782;</button>
@@ -71,6 +73,7 @@
       <div class="stat-row"><span>Win Rate</span><strong id="stat-winrate">—</strong></div>
       <div class="stat-row"><span>Biggest Win</span><strong id="stat-bigwin">$0</strong></div>
       <div class="stat-row"><span>Streak</span><strong id="stat-streak">0</strong></div>
+      <div class="stat-row"><span>Strategy %</span><strong id="stat-strategy">—</strong></div>
       <h4>Last 10 Rounds</h4>
       <div class="history-list" id="history-list"></div>
     </aside>
@@ -84,6 +87,7 @@
     <!-- Result Banner -->
     <div class="result-banner hidden" id="result-banner"></div>
     <div class="play-again-cta hidden" id="play-again-cta">▶ Deal Again (D) to keep playing</div>
+    <div class="daily-badge hidden" id="daily-badge">📅 Daily Challenge</div>
 
     <!-- Info Bar -->
     <div class="info-bar">
@@ -153,9 +157,36 @@
       <button class="action-btn" id="stand-btn" disabled>Stand (S)</button>
       <button class="action-btn" id="double-btn" disabled>Double (D)</button>
       <button class="action-btn" id="split-btn" disabled>Split</button>
+      <button class="action-btn action-surrender" id="surrender-btn" disabled>Surrender (U)</button>
     </div>
 
   </main>
+
+  <!-- Achievements Overlay -->
+  <div class="achievements-overlay hidden" id="achievements-overlay">
+    <div class="achievements-modal">
+      <div class="achievements-header">
+        <h3>🏆 Trophy Wall</h3>
+        <p class="achievements-subtitle" id="achievements-subtitle">0 / 12 unlocked</p>
+      </div>
+      <div class="achievements-grid" id="achievements-grid"></div>
+      <button class="close-settings-btn" id="close-achievements-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Daily Challenge Overlay -->
+  <div class="daily-overlay hidden" id="daily-overlay">
+    <div class="daily-modal">
+      <h3>📅 Daily Challenge</h3>
+      <p class="daily-date" id="daily-date-label"></p>
+      <div class="daily-record-box" id="daily-record-box"></div>
+      <p class="daily-desc">Same deck sequence every day — compete against your personal best!</p>
+      <div class="daily-actions">
+        <button class="action-btn primary" id="daily-start-btn">Start Today's Challenge</button>
+        <button class="action-btn" id="daily-close-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Broke Modal -->
   <div class="broke-overlay hidden" id="broke-overlay">
