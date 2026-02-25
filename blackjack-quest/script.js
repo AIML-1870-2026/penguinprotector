@@ -396,6 +396,11 @@ function sfxSlotJackpot() {
 }
 function sfxSlotNoWin()   { [420,320,240].forEach((f,i) => setTimeout(() => playTone(f, 0.14, 'sawtooth', 0.08), i*120)); }
 
+function sfxShuffle() {
+  for (let i = 0; i < 14; i++)
+    setTimeout(() => playTone(160 + Math.random() * 260, 0.04, 'triangle', 0.05), i * 50);
+}
+
 // ─── JAZZ MUSIC ───────────────────────────────────────────────
 let jazzPlaying = false;
 let jazzTimers  = [];
@@ -990,6 +995,20 @@ function updateStatsPanel() {
 
 function fmt(n) { return '$' + n.toLocaleString(); }
 
+function updateStreakBadge() {
+  const badge = $('streak-badge');
+  if (!badge) return;
+  const { streak, streakDir } = state.stats;
+  if (streak >= 3) {
+    const icon = streakDir === 'win' ? '🔥' : '❄️';
+    badge.textContent = `${icon} ${streak}`;
+    badge.className = `streak-badge ${streakDir === 'win' ? 'hot' : 'cold'}`;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
 // ─── BUTTON STATES ─────────────────────────────────────────────
 function setPhaseButtons(phase) {
   const isBetting = phase === 'betting';
@@ -1047,6 +1066,18 @@ function updateDoubleAndSplit() {
   elems.surrenderBtn.disabled = !(isPlaying && isFirstTwo && state.numHands === 1 && !state.playerHands[1]);
 }
 
+// ─── SHUFFLE ANIMATION ────────────────────────────────────────
+function showShuffleAnimation(callback) {
+  const overlay = $('shuffle-overlay');
+  // Re-trigger CSS animations by removing/re-adding the elements
+  const left  = overlay.querySelector('.shuffle-deck-left');
+  const right = overlay.querySelector('.shuffle-deck-right');
+  [left, right].forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
+  overlay.classList.remove('hidden');
+  sfxShuffle();
+  setTimeout(() => { overlay.classList.add('hidden'); callback(); }, 960);
+}
+
 // ─── GAME FLOW ─────────────────────────────────────────────────
 function startRound() {
   if (state.bet === 0) return;
@@ -1056,16 +1087,25 @@ function startRound() {
   state.wasLowBalance = (state.balance + state.bet * state.numHands) < 200;
 
   // Shoe management
+  const needsShuffle = !state.dailyMode && (state.deck.length === 0 || state.reshuffleNeeded);
   if (state.dailyMode && dailyRng) {
     // Daily challenge always uses a fresh seeded single deck each round
     state.deck = shuffleSeeded(buildDeck(), dailyRng);
     state.hiLoCount = 0;
     state.reshuffleNeeded = false;
-  } else if (state.deck.length === 0 || state.reshuffleNeeded) {
+  } else if (needsShuffle) {
     initShoe(); // rebuild shoe; resets hiLoCount & reshuffleNeeded
   }
   // (regular play: shoe + count carry over between rounds)
 
+  if (needsShuffle) {
+    showShuffleAnimation(dealRound);
+  } else {
+    dealRound();
+  }
+}
+
+function dealRound() {
   state.dealerCards = [];
   state.playerHands = Array.from({ length: state.numHands }, () => []);
   state.handBets    = Array(state.numHands).fill(state.bet);
@@ -1077,6 +1117,7 @@ function startRound() {
   // Hide UI elements
   elems.resultBanner.classList.add('hidden');
   elems.insuranceBar.classList.add('hidden');
+  $('streak-badge').classList.add('hidden');
   resetHandSections();
   HAND_HINT_IDS.forEach(id => { const el = $(id); if (el) el.classList.add('hidden'); });
 
@@ -1261,6 +1302,7 @@ function surrender() {
 
   sfxLose();
   checkAchievements({ surrender: true });
+  updateStreakBadge();
   if (state.dailyMode) saveDailyRecord();
   updateDisplays();
 
@@ -1496,6 +1538,7 @@ function recordStats(results) {
     comebackWin: isWin && state.wasLowBalance,
   });
 
+  updateStreakBadge();
   if (state.dailyMode) saveDailyRecord();
 }
 
@@ -1688,6 +1731,13 @@ document.addEventListener('keydown', e => {
       break;
     case 'B': addBet(BET_STEP); break;
     case 'M': toggleMute(); break;
+    case 'R':
+      if ((state.phase === 'betting' || state.phase === 'roundComplete') && state.bet > 0) {
+        const maxPerHand = state.numHands > 1 ? Math.floor(state.balance / state.numHands) : state.balance;
+        state.bet = Math.min(state.bet, maxPerHand);
+        if (state.bet > 0) { state.balance -= state.bet * state.numHands; startRound(); }
+      }
+      break;
   }
 });
 

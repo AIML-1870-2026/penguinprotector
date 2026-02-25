@@ -108,6 +108,7 @@
 
     <!-- Result Banner -->
     <div class="result-banner hidden" id="result-banner"></div>
+    <div class="streak-badge hidden" id="streak-badge">🔥 3</div>
     <div class="play-again-cta hidden" id="play-again-cta">▶ Deal Again (D) to keep playing</div>
     <div class="daily-badge hidden" id="daily-badge">📅 Daily Challenge</div>
     <div class="practice-badge hidden" id="practice-badge">💡 Practice Mode</div>
@@ -279,6 +280,17 @@
       <!-- Post-spin: result -->
       <div class="slot-result-msg hidden" id="slot-result-msg"></div>
       <button class="action-btn primary slot-collect-btn hidden" id="slot-collect-btn">Collect!</button>
+    </div>
+  </div>
+
+  <!-- Shuffle Animation Overlay -->
+  <div class="shuffle-overlay hidden" id="shuffle-overlay">
+    <div class="shuffle-content">
+      <div class="shuffle-decks">
+        <div class="shuffle-deck-left"></div>
+        <div class="shuffle-deck-right"></div>
+      </div>
+      <div class="shuffle-text">Shuffling new shoe…</div>
     </div>
   </div>
 

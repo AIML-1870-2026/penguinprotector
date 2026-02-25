@@ -1322,6 +1322,76 @@ body {
   color: var(--gold) !important; opacity: 1 !important;
 }
 
+/* ===== SHUFFLE OVERLAY ===== */
+.shuffle-overlay {
+  position: fixed; inset: 0; z-index: 450;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeInOverlay 0.18s ease;
+}
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.shuffle-content {
+  display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
+}
+.shuffle-decks { display: flex; gap: 2.5rem; align-items: flex-end; }
+.shuffle-deck-left,
+.shuffle-deck-right {
+  width: 62px; height: 86px;
+  border-radius: 8px;
+  border: 2px solid var(--gold-dark);
+  background: var(--navy);
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 4px,
+    rgba(212,175,55,0.11) 4px, rgba(212,175,55,0.11) 5px
+  );
+  box-shadow: 3px 4px 14px rgba(0,0,0,0.65);
+}
+@keyframes deckRiffleLeft {
+  0%   { transform: rotate(0deg) translate(0,0); }
+  28%  { transform: rotate(-22deg) translate(-14px,-10px); }
+  56%  { transform: rotate(7deg) translate(4px,-3px); }
+  78%  { transform: rotate(-3deg) translate(-2px,0); }
+  100% { transform: rotate(0deg) translate(0,0); }
+}
+@keyframes deckRiffleRight {
+  0%   { transform: rotate(0deg) translate(0,0); }
+  28%  { transform: rotate(22deg) translate(14px,-10px); }
+  56%  { transform: rotate(-7deg) translate(-4px,-3px); }
+  78%  { transform: rotate(3deg) translate(2px,0); }
+  100% { transform: rotate(0deg) translate(0,0); }
+}
+.shuffle-deck-left  { animation: deckRiffleLeft  0.65s cubic-bezier(0.4,0,0.2,1) 1; }
+.shuffle-deck-right { animation: deckRiffleRight 0.65s cubic-bezier(0.4,0,0.2,1) 1; }
+.shuffle-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem; color: var(--gold); letter-spacing: 0.08em;
+  animation: ctaBlink 0.75s ease-in-out infinite;
+}
+
+/* ===== STREAK BADGE ===== */
+.streak-badge {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900; font-size: 1.15rem;
+  padding: 0.28rem 1.1rem; border-radius: 20px;
+  letter-spacing: 0.04em;
+  animation: popIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+.streak-badge.hot {
+  background: linear-gradient(135deg, #c93400, #ff6a00);
+  color: #fff;
+  box-shadow: 0 0 22px rgba(220,80,10,0.55);
+  text-shadow: 0 1px 5px rgba(0,0,0,0.4);
+}
+.streak-badge.cold {
+  background: linear-gradient(135deg, #0d2340, #1a4070);
+  color: #80d8ea;
+  border: 1px solid rgba(77,208,225,0.45);
+  box-shadow: 0 0 16px rgba(77,208,225,0.25);
+}
+
 /* ===== DECK COUNT SELECTOR (in Settings) ===== */
 .deck-count-row {
   display: flex; gap: 0.4rem; flex-wrap: wrap;

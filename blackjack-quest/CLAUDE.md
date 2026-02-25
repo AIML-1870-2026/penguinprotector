@@ -20,7 +20,7 @@ A fully-featured browser Blackjack game with classic casino aesthetics.
 1. betting → 2. playing → 3. dealerTurn → 4. roundComplete → back to 1
 
 ## Keyboard Shortcuts
-- H = Hit, S = Stand, D = Deal/Double Down, B = Increase Bet, M = Mute, U = Surrender
+- H = Hit, S = Stand, D = Deal/Double Down, B = Increase Bet, M = Mute, U = Surrender, R = Re-bet last amount and deal
 
 ## Features Added
 - **Achievements** — 12 unlockable badges (trophy wall via 🏆 button), persisted in localStorage
