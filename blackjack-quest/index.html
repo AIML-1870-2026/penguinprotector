@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack Quest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-classic">
+
+  <!-- Header -->
+  <header class="site-header">
+    <h1 class="site-title">Blackjack Quest</h1>
+    <div class="header-controls">
+      <button class="icon-btn" id="theme-btn" title="Change Theme">&#9680;</button>
+      <button class="icon-btn" id="mute-btn" title="Mute (M)">&#128266;</button>
+      <button class="icon-btn" id="stats-toggle-btn" title="Stats">&#9782;</button>
+      <button class="icon-btn" id="settings-btn" title="Settings">&#9881;</button>
+    </div>
+  </header>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel hidden" id="settings-panel">
+    <div class="settings-inner">
+      <h3>Settings</h3>
+      <label class="setting-row">
+        <input type="checkbox" id="hint-toggle">
+        <span>Strategy Hints</span>
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="count-toggle">
+        <span>Hi-Lo Card Count <em>(educational only)</em></span>
+      </label>
+      <div class="theme-picker">
+        <span>Theme:</span>
+        <button class="theme-chip active" data-theme="theme-classic">Classic</button>
+        <button class="theme-chip" data-theme="theme-dark">Modern Dark</button>
+        <button class="theme-chip" data-theme="theme-retro">Retro</button>
+      </div>
+      <button class="close-settings-btn" id="close-settings-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Main Table -->
+  <main class="table" id="table">
+
+    <!-- Stats Panel (collapsible) -->
+    <aside class="stats-panel hidden" id="stats-panel">
+      <h3>Session Stats</h3>
+      <div class="stat-row"><span>Win Rate</span><strong id="stat-winrate">—</strong></div>
+      <div class="stat-row"><span>Biggest Win</span><strong id="stat-bigwin">$0</strong></div>
+      <div class="stat-row"><span>Streak</span><strong id="stat-streak">0</strong></div>
+      <h4>Last 10 Rounds</h4>
+      <div class="history-list" id="history-list"></div>
+    </aside>
+
+    <!-- Dealer Area -->
+    <section class="dealer-area" id="dealer-area">
+      <div class="area-label">Dealer <span class="hand-value" id="dealer-value"></span></div>
+      <div class="card-row" id="dealer-cards"></div>
+    </section>
+
+    <!-- Result Banner -->
+    <div class="result-banner hidden" id="result-banner"></div>
+
+    <!-- Info Bar -->
+    <div class="info-bar">
+      <div class="info-item">
+        <span class="info-label">Balance</span>
+        <span class="info-value" id="balance-display">$1,000</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Bet</span>
+        <span class="info-value" id="bet-display">$0</span>
+      </div>
+      <div class="info-item" id="round-status-wrap">
+        <span class="info-value status-msg" id="round-status">Place your bet to begin</span>
+      </div>
+    </div>
+
+    <!-- Player Area -->
+    <section class="player-area" id="player-area">
+      <!-- Split: hand A -->
+      <div class="hand-section" id="hand-a-section">
+        <div class="area-label">You <span class="hand-value" id="player-value">0</span></div>
+        <div class="card-row" id="player-cards"></div>
+        <div class="hint-box hidden" id="hint-box-a"></div>
+      </div>
+      <!-- Split: hand B (hidden unless split) -->
+      <div class="hand-section hidden" id="hand-b-section">
+        <div class="area-label">Hand B <span class="hand-value" id="player-value-b">0</span></div>
+        <div class="card-row" id="player-cards-b"></div>
+        <div class="hint-box hidden" id="hint-box-b"></div>
+      </div>
+    </section>
+
+    <!-- Card Count Display -->
+    <div class="count-bar hidden" id="count-bar">
+      Hi-Lo Count: <strong id="count-value">0</strong>
+      <span class="count-note">(Educational only — not for real casinos)</span>
+    </div>
+
+    <!-- Insurance Offer -->
+    <div class="insurance-bar hidden" id="insurance-bar">
+      <span>Dealer shows Ace — Insurance?</span>
+      <button class="action-btn insurance-yes" id="insurance-yes-btn">Take Insurance</button>
+      <button class="action-btn insurance-no" id="insurance-no-btn">No Thanks</button>
+    </div>
+
+    <!-- Betting Controls -->
+    <div class="betting-controls" id="betting-controls">
+      <div class="chip-row">
+        <button class="chip" data-amount="5">$5</button>
+        <button class="chip" data-amount="10">$10</button>
+        <button class="chip" data-amount="25">$25</button>
+        <button class="chip" data-amount="50">$50</button>
+        <button class="chip" data-amount="100">$100</button>
+      </div>
+      <div class="bet-adj-row">
+        <button class="adj-btn" id="bet-minus">−</button>
+        <span class="bet-big" id="bet-big">$0</span>
+        <button class="adj-btn" id="bet-plus">+</button>
+      </div>
+    </div>
+
+    <!-- Action Controls -->
+    <div class="action-controls" id="action-controls">
+      <button class="action-btn primary" id="deal-btn" disabled>Deal</button>
+      <button class="action-btn" id="clear-bet-btn" disabled>Clear Bet</button>
+      <button class="action-btn" id="hit-btn" disabled>Hit (H)</button>
+      <button class="action-btn" id="stand-btn" disabled>Stand (S)</button>
+      <button class="action-btn" id="double-btn" disabled>Double (D)</button>
+      <button class="action-btn" id="split-btn" disabled>Split</button>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
