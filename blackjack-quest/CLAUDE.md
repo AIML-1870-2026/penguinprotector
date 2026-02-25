@@ -27,3 +27,5 @@ A fully-featured browser Blackjack game with classic casino aesthetics.
 - **Daily Challenge** — seeded PRNG deck (same for everyone each day), personal best tracked in localStorage
 - **Surrender** — forfeit half your bet; available only on initial 2-card hand before any action
 - **Strategy Accuracy Tracker** — logs every decision vs. basic strategy, shows % in stats panel
+- **Multi-deck Shoe** — 1/2/4/6/8 deck options (Settings); persistent shoe across rounds, cut card at ~75% penetration triggers reshuffle flag; Hi-Lo count + True Count persist across rounds; daily challenge stays 1-deck seeded
+- **Card Back Picker** — 4 designs in Settings: Classic Navy (theme-aware), Crimson (red diagonal stripe ♥), Jade (green crosshatch ♦), Midnight (dark concentric circles ♣)

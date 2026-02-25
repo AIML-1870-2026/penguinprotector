@@ -403,6 +403,51 @@ body {
   font-size: 2rem; color: var(--gold); opacity: 0.5;
 }
 
+/* ===== CARD BACK VARIANTS ===== */
+.card-back.card-back-crimson {
+  background: #5a0818;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent, transparent 4px,
+    rgba(255,255,255,0.08) 4px, rgba(255,255,255,0.08) 5px
+  );
+  border-color: #8b1a28;
+}
+.card-back.card-back-crimson::after {
+  content: '♥';
+  color: #ff8888;
+}
+.card-back.card-back-jade {
+  background: #0c2e18;
+  background-image:
+    repeating-linear-gradient(
+      0deg, transparent, transparent 7px,
+      rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 7px,
+      rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px
+    );
+  border-color: #1a6b3c;
+}
+.card-back.card-back-jade::after {
+  content: '♦';
+  color: #66bb6a;
+}
+.card-back.card-back-midnight {
+  background: #0a0a18;
+  background-image: repeating-radial-gradient(
+    circle at 36px 36px,
+    transparent 0, transparent 13px,
+    rgba(140,140,210,0.09) 13px, rgba(140,140,210,0.09) 14px
+  );
+  border-color: #2a2a5a;
+}
+.card-back.card-back-midnight::after {
+  content: '♣';
+  color: #9999cc;
+}
+
 .card-corner {
   display: flex; flex-direction: column; align-items: center;
   line-height: 1;
@@ -1275,6 +1320,96 @@ body {
   background: rgba(212,175,55,0.18) !important;
   border-color: var(--gold) !important;
   color: var(--gold) !important; opacity: 1 !important;
+}
+
+/* ===== DECK COUNT SELECTOR (in Settings) ===== */
+.deck-count-row {
+  display: flex; gap: 0.4rem; flex-wrap: wrap;
+}
+.deck-count-btn {
+  padding: 0.28rem 0.65rem;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.85rem; font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+}
+.deck-count-btn.active {
+  border-color: var(--gold);
+  background: rgba(255,255,255,0.1);
+}
+.deck-count-btn:hover:not(.active) { background: rgba(255,255,255,0.06); }
+
+/* ===== CARD BACK PICKER (in Settings) ===== */
+.card-back-picker {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+}
+.card-back-pick-btn {
+  width: 42px; height: 58px;
+  border-radius: 7px;
+  border: 2px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.15s;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+.card-back-pick-btn.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(212,175,55,0.4);
+}
+.card-back-pick-btn:hover:not(.active) { border-color: rgba(255,255,255,0.4); transform: translateY(-2px); }
+/* Each button IS the card back preview — apply exact same patterns */
+.card-back-pick-btn[data-back="classic"] {
+  background: #1a1f3a;
+  background-image: repeating-linear-gradient(
+    45deg, transparent, transparent 4px,
+    rgba(212,175,55,0.14) 4px, rgba(212,175,55,0.14) 5px
+  );
+  border-color: rgba(180,140,20,0.4);
+}
+.card-back-pick-btn[data-back="classic"]::after { content: '♠'; }
+.card-back-pick-btn[data-back="crimson"] {
+  background: #5a0818;
+  background-image: repeating-linear-gradient(
+    -45deg, transparent, transparent 4px,
+    rgba(255,255,255,0.08) 4px, rgba(255,255,255,0.08) 5px
+  );
+  border-color: rgba(139,26,40,0.6);
+}
+.card-back-pick-btn[data-back="crimson"]::after { content: '♥'; color: #ff8888; }
+.card-back-pick-btn[data-back="jade"] {
+  background: #0c2e18;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px),
+    repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px);
+  border-color: rgba(26,107,60,0.6);
+}
+.card-back-pick-btn[data-back="jade"]::after { content: '♦'; color: #66bb6a; }
+.card-back-pick-btn[data-back="midnight"] {
+  background: #0a0a18;
+  background-image: repeating-radial-gradient(
+    circle at 21px 29px,
+    transparent 0, transparent 13px,
+    rgba(140,140,210,0.09) 13px, rgba(140,140,210,0.09) 14px
+  );
+  border-color: rgba(42,42,90,0.7);
+}
+.card-back-pick-btn[data-back="midnight"]::after { content: '♣'; color: #9999cc; }
+/* Shared symbol overlay for all back pickers */
+.card-back-pick-btn::after {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.35rem; color: rgba(212,175,55,0.5);
+}
+
+/* ===== SHOE RESHUFFLE INDICATOR ===== */
+.shoe-reshuffle {
+  font-size: 0.82rem;
+  margin-left: 0.35rem;
+  animation: ctaBlink 1.2s ease-in-out infinite;
 }
 
 /* ===== RESPONSIVE ===== */

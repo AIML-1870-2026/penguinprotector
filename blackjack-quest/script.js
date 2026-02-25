@@ -151,7 +151,7 @@ let state = {
   phase: 'betting',       // betting | playing | dealerTurn | roundComplete
   balance: STARTING_BALANCE,
   bet: 0,
-  deck: [],
+  deck: [],               // the active shoe (persists across rounds)
   dealerCards: [],
   playerHands: [[]],      // array of hands (multi-hand + split)
   activeHand: 0,          // which hand is being played
@@ -167,6 +167,9 @@ let state = {
   wasLowBalance: false,   // balance was < $200 before this round
   dailyMode: false,
   practiceMode: false,
+  deckCount: parseInt(localStorage.getItem('bjq_deckCount') || '6', 10),
+  cardBack: localStorage.getItem('bjq_cardBack') || 'classic',
+  reshuffleNeeded: false, // cut card reached — rebuild shoe before next round
   strategyTracker: {
     decisions: 0,
     correct: 0,
@@ -265,13 +268,22 @@ function showDailyDialog() {
   $('daily-overlay').classList.remove('hidden');
 }
 
-// ─── DECK ────────────────────────────────────────────────────
+// ─── DECK / SHOE ─────────────────────────────────────────────
 function buildDeck() {
   const deck = [];
   for (const suit of SUITS)
     for (const rank of RANKS)
       deck.push({ suit, rank });
   return deck;
+}
+
+function buildShoe(n) {
+  const shoe = [];
+  for (let d = 0; d < n; d++)
+    for (const suit of SUITS)
+      for (const rank of RANKS)
+        shoe.push({ suit, rank });
+  return shoe;
 }
 
 function shuffle(deck) {
@@ -281,6 +293,12 @@ function shuffle(deck) {
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   return deck;
+}
+
+function initShoe() {
+  state.deck = shuffle(buildShoe(state.deckCount));
+  state.hiLoCount = 0;
+  state.reshuffleNeeded = false;
 }
 
 function dealCard(hidden = false) {
@@ -762,7 +780,7 @@ function renderCard(card) {
   inner.className = 'card-inner';
 
   const back = document.createElement('div');
-  back.className = 'card-back';
+  back.className = `card-back card-back-${state.cardBack}`;
 
   const colorClass = RED_SUITS.has(card.suit) ? 'red' : 'black';
   const face = document.createElement('div');
@@ -842,8 +860,16 @@ function updateDisplays() {
       valEl.textContent = i === 0 ? '0' : '';
     }
   }
-  // Count
-  elems.countValue.textContent = state.hiLoCount;
+  // Count bar — running count, true count, shoe info
+  elems.countValue.textContent = state.hiLoCount >= 0 ? '+' + state.hiLoCount : state.hiLoCount;
+  const decksLeft = Math.max(0.5, state.deck.length / 52);
+  const trueCount = (state.hiLoCount / decksLeft).toFixed(1);
+  const trueEl = $('true-count-value');
+  if (trueEl) trueEl.textContent = parseFloat(trueCount) >= 0 ? '+' + trueCount : trueCount;
+  const shoeEl = $('shoe-count-value');
+  if (shoeEl) shoeEl.textContent = state.dailyMode ? '1-deck' : `${state.deck.length}/${state.deckCount * 52}`;
+  const cutEl = $('shoe-reshuffle');
+  if (cutEl) cutEl.classList.toggle('hidden', !state.reshuffleNeeded || state.dailyMode);
   // Hints
   updateHints();
   // Stats
@@ -1029,15 +1055,23 @@ function startRound() {
   // Track low balance before this round
   state.wasLowBalance = (state.balance + state.bet * state.numHands) < 200;
 
-  // Reset for new round
-  state.deck = (state.dailyMode && dailyRng) ? shuffleSeeded(buildDeck(), dailyRng) : shuffle(buildDeck());
+  // Shoe management
+  if (state.dailyMode && dailyRng) {
+    // Daily challenge always uses a fresh seeded single deck each round
+    state.deck = shuffleSeeded(buildDeck(), dailyRng);
+    state.hiLoCount = 0;
+    state.reshuffleNeeded = false;
+  } else if (state.deck.length === 0 || state.reshuffleNeeded) {
+    initShoe(); // rebuild shoe; resets hiLoCount & reshuffleNeeded
+  }
+  // (regular play: shoe + count carry over between rounds)
+
   state.dealerCards = [];
   state.playerHands = Array.from({ length: state.numHands }, () => []);
   state.handBets    = Array(state.numHands).fill(state.bet);
   state.activeHand  = 0;
   state.insuranceBet = 0;
   state.result = null;
-  state.hiLoCount = 0;
   state.strategyTracker.currentHandDecisions = [];
 
   // Hide UI elements
@@ -1054,6 +1088,12 @@ function startRound() {
 
   state.phase = 'playing';
   setPhaseButtons('playing');
+
+  // Cut card: if shoe is past ~75% dealt, flag for reshuffle after this round
+  if (!state.dailyMode && !state.reshuffleNeeded) {
+    const cutAt = Math.round(state.deckCount * 52 * 0.25);
+    if (state.deck.length < cutAt) state.reshuffleNeeded = true;
+  }
 
   // Show extra hand sections for multi-hand
   if (state.numHands >= 2) $('hand-b-section').classList.remove('hidden');
@@ -1603,6 +1643,18 @@ function syncHandCountUI() {
   );
 }
 
+function syncDeckCountUI() {
+  document.querySelectorAll('.deck-count-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.n, 10) === state.deckCount)
+  );
+}
+
+function syncCardBackUI() {
+  document.querySelectorAll('.card-back-pick-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.back === state.cardBack)
+  );
+}
+
 // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
@@ -1748,6 +1800,31 @@ elems.handCountBtns.forEach(btn => {
   });
 });
 
+// Deck count selector
+document.querySelectorAll('.deck-count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = parseInt(btn.dataset.n, 10);
+    if (state.deckCount === n) return;
+    state.deckCount = n;
+    localStorage.setItem('bjq_deckCount', n);
+    syncDeckCountUI();
+    // Clear shoe so next round builds a fresh one with the new count
+    state.deck = [];
+    state.reshuffleNeeded = false;
+  });
+});
+
+// Card back picker
+document.querySelectorAll('.card-back-pick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.cardBack = btn.dataset.back;
+    localStorage.setItem('bjq_cardBack', state.cardBack);
+    syncCardBackUI();
+    // Re-render cards immediately so the change is visible mid-game
+    renderAll();
+  });
+});
+
 // Leaderboard
 elems.leaderboardBtn.addEventListener('click', showLeaderboard);
 $('close-leaderboard-btn').addEventListener('click', () => $('leaderboard-overlay').classList.add('hidden'));
@@ -1764,6 +1841,9 @@ $('broke-reset-btn').addEventListener('click', () => {
   state.phase = 'betting';
   state.dailyMode = false;
   dailyRng = null;
+  state.deck = [];
+  state.hiLoCount = 0;
+  state.reshuffleNeeded = false;
   elems.dailyBadge.classList.add('hidden');
   elems.resultBanner.classList.add('hidden');
   resetHandSections();
@@ -1856,7 +1936,9 @@ function startTutorial() {
   state.handBets = [];
   state.playerHands = [[]];
   state.dealerCards = [];
+  state.deck = [];
   state.hiLoCount = 0;
+  state.reshuffleNeeded = false;
   elems.resultBanner.classList.add('hidden');
   elems.insuranceBar.classList.add('hidden');
   $('daily-badge').classList.add('hidden');
@@ -1952,6 +2034,9 @@ function togglePracticeMode(on) {
     state.balance = STARTING_BALANCE;
     state.bet = 0;
     state.phase = 'betting';
+    state.deck = [];
+    state.hiLoCount = 0;
+    state.reshuffleNeeded = false;
     resetHandSections();
     syncHandCountUI();
     setPhaseButtons('betting');
@@ -2193,6 +2278,8 @@ $('drill-next-btn').addEventListener('click', newDrillHand);
 function init() {
   state.phase = 'betting';
   syncHandCountUI();
+  syncDeckCountUI();
+  syncCardBackUI();
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = 'Place your bet to begin';

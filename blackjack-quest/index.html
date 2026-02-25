@@ -43,6 +43,21 @@
         <input type="checkbox" id="practice-toggle">
         <span>Practice Mode <em>(unlimited balance, no slots)</em></span>
       </label>
+      <div class="setting-row"><span>Deck Count</span></div>
+      <div class="deck-count-row">
+        <button class="deck-count-btn" data-n="1">1</button>
+        <button class="deck-count-btn" data-n="2">2</button>
+        <button class="deck-count-btn" data-n="4">4</button>
+        <button class="deck-count-btn" data-n="6">6</button>
+        <button class="deck-count-btn" data-n="8">8</button>
+      </div>
+      <div class="setting-row"><span>Card Back</span></div>
+      <div class="card-back-picker">
+        <button class="card-back-pick-btn" data-back="classic" title="Classic Navy"></button>
+        <button class="card-back-pick-btn" data-back="crimson" title="Crimson Red"></button>
+        <button class="card-back-pick-btn" data-back="jade" title="Jade Green"></button>
+        <button class="card-back-pick-btn" data-back="midnight" title="Midnight"></button>
+      </div>
       <div class="setting-row"><span>Theme</span></div>
       <div class="theme-grid">
         <button class="theme-chip active" data-theme="theme-classic">
@@ -136,8 +151,11 @@
 
     <!-- Card Count Display -->
     <div class="count-bar hidden" id="count-bar">
-      Hi-Lo Count: <strong id="count-value">0</strong>
-      <span class="count-note">(Educational only — not for real casinos)</span>
+      Hi-Lo: <strong id="count-value">0</strong>
+      &nbsp;·&nbsp;True: <strong id="true-count-value">0.0</strong>
+      &nbsp;·&nbsp;Shoe: <strong id="shoe-count-value">—</strong>
+      <span class="shoe-reshuffle hidden" id="shoe-reshuffle">🔀</span>
+      <span class="count-note">(educational only)</span>
     </div>
 
     <!-- Insurance Offer -->
