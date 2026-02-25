@@ -357,44 +357,46 @@ function determineSlotResults(bet) {
   }
 }
 
-// Drum-roll reel animation — very fast flicker that slows to a stop
+// Smooth reel — each symbol slides in; animation duration matches tick interval
+const TICK_CLASSES = ['tick-fast', 'tick-medium', 'tick-slow', 'tick-final'];
+
+function setReelSymbol(symEl, sym, cls) {
+  TICK_CLASSES.forEach(c => symEl.classList.remove(c));
+  symEl.textContent = sym;
+  void symEl.offsetWidth; // force reflow so animation restarts cleanly
+  symEl.classList.add(cls);
+}
+
 function animateReel(symEl, finalSym, duration, onDone) {
   const start = Date.now();
   symEl.parentElement.classList.add('reel-spinning');
-  symEl.classList.add('rolling');
-  let fastTickCount = 0;
+  let fastCount = 0;
 
   function tick() {
-    const elapsed   = Date.now() - start;
-    const remaining = duration - elapsed;
+    const remaining = duration - (Date.now() - start);
 
     if (remaining <= 0) {
-      symEl.classList.remove('rolling');
-      symEl.textContent = finalSym;
-      symEl.classList.add('stopped');
+      setReelSymbol(symEl, finalSym, 'tick-final');
       symEl.parentElement.classList.remove('reel-spinning');
       sfxReelStop();
-      setTimeout(() => symEl.classList.remove('stopped'), 300);
-      if (onDone) onDone();
+      setTimeout(() => { if (onDone) onDone(); }, 430);
       return;
     }
 
-    let delay;
+    let delay, cls;
     if (remaining > 800) {
-      // Blazing fast — tick every 4th frame (~112ms) to avoid audio spam
-      fastTickCount++;
-      if (fastTickCount % 4 === 0) sfxSlotTick();
-      delay = 28;
-    } else if (remaining > 400) {
-      symEl.classList.remove('rolling');
-      sfxSlotTick();   // every slow-phase tick
-      delay = 90;
+      cls = 'tick-fast'; delay = 50;
+      fastCount++;
+      if (fastCount % 3 === 0) sfxSlotTick(); // ~every 150ms during fast phase
+    } else if (remaining > 350) {
+      cls = 'tick-medium'; delay = 120;
+      sfxSlotTick();
     } else {
-      sfxSlotTick();   // final slow ticks
-      delay = 180;
+      cls = 'tick-slow'; delay = 230;
+      sfxSlotTick();
     }
 
-    symEl.textContent = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
+    setReelSymbol(symEl, SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)], cls);
     setTimeout(tick, delay);
   }
   tick();
@@ -425,7 +427,7 @@ function showSlotMachine() {
   preSpin.classList.remove('hidden');
   reelEls.forEach(el => {
     el.textContent = '🎰';
-    el.classList.remove('rolling', 'stopped');
+    el.classList.remove(...TICK_CLASSES);
     el.parentElement.classList.remove('reel-spinning', 'reel-matched', 'reel-matched-jackpot');
   });
 
