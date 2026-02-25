@@ -17,6 +17,7 @@
     <div class="header-controls">
       <button class="icon-btn" id="achievements-btn" title="Achievements">🏆</button>
       <button class="icon-btn" id="leaderboard-btn" title="Leaderboard">🏅</button>
+      <button class="icon-btn" id="drill-btn" title="Strategy Drill">🎯</button>
       <button class="icon-btn" id="daily-btn" title="Daily Challenge">📅</button>
       <button class="icon-btn" id="theme-btn" title="Change Theme">&#9680;</button>
       <button class="icon-btn" id="mute-btn" title="Mute (M)">&#128266;</button>
@@ -290,6 +291,48 @@
         <button class="action-btn tutorial-skip" id="tutorial-skip-btn">Skip Tutorial</button>
         <button class="action-btn primary hidden" id="tutorial-next-btn">Next →</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Strategy Drill Overlay -->
+  <div class="drill-overlay hidden" id="drill-overlay">
+    <div class="drill-modal">
+      <div class="drill-header">
+        <div class="drill-title-row">
+          <h3>🎯 Strategy Drill</h3>
+          <div class="drill-score-box">
+            <span class="drill-score-num" id="drill-score">—</span>
+            <span class="drill-streak-badge hidden" id="drill-streak-display"></span>
+          </div>
+        </div>
+        <p class="drill-subtitle">Flashcard training — no money, no pressure</p>
+      </div>
+
+      <div class="drill-scenario">
+        <div class="drill-hand-row">
+          <div class="drill-row-label">Dealer shows</div>
+          <div class="drill-card-row" id="drill-dealer-card"></div>
+        </div>
+        <div class="drill-hand-row">
+          <div class="drill-row-label">Your hand &nbsp;<span class="hand-value" id="drill-hand-value"></span></div>
+          <div class="drill-card-row" id="drill-player-cards"></div>
+        </div>
+      </div>
+
+      <div class="drill-feedback hidden" id="drill-feedback">
+        <div class="drill-verdict" id="drill-verdict"></div>
+        <div class="drill-explanation" id="drill-explanation"></div>
+      </div>
+
+      <div class="drill-choices" id="drill-choices">
+        <button class="action-btn drill-choice-btn" id="drill-hit-btn">Hit (H)</button>
+        <button class="action-btn drill-choice-btn" id="drill-stand-btn">Stand (S)</button>
+        <button class="action-btn drill-choice-btn" id="drill-double-btn">Double (D)</button>
+        <button class="action-btn drill-choice-btn" id="drill-split-btn">Split (P)</button>
+      </div>
+
+      <button class="action-btn primary hidden" id="drill-next-btn">Next Hand (N) →</button>
+      <button class="close-settings-btn" id="drill-close-btn">Exit Drill</button>
     </div>
   </div>
 

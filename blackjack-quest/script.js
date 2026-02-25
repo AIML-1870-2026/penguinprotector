@@ -1607,6 +1607,20 @@ function syncHandCountUI() {
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   const key = e.key.toUpperCase();
+
+  // Drill mode intercepts keys while open
+  if (!$('drill-overlay').classList.contains('hidden')) {
+    if (!drillState.answered) {
+      if (key === 'H') { gradeDrillAnswer('H'); return; }
+      if (key === 'S') { gradeDrillAnswer('S'); return; }
+      if (key === 'D') { gradeDrillAnswer('D'); return; }
+      if (key === 'P' && !$('drill-split-btn').disabled) { gradeDrillAnswer('P'); return; }
+    } else if (key === 'ENTER' || key === 'N') {
+      newDrillHand(); return;
+    }
+    return;
+  }
+
   switch(key) {
     case 'H': if (!elems.hitBtn.disabled)        hit();       break;
     case 'S': if (!elems.standBtn.disabled)      stand();     break;
@@ -1976,6 +1990,204 @@ $('help-btn').addEventListener('click', startTutorial);
 $('practice-toggle').addEventListener('change', e => {
   togglePracticeMode(e.target.checked);
 });
+
+// ─── STRATEGY DRILL ───────────────────────────────────────────
+let drillState = {
+  correct: 0,
+  total: 0,
+  streak: 0,
+  playerCards: [],
+  dealerCard: null,
+  answered: false,
+  correctAction: null,
+};
+
+function generateDrillScenario() {
+  const allRanks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const dealerRanks = ['2','3','4','5','6','7','8','9','10','A'];
+  const handType = Math.random();
+  let card1, card2;
+
+  if (handType < 0.25) {
+    // Pair (25%) — tests split decisions
+    const rank = allRanks[Math.floor(Math.random() * allRanks.length)];
+    card1 = { rank, suit: '♠' };
+    card2 = { rank, suit: '♥' };
+  } else if (handType < 0.45) {
+    // Soft hand (20%) — tests soft strategy
+    const others = ['2','3','4','5','6','7','8','9','10'];
+    const otherRank = others[Math.floor(Math.random() * others.length)];
+    card1 = { rank: 'A', suit: '♠' };
+    card2 = { rank: otherRank, suit: '♥' };
+  } else {
+    // Random (55%) — general strategy
+    card1 = { rank: allRanks[Math.floor(Math.random() * allRanks.length)], suit: SUITS[Math.floor(Math.random() * 4)] };
+    card2 = { rank: allRanks[Math.floor(Math.random() * allRanks.length)], suit: SUITS[Math.floor(Math.random() * 4)] };
+  }
+
+  const dealerRank = dealerRanks[Math.floor(Math.random() * dealerRanks.length)];
+  return {
+    playerCards: [card1, card2],
+    dealerCard: { rank: dealerRank, suit: SUITS[Math.floor(Math.random() * 4)] },
+  };
+}
+
+function getDrillExplanation(correctAction, playerCards, dealerCard) {
+  const total = handValue(playerCards);
+  const soft = isSoft(playerCards);
+  const du = rankValue(dealerCard.rank);
+  const r = playerCards[0].rank;
+
+  if (correctAction === 'P') {
+    if (r === 'A') return 'Always split Aces — each Ace can start fresh toward 21.';
+    if (r === '8') return 'Always split 8s — hard 16 is the worst hand; two 8s give you clean starts.';
+    if (r === '9') return `Split 9s vs dealer ${dealerCard.rank} — two 9-hands beat this upcard.`;
+    if (r === '7') return `Split 7s vs dealer ${dealerCard.rank} — favorable matchup here.`;
+    if (r === '6') return 'Split 6s vs a weak dealer — push them into the bust zone.';
+    if (r === '4') return 'Split 4s only vs dealer 5 or 6 — the two weakest dealer cards.';
+    if (r === '2' || r === '3') return `Split ${r}s vs dealer ${dealerCard.rank} — turn a weak hand into two decent ones.`;
+    return 'Splitting this pair has higher expected value here.';
+  }
+
+  if (correctAction === 'D') {
+    if (total === 11) return 'Double on 11 — the strongest doubling hand. One card away from 21.';
+    if (total === 10) return `Double on 10 vs dealer ${dealerCard.rank} — high chance of landing a 20.`;
+    if (total === 9) return 'Double on 9 vs a weak dealer (3–6) — they\'re likely to bust.';
+    if (soft && total === 18) return `Soft 18 vs dealer ${dealerCard.rank} — double to maximize the opportunity.`;
+    if (soft && total === 17) return 'Soft 17 vs a weak dealer — the Ace protects you from busting.';
+    if (soft) return `Soft ${total} is a great doubling hand — the Ace means you can\'t bust.`;
+    return 'This is a prime doubling situation — press your advantage!';
+  }
+
+  if (correctAction === 'S') {
+    if (total === 21) return 'Perfect hand! Always stand on 21.';
+    if (total >= 17) return `Hard ${total} — always stand on 17 or more. The bust risk outweighs any gain.`;
+    if (du <= 6 && total >= 13) return `Stand on ${total} vs dealer ${dealerCard.rank} — dealer is in the bust zone (2–6). Let them bust.`;
+    if (du <= 6 && total === 12) return `Stand on 12 vs dealer ${dealerCard.rank} — they risk busting; don\'t risk it yourself.`;
+    if (soft && total >= 19) return `Soft ${total} is a strong hand — no need to risk another card.`;
+    return 'Stand and let the dealer take the risk.';
+  }
+
+  // Hit
+  if (total <= 8) return `${total} is very low — always hit. No card can bust you from here.`;
+  if (soft) return `Soft ${total} — you can\'t bust on one hit (the Ace absorbs it). Take the free card.`;
+  if (du >= 7 && total <= 16) return `Dealer shows a strong ${dealerCard.rank} — you need to improve. Hit to compete.`;
+  if (total === 12) return `12 vs dealer ${dealerCard.rank} — dealer is strong enough here that you must hit.`;
+  return `Hit to improve a weak ${total} against the dealer\'s ${dealerCard.rank}.`;
+}
+
+function newDrillHand() {
+  const scenario = generateDrillScenario();
+  drillState.playerCards = scenario.playerCards;
+  drillState.dealerCard = scenario.dealerCard;
+  drillState.answered = false;
+
+  const isPair = scenario.playerCards[0].rank === scenario.playerCards[1].rank;
+  drillState.correctAction = basicStrategy(scenario.playerCards, scenario.dealerCard.rank, true, isPair);
+
+  // Render cards
+  const dealerEl = $('drill-dealer-card');
+  const playerEl = $('drill-player-cards');
+  dealerEl.innerHTML = '';
+  playerEl.innerHTML = '';
+  dealerEl.appendChild(renderCard(scenario.dealerCard));
+  scenario.playerCards.forEach(c => playerEl.appendChild(renderCard(c)));
+
+  $('drill-hand-value').textContent = handValue(scenario.playerCards);
+
+  // Split only when cards are a true pair
+  const splitBtn = $('drill-split-btn');
+  splitBtn.disabled = !isPair;
+  splitBtn.style.opacity = isPair ? '1' : '0.35';
+
+  // Reset button states
+  ['drill-hit-btn', 'drill-stand-btn', 'drill-double-btn', 'drill-split-btn'].forEach(id => {
+    const el = $(id);
+    el.classList.remove('drill-correct', 'drill-wrong', 'drill-highlight');
+    if (id !== 'drill-split-btn') el.disabled = false;
+  });
+
+  $('drill-feedback').classList.add('hidden');
+  $('drill-choices').classList.remove('hidden');
+  $('drill-next-btn').classList.add('hidden');
+}
+
+function gradeDrillAnswer(action) {
+  if (drillState.answered) return;
+  drillState.answered = true;
+  drillState.total++;
+
+  const isCorrect = action === drillState.correctAction;
+  if (isCorrect) {
+    drillState.correct++;
+    drillState.streak++;
+    playTone(660, 0.1, 'sine', 0.1);
+    setTimeout(() => playTone(880, 0.15, 'sine', 0.1), 80);
+  } else {
+    drillState.streak = 0;
+    playTone(260, 0.3, 'sawtooth', 0.08);
+  }
+
+  // Highlight buttons
+  const btnMap = { H: 'drill-hit-btn', S: 'drill-stand-btn', D: 'drill-double-btn', P: 'drill-split-btn' };
+  $(btnMap[action]).classList.add(isCorrect ? 'drill-correct' : 'drill-wrong');
+  if (!isCorrect) $(btnMap[drillState.correctAction]).classList.add('drill-highlight');
+
+  // Disable all choices
+  ['drill-hit-btn', 'drill-stand-btn', 'drill-double-btn', 'drill-split-btn'].forEach(id => $(id).disabled = true);
+
+  const actionLabels = { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' };
+  const verdict = $('drill-verdict');
+  verdict.className = 'drill-verdict ' + (isCorrect ? 'correct' : 'wrong');
+  verdict.textContent = isCorrect
+    ? `✓ Correct! ${actionLabels[action]}`
+    : `✗ Incorrect — correct play: ${actionLabels[drillState.correctAction]}`;
+
+  $('drill-explanation').textContent = getDrillExplanation(
+    drillState.correctAction, drillState.playerCards, drillState.dealerCard
+  );
+
+  $('drill-feedback').classList.remove('hidden');
+  $('drill-next-btn').classList.remove('hidden');
+  updateDrillScore();
+}
+
+function updateDrillScore() {
+  const { correct, total, streak } = drillState;
+  const pct = total > 0 ? Math.round(correct / total * 100) : 0;
+  $('drill-score').textContent = total > 0 ? `${correct}/${total} (${pct}%)` : '—';
+  const streakEl = $('drill-streak-display');
+  if (streak >= 3) {
+    streakEl.textContent = `🔥 ${streak}`;
+    streakEl.classList.remove('hidden');
+  } else {
+    streakEl.textContent = '';
+    streakEl.classList.add('hidden');
+  }
+}
+
+function openDrill() {
+  drillState.correct = 0;
+  drillState.total = 0;
+  drillState.streak = 0;
+  drillState.answered = false;
+  $('drill-score').textContent = '—';
+  $('drill-streak-display').classList.add('hidden');
+  $('drill-overlay').classList.remove('hidden');
+  newDrillHand();
+}
+
+// Strategy Drill event listeners
+$('drill-btn').addEventListener('click', openDrill);
+$('drill-close-btn').addEventListener('click', () => $('drill-overlay').classList.add('hidden'));
+$('drill-overlay').addEventListener('click', e => {
+  if (e.target === $('drill-overlay')) $('drill-overlay').classList.add('hidden');
+});
+$('drill-hit-btn').addEventListener('click', () => gradeDrillAnswer('H'));
+$('drill-stand-btn').addEventListener('click', () => gradeDrillAnswer('S'));
+$('drill-double-btn').addEventListener('click', () => gradeDrillAnswer('D'));
+$('drill-split-btn').addEventListener('click', () => gradeDrillAnswer('P'));
+$('drill-next-btn').addEventListener('click', newDrillHand);
 
 // ─── INIT ────────────────────────────────────────────────────
 function init() {
