@@ -430,9 +430,9 @@ function startRound() {
     return;
   }
 
-  // Insurance offer if dealer shows Ace
+  // Insurance offer if dealer shows Ace (only if player can afford any)
   const dealerUp = state.dealerCards[0];
-  if (dealerUp.rank === 'A') {
+  if (dealerUp.rank === 'A' && state.balance > 0) {
     elems.insuranceBar.classList.remove('hidden');
   }
 
@@ -742,8 +742,8 @@ function clearBet() {
 
 // ─── INSURANCE ─────────────────────────────────────────────────
 function takeInsurance() {
-  const maxIns = Math.floor(state.bet / 2);
-  if (maxIns > state.balance) return;
+  const maxIns = Math.min(Math.floor(state.bet / 2), state.balance);
+  if (maxIns <= 0) return;
   state.insuranceBet = maxIns;
   state.balance -= maxIns;
   elems.insuranceBar.classList.add('hidden');
