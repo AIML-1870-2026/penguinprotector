@@ -16,6 +16,7 @@
     <h1 class="site-title">Blackjack Quest</h1>
     <div class="header-controls">
       <button class="icon-btn" id="achievements-btn" title="Achievements">🏆</button>
+      <button class="icon-btn" id="leaderboard-btn" title="Leaderboard">🏅</button>
       <button class="icon-btn" id="daily-btn" title="Daily Challenge">📅</button>
       <button class="icon-btn" id="theme-btn" title="Change Theme">&#9680;</button>
       <button class="icon-btn" id="mute-btn" title="Mute (M)">&#128266;</button>
@@ -112,11 +113,17 @@
         <div class="card-row" id="player-cards"></div>
         <div class="hint-box hidden" id="hint-box-a"></div>
       </div>
-      <!-- Split: hand B (hidden unless split) -->
+      <!-- Split / multi-hand: hand B -->
       <div class="hand-section hidden" id="hand-b-section">
         <div class="area-label">Hand B <span class="hand-value" id="player-value-b">0</span></div>
         <div class="card-row" id="player-cards-b"></div>
         <div class="hint-box hidden" id="hint-box-b"></div>
+      </div>
+      <!-- Multi-hand: hand C -->
+      <div class="hand-section hidden" id="hand-c-section">
+        <div class="area-label">Hand C <span class="hand-value" id="player-value-c">0</span></div>
+        <div class="card-row" id="player-cards-c"></div>
+        <div class="hint-box hidden" id="hint-box-c"></div>
       </div>
     </section>
 
@@ -135,6 +142,12 @@
 
     <!-- Betting Controls -->
     <div class="betting-controls" id="betting-controls">
+      <div class="hand-count-row">
+        <span class="hand-count-label">Hands:</span>
+        <button class="hand-count-btn active" data-n="1">1</button>
+        <button class="hand-count-btn" data-n="2">2</button>
+        <button class="hand-count-btn" data-n="3">3</button>
+      </div>
       <div class="chip-row">
         <button class="chip" data-amount="5">$5</button>
         <button class="chip" data-amount="10">$10</button>
@@ -185,6 +198,18 @@
         <button class="action-btn primary" id="daily-start-btn">Start Today's Challenge</button>
         <button class="action-btn" id="daily-close-btn">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Overlay -->
+  <div class="leaderboard-overlay hidden" id="leaderboard-overlay">
+    <div class="leaderboard-modal">
+      <div class="lb-header">
+        <h3>🏅 Daily Challenge Leaderboard</h3>
+        <p class="lb-subtitle">Top scores from your Daily Challenge runs</p>
+      </div>
+      <div id="lb-content"></div>
+      <button class="close-settings-btn" id="close-leaderboard-btn">Close</button>
     </div>
   </div>
 

@@ -17,6 +17,13 @@ const RED_SUITS = new Set(['♥','♦']);
 // Hi-Lo count values
 const HI_LO = { '2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':0,'J':0,'Q':0,'K':0,'A':-1 };
 
+// Hand index helpers (supports up to 3 hands for multi-hand + split)
+const HAND_CARD_IDS    = ['player-cards', 'player-cards-b', 'player-cards-c'];
+const HAND_VALUE_IDS   = ['player-value',  'player-value-b',  'player-value-c'];
+const HAND_HINT_IDS    = ['hint-box-a',    'hint-box-b',      'hint-box-c'];
+const HAND_SECTION_IDS = ['hand-a-section','hand-b-section',  'hand-c-section'];
+const HAND_LABELS      = ['Hand A', 'Hand B', 'Hand C'];
+
 // ─── ACHIEVEMENTS ────────────────────────────────────────────
 const ACHIEVEMENTS = [
   { id: 'first_win',      icon: '🩸', title: 'First Blood',      desc: 'Win your first hand' },
@@ -146,8 +153,10 @@ let state = {
   bet: 0,
   deck: [],
   dealerCards: [],
-  playerHands: [[]],      // array of hands (for split)
+  playerHands: [[]],      // array of hands (multi-hand + split)
   activeHand: 0,          // which hand is being played
+  numHands: 1,            // 1, 2, or 3 — multi-hand mode
+  handBets: [],           // per-hand bet amounts (tracks doubles independently)
   insuranceBet: 0,
   result: null,
   muted: false,
@@ -202,6 +211,7 @@ function saveDailyRecord() {
     bestBalance: Math.max(rec.bestBalance, state.balance),
     handsPlayed: state.handsPlayed,
   }));
+  saveLeaderboard();
 }
 
 let dailyRng = null;
@@ -218,6 +228,7 @@ function startDailyChallenge() {
   const dateStr = getDailyDateStr();
   dailyRng = mulberry32(getDailySeed(dateStr));
   state.dailyMode = true;
+  state.numHands = 1; // daily challenge always starts as single hand
   // Full reset for the challenge
   state.balance = STARTING_BALANCE;
   state.bet = 0;
@@ -228,6 +239,8 @@ function startDailyChallenge() {
   $('daily-overlay').classList.add('hidden');
   $('daily-badge').classList.remove('hidden');
   elems.resultBanner.classList.add('hidden');
+  resetHandSections();
+  syncHandCountUI();
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = '📅 Daily Challenge — place your bet!';
@@ -392,9 +405,9 @@ function jazzNote(freq, delayMs, dur, gain = 0.07, type = 'triangle') {
 }
 
 // Swinging I–V jazz loop in C major @ 168 BPM
-const J_Q   = Math.round(60000 / 168);                 // quarter note ≈ 357ms
-const J_BAR = J_Q * 4;                                 // ≈ 1428ms
-const J_E1  = Math.round(J_Q * 0.67);                  // long swung 8th ≈ 239ms
+const J_Q   = Math.round(60000 / 168);
+const J_BAR = J_Q * 4;
+const J_E1  = Math.round(J_Q * 0.67);
 const J_POS = [0, J_E1, J_Q, J_Q+J_E1, J_Q*2, J_Q*2+J_E1, J_Q*3, J_Q*3+J_E1];
 
 function jazzScheduleBar() {
@@ -402,34 +415,27 @@ function jazzScheduleBar() {
   const P = J_POS;
 
   // ── Cmaj7 (beats 1–2) ──────────────────────────────────
-  // Bass walk: C3 E3 G3 A3
   jazzNote(130.81, P[0], 0.34, 0.13);
   jazzNote(164.81, P[1], 0.24, 0.10);
   jazzNote(196.00, P[2], 0.30, 0.11);
   jazzNote(220.00, P[3], 0.22, 0.09);
-  // Piano stab on beat 2
   [261.63, 329.63, 392.00, 493.88].forEach(f => jazzNote(f, P[2], 0.16, 0.026));
-  // Melody: C5 E5 G5 A5
   jazzNote(523.25, P[0], 0.28, 0.08, 'sine');
   jazzNote(659.25, P[1], 0.22, 0.07, 'sine');
   jazzNote(783.99, P[2], 0.28, 0.07, 'sine');
   jazzNote(880.00, P[3], 0.22, 0.06, 'sine');
 
   // ── G7 (beats 3–4) ─────────────────────────────────────
-  // Bass walk: G2 B2 D3 F3
   jazzNote(98.00,  P[4], 0.34, 0.13);
   jazzNote(123.47, P[5], 0.24, 0.10);
   jazzNote(146.83, P[6], 0.30, 0.11);
   jazzNote(174.61, P[7], 0.22, 0.09);
-  // Piano stab on beat 4
   [196.00, 246.94, 293.66, 349.23].forEach(f => jazzNote(f, P[6], 0.16, 0.026));
-  // Melody: A5 G5 E5 C5
   jazzNote(880.00, P[4], 0.24, 0.07, 'sine');
   jazzNote(783.99, P[5], 0.22, 0.06, 'sine');
   jazzNote(659.25, P[6], 0.28, 0.07, 'sine');
   jazzNote(523.25, P[7], 0.32, 0.08, 'sine');
 
-  // Loop
   const t = setTimeout(jazzScheduleBar, J_BAR);
   jazzTimers.push(t);
 }
@@ -448,9 +454,12 @@ const elems = {
   dealerValue:    $('dealer-value'),
   playerCards:    $('player-cards'),
   playerCardsB:   $('player-cards-b'),
+  playerCardsC:   $('player-cards-c'),
   playerValue:    $('player-value'),
   playerValueB:   $('player-value-b'),
+  playerValueC:   $('player-value-c'),
   handBSection:   $('hand-b-section'),
+  handCSection:   $('hand-c-section'),
   balanceDisplay: $('balance-display'),
   betDisplay:     $('bet-display'),
   betBig:         $('bet-big'),
@@ -479,6 +488,7 @@ const elems = {
   insuranceNo:    $('insurance-no-btn'),
   hintBoxA:       $('hint-box-a'),
   hintBoxB:       $('hint-box-b'),
+  hintBoxC:       $('hint-box-c'),
   hintToggle:     $('hint-toggle'),
   countToggle:    $('count-toggle'),
   settingsBtn:    $('settings-btn'),
@@ -487,7 +497,6 @@ const elems = {
   themeChips:     document.querySelectorAll('.theme-chip'),
   themeBtn:       $('theme-btn'),
   playAgainCta:   $('play-again-cta'),
-  // New features
   surrenderBtn:        $('surrender-btn'),
   achievementsBtn:     $('achievements-btn'),
   achievementsOverlay: $('achievements-overlay'),
@@ -498,6 +507,8 @@ const elems = {
   dailyCloseBtn:   $('daily-close-btn'),
   dailyBadge:      $('daily-badge'),
   statStrategy:    $('stat-strategy'),
+  handCountBtns:   document.querySelectorAll('.hand-count-btn'),
+  leaderboardBtn:  $('leaderboard-btn'),
 };
 
 // ─── CHIP RAIN ────────────────────────────────────────────────
@@ -520,10 +531,10 @@ function launchChipRain() {
     const chip = document.createElement('div');
     chip.className = 'chip-falling';
     const s = CHIP_RAIN_STYLES[Math.floor(Math.random() * CHIP_RAIN_STYLES.length)];
-    const size = 32 + Math.random() * 22;          // 32–54 px
-    const left = Math.random() * 96;               // 0–96 %
-    const dur  = 1.6 + Math.random() * 1.8;        // 1.6–3.4 s
-    const delay = Math.random() * 0.9;             // stagger 0–0.9 s
+    const size = 32 + Math.random() * 22;
+    const left = Math.random() * 96;
+    const dur  = 1.6 + Math.random() * 1.8;
+    const delay = Math.random() * 0.9;
     chip.style.cssText = [
       `left:${left}%`,
       `width:${size}px`,
@@ -545,7 +556,6 @@ function launchChipRain() {
 // ─── SLOT MACHINE ─────────────────────────────────────────────
 const SLOT_SYMS    = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'];
 
-// Payout multipliers applied to the side bet
 const SLOT_PAYOUTS = {
   '🍒': { two: 0,   three: 2    },
   '🍋': { two: 0,   three: 3    },
@@ -555,7 +565,6 @@ const SLOT_PAYOUTS = {
   '7️⃣': { two: 6,   three: 25   },
 };
 
-// Win probability drops as main bet rises (higher bet = riskier slots)
 function slotWinProb(bet) {
   if (bet <= 10)  return 0.72;
   if (bet <= 25)  return 0.60;
@@ -572,7 +581,6 @@ function slotOddsLabel(bet) {
   return '22%';
 }
 
-// Weighted pick from a symbol weight array
 function slotPick(weights) {
   const total = weights.reduce((s, w) => s + w, 0);
   let r = Math.random() * total;
@@ -583,19 +591,16 @@ function slotPick(weights) {
   return SLOT_SYMS[0];
 }
 
-// Rigged: pre-determine win/loss, then build matching symbol set
 function determineSlotResults(bet) {
   const isWin = Math.random() < slotWinProb(bet);
 
   if (isWin) {
     const isTriple = Math.random() < 0.42;
-    // Common symbols weighted more heavily for wins
     const winW = [6, 5, 3, 1.5, 0.4, 0.2];
     const sym = slotPick(winW);
 
     if (isTriple) return [sym, sym, sym];
 
-    // Pair: place the odd symbol at a random position
     const others = SLOT_SYMS.filter(s => s !== sym);
     const odd = others[Math.floor(Math.random() * others.length)];
     const pos = Math.floor(Math.random() * 3);
@@ -603,19 +608,17 @@ function determineSlotResults(bet) {
     if (pos === 1) return [sym, odd, sym];
     return [sym, sym, odd];
   } else {
-    // Guaranteed no-match: shuffle and take first 3 distinct symbols
     const shuffled = [...SLOT_SYMS].sort(() => Math.random() - 0.5);
     return [shuffled[0], shuffled[1], shuffled[2]];
   }
 }
 
-// Smooth reel — each symbol slides in; animation duration matches tick interval
 const TICK_CLASSES = ['tick-fast', 'tick-medium', 'tick-slow', 'tick-final'];
 
 function setReelSymbol(symEl, sym, cls) {
   TICK_CLASSES.forEach(c => symEl.classList.remove(c));
   symEl.textContent = sym;
-  void symEl.offsetWidth; // force reflow so animation restarts cleanly
+  void symEl.offsetWidth;
   symEl.classList.add(cls);
 }
 
@@ -639,7 +642,7 @@ function animateReel(symEl, finalSym, duration, onDone) {
     if (remaining > 800) {
       cls = 'tick-fast'; delay = 50;
       fastCount++;
-      if (fastCount % 3 === 0) sfxSlotTick(); // ~every 150ms during fast phase
+      if (fastCount % 3 === 0) sfxSlotTick();
     } else if (remaining > 350) {
       cls = 'tick-medium'; delay = 120;
       sfxSlotTick();
@@ -665,13 +668,11 @@ function showSlotMachine() {
   const wagerInfo  = $('slot-wager-info');
   const reelEls    = [$('reel-0'), $('reel-1'), $('reel-2')];
 
-  // Side bet = 25% of main bet, minimum $5
   const sideBet    = Math.max(5, Math.round(state.bet * 0.25));
-  const maxPayout  = sideBet * 25; // 7️⃣7️⃣7️⃣ pays 25×
+  const maxPayout  = sideBet * 25;
   const oddsLabel  = slotOddsLabel(state.bet);
   const isHighRoller = state.bet > 50;
 
-  // Reset
   subtitle.textContent    = 'You won! Try your luck on the bonus slots?';
   resultMsg.className     = 'slot-result-msg hidden';
   resultMsg.textContent   = '';
@@ -700,7 +701,6 @@ function showSlotMachine() {
 
     const results = determineSlotResults(state.bet);
 
-    // Stagger stops: reel 0 longest, reel 2 shortest
     animateReel(reelEls[0], results[0], 1800, () => {
       animateReel(reelEls[1], results[1], 1100, () => {
         animateReel(reelEls[2], results[2], 700, () => {
@@ -760,11 +760,9 @@ function renderCard(card) {
   const inner = document.createElement('div');
   inner.className = 'card-inner';
 
-  // Back
   const back = document.createElement('div');
   back.className = 'card-back';
 
-  // Face
   const colorClass = RED_SUITS.has(card.suit) ? 'red' : 'black';
   const face = document.createElement('div');
   face.className = `card-face ${colorClass}`;
@@ -796,6 +794,11 @@ function renderHand(container, cards) {
   cards.forEach(c => container.appendChild(renderCard(c)));
 }
 
+function renderHandByIndex(i) {
+  const el = $(HAND_CARD_IDS[i]);
+  if (el && state.playerHands[i]) renderHand(el, state.playerHands[i]);
+}
+
 function flipCard(container, index) {
   const wraps = container.querySelectorAll('.card-wrap');
   if (wraps[index]) {
@@ -804,21 +807,39 @@ function flipCard(container, index) {
   }
 }
 
+// Highlight the currently active hand with a glow
+function highlightActiveHand() {
+  HAND_SECTION_IDS.forEach((id, i) => {
+    const el = $(id);
+    if (el) el.classList.toggle('hand-active', state.phase === 'playing' && i === state.activeHand);
+  });
+}
+
+// Show/hide extra hand sections based on how many are in play
+function resetHandSections() {
+  $('hand-b-section').classList.add('hidden');
+  $('hand-c-section').classList.add('hidden');
+}
+
 function updateDisplays() {
   // Balance
   elems.balanceDisplay.textContent = fmt(state.balance);
-  // Bet
+  // Bet — show multiplier when multi-hand
   const betStr = fmt(state.bet);
-  elems.betDisplay.textContent = betStr;
+  elems.betDisplay.textContent = state.numHands > 1 ? `${state.numHands}×${betStr}` : betStr;
   elems.betBig.textContent = betStr;
   // Dealer value (hide hidden card value)
   const visibleDealer = state.dealerCards.filter(c => !c.hidden);
   elems.dealerValue.textContent = visibleDealer.length ? handValue(visibleDealer) : '';
-  // Player hand A
-  elems.playerValue.textContent = state.playerHands[0].length ? handValue(state.playerHands[0]) : '0';
-  // Player hand B
-  if (state.playerHands[1]) {
-    elems.playerValueB.textContent = handValue(state.playerHands[1]);
+  // All player hand values
+  for (let i = 0; i < 3; i++) {
+    const valEl = $(HAND_VALUE_IDS[i]);
+    if (!valEl) continue;
+    if (state.playerHands[i] && state.playerHands[i].length > 0) {
+      valEl.textContent = handValue(state.playerHands[i]);
+    } else {
+      valEl.textContent = i === 0 ? '0' : '';
+    }
   }
   // Count
   elems.countValue.textContent = state.hiLoCount;
@@ -830,25 +851,41 @@ function updateDisplays() {
 
 function updateHints() {
   if (!state.showHints || state.phase !== 'playing') {
-    elems.hintBoxA.classList.add('hidden');
-    elems.hintBoxB.classList.add('hidden');
+    HAND_HINT_IDS.forEach(id => { const el = $(id); if (el) el.classList.add('hidden'); });
     return;
   }
   const du = state.dealerCards.find(c => !c.hidden);
   if (!du) return;
 
-  [0, 1].forEach(i => {
+  // Show hint only for the currently active hand
+  HAND_HINT_IDS.forEach((id, i) => {
+    const box = $(id);
+    if (!box) return;
     const hand = state.playerHands[i];
-    const box = i === 0 ? elems.hintBoxA : elems.hintBoxB;
-    if (!hand || hand.length === 0) { box.classList.add('hidden'); return; }
-    const canDouble = hand.length === 2 && state.bet * 2 <= state.balance;
-    const canSplit = hand.length === 2 &&
+    if (!hand || hand.length === 0 || i !== state.activeHand) {
+      box.classList.add('hidden');
+      return;
+    }
+    const curBet   = state.handBets[i] !== undefined ? state.handBets[i] : state.bet;
+    const canDouble  = hand.length === 2 && curBet <= state.balance;
+    const canSplit   = hand.length === 2 &&
       rankValue(hand[0].rank) === rankValue(hand[1].rank) &&
-      state.bet * 2 <= state.balance && !state.playerHands[1];
+      curBet <= state.balance &&
+      !state.playerHands[1] &&
+      state.numHands === 1;
     const action = basicStrategy(hand, du.rank, canDouble, canSplit);
     box.textContent = `Hint: ${strategyLabel(action)}`;
     box.classList.remove('hidden');
   });
+}
+
+function renderAll() {
+  renderHand(elems.dealerCards, state.dealerCards);
+  for (let i = 0; i < state.playerHands.length; i++) {
+    renderHandByIndex(i);
+  }
+  highlightActiveHand();
+  updateDisplays();
 }
 
 // ─── STRATEGY TRACKING ───────────────────────────────────────
@@ -868,20 +905,19 @@ function getCorrectAction() {
   const du = state.dealerCards.find(c => !c.hidden);
   if (!hand || hand.length === 0 || !du) return null;
 
-  const canDouble   = hand.length === 2 && state.bet * 2 <= state.balance;
+  const curBet      = state.handBets[state.activeHand] !== undefined ? state.handBets[state.activeHand] : state.bet;
+  const canDouble   = hand.length === 2 && curBet <= state.balance;
   const canSplit    = hand.length === 2 &&
     rankValue(hand[0].rank) === rankValue(hand[1].rank) &&
-    state.bet * 2 <= state.balance && !state.playerHands[1];
-  const canSurrender = hand.length === 2 && !state.playerHands[1];
+    curBet <= state.balance && !state.playerHands[1] &&
+    state.numHands === 1;
+  const canSurrender = hand.length === 2 && !state.playerHands[1] && state.numHands === 1;
 
-  // Split takes priority — check it first
   if (canSplit) {
     const splitAction = basicStrategy(hand, du.rank, canDouble, true);
     if (splitAction === 'P') return 'P';
   }
-  // Then surrender
   if (canSurrender && shouldSurrender(hand, du.rank)) return 'U';
-  // Otherwise standard strategy (no split re-check)
   return basicStrategy(hand, du.rank, canDouble, false);
 }
 
@@ -911,7 +947,6 @@ function updateStatsPanel() {
   const sign = streakDir === 'win' ? '+' : streakDir === 'lose' ? '-' : '';
   elems.statStreak.textContent = streak ? `${sign}${streak}` : '0';
 
-  // Strategy accuracy
   const { decisions, correct } = state.strategyTracker;
   elems.statStrategy.textContent = decisions > 0
     ? `${Math.round(correct / decisions * 100)}% (${correct}/${decisions})`
@@ -934,18 +969,18 @@ function setPhaseButtons(phase) {
   const isPlaying = phase === 'playing';
   const isDone    = phase === 'roundComplete';
 
-  // Bet chips & adj (available during betting and after a round ends)
   elems.chips.forEach(c => c.disabled = !(isBetting || isDone));
   elems.betMinus.disabled = !(isBetting || isDone);
   elems.betPlus.disabled  = !(isBetting || isDone);
 
-  // Action row
+  // Hand count selector — only available when not mid-round
+  elems.handCountBtns.forEach(b => b.disabled = !(isBetting || isDone));
+
   elems.dealBtn.disabled     = !(isBetting && state.bet > 0) && !isDone;
   elems.clearBetBtn.disabled = !(isBetting || isDone);
   elems.hitBtn.disabled      = !isPlaying;
   elems.standBtn.disabled    = !isPlaying;
 
-  // Deal button label
   elems.dealBtn.textContent = isDone ? 'Deal Again (D)' : 'Deal (D)';
 
   if (isDone) {
@@ -965,14 +1000,24 @@ function updateDoubleAndSplit() {
   const isPlaying = state.phase === 'playing';
   const hand = state.playerHands[state.activeHand];
   const isFirstTwo = hand && hand.length === 2;
+  const curBet = state.handBets[state.activeHand] !== undefined
+    ? state.handBets[state.activeHand]
+    : state.bet;
 
-  elems.doubleBtn.disabled   = !(isPlaying && isFirstTwo && state.bet * 2 <= state.balance);
-  elems.splitBtn.disabled    = !(isPlaying && isFirstTwo &&
+  elems.doubleBtn.disabled = !(isPlaying && isFirstTwo && curBet <= state.balance);
+
+  // Split only in single-hand mode (not multi-hand — too complex with 3 spots)
+  elems.splitBtn.disabled = !(
+    isPlaying &&
+    state.numHands === 1 &&
+    isFirstTwo &&
     hand && rankValue(hand[0].rank) === rankValue(hand[1].rank) &&
-    state.bet * 2 <= state.balance &&
+    curBet <= state.balance &&
     !state.playerHands[1]
   );
-  elems.surrenderBtn.disabled = !(isPlaying && isFirstTwo && !state.playerHands[1]);
+
+  // Surrender only in single-hand mode on original 2-card deal
+  elems.surrenderBtn.disabled = !(isPlaying && isFirstTwo && state.numHands === 1 && !state.playerHands[1]);
 }
 
 // ─── GAME FLOW ─────────────────────────────────────────────────
@@ -980,58 +1025,64 @@ function startRound() {
   if (state.bet === 0) return;
   jazzStop();
 
-  // Track if balance was low before this round (pre-bet balance)
-  state.wasLowBalance = (state.balance + state.bet) < 200;
+  // Track low balance before this round
+  state.wasLowBalance = (state.balance + state.bet * state.numHands) < 200;
 
   // Reset for new round
   state.deck = (state.dailyMode && dailyRng) ? shuffleSeeded(buildDeck(), dailyRng) : shuffle(buildDeck());
   state.dealerCards = [];
-  state.playerHands = [[]];
-  state.activeHand = 0;
+  state.playerHands = Array.from({ length: state.numHands }, () => []);
+  state.handBets    = Array(state.numHands).fill(state.bet);
+  state.activeHand  = 0;
   state.insuranceBet = 0;
   state.result = null;
   state.hiLoCount = 0;
   state.strategyTracker.currentHandDecisions = [];
 
-  // Hide elements
+  // Hide UI elements
   elems.resultBanner.classList.add('hidden');
-  elems.handBSection.classList.add('hidden');
   elems.insuranceBar.classList.add('hidden');
+  resetHandSections();
+  HAND_HINT_IDS.forEach(id => { const el = $(id); if (el) el.classList.add('hidden'); });
 
-  // Deal: player, dealer, player, dealer(hidden)
-  state.playerHands[0].push(dealCard());
+  // Round-robin deal: player hands first, then dealer, repeat
+  for (let i = 0; i < state.numHands; i++) state.playerHands[i].push(dealCard());
   state.dealerCards.push(dealCard());
-  state.playerHands[0].push(dealCard());
+  for (let i = 0; i < state.numHands; i++) state.playerHands[i].push(dealCard());
   state.dealerCards.push(dealCard(true)); // face-down
 
   state.phase = 'playing';
   setPhaseButtons('playing');
+
+  // Show extra hand sections for multi-hand
+  if (state.numHands >= 2) $('hand-b-section').classList.remove('hidden');
+  if (state.numHands >= 3) $('hand-c-section').classList.remove('hidden');
+
   renderAll();
   sfxDeal();
 
-  // Check for player blackjack immediately
-  if (isBlackjack(state.playerHands[0])) {
-    // Check dealer for blackjack too after revealing
+  // Auto-resolve blackjack only in single-hand mode
+  if (state.numHands === 1 && isBlackjack(state.playerHands[0])) {
     revealAndResolve();
     return;
   }
 
-  // Insurance offer if dealer shows Ace (only if player can afford any)
+  // Insurance offer — only single-hand
   const dealerUp = state.dealerCards[0];
-  if (dealerUp.rank === 'A' && state.balance > 0) {
+  if (state.numHands === 1 && dealerUp.rank === 'A' && state.balance > 0) {
     elems.insuranceBar.classList.remove('hidden');
   }
 
-  elems.roundStatus.textContent = 'Hit, Stand, Double, or Split?';
+  elems.roundStatus.textContent = state.numHands > 1
+    ? `Playing ${HAND_LABELS[0]}`
+    : 'Hit, Stand, Double, or Split?';
   updateDisplays();
 }
 
 function renderAll() {
   renderHand(elems.dealerCards, state.dealerCards);
-  renderHand(elems.playerCards, state.playerHands[0]);
-  if (state.playerHands[1]) {
-    renderHand(elems.playerCardsB, state.playerHands[1]);
-  }
+  for (let i = 0; i < state.playerHands.length; i++) renderHandByIndex(i);
+  highlightActiveHand();
   updateDisplays();
 }
 
@@ -1045,8 +1096,7 @@ function hit() {
   sfxDeal();
 
   if (isBust(hand)) {
-    if (state.activeHand === 0 && state.playerHands[1]) {
-      // Move to second hand
+    if (state.activeHand + 1 < state.playerHands.length) {
       nextHand();
     } else {
       endPlayerTurn();
@@ -1061,7 +1111,7 @@ function hit() {
 function stand() {
   if (state.phase !== 'playing') return;
   logStrategyDecision('S');
-  if (state.activeHand === 0 && state.playerHands[1]) {
+  if (state.activeHand + 1 < state.playerHands.length) {
     nextHand();
   } else {
     endPlayerTurn();
@@ -1071,37 +1121,49 @@ function stand() {
 function doubleDown() {
   if (state.phase !== 'playing') return;
   const hand = state.playerHands[state.activeHand];
-  if (hand.length !== 2 || state.bet * 2 > state.balance) return;
+  if (hand.length !== 2) return;
+  const curBet = state.handBets[state.activeHand] !== undefined
+    ? state.handBets[state.activeHand]
+    : state.bet;
+  if (curBet > state.balance) return;
   logStrategyDecision('D');
-  state.balance -= state.bet;
-  state.bet *= 2;
+  state.balance -= curBet;
+  state.handBets[state.activeHand] = curBet * 2;
   updateDisplays();
   hand.push(dealCard());
   renderAll();
   sfxChip();
   sfxDeal();
-  endPlayerTurn();
+  // After doubling, advance to next hand or end turn
+  if (state.activeHand + 1 < state.playerHands.length) {
+    nextHand();
+  } else {
+    endPlayerTurn();
+  }
 }
 
 function split() {
   if (state.phase !== 'playing') return;
+  if (state.numHands !== 1) return; // split only in single-hand mode
   const hand = state.playerHands[0];
   if (hand.length !== 2 || rankValue(hand[0].rank) !== rankValue(hand[1].rank)) return;
-  if (state.bet * 2 > state.balance) return;
+  const curBet = state.handBets[0] !== undefined ? state.handBets[0] : state.bet;
+  if (curBet > state.balance) return;
   logStrategyDecision('P');
-  state.balance -= state.bet;
+  state.balance -= curBet;
   const cardB = hand.splice(1, 1)[0];
   state.playerHands[1] = [cardB];
+  state.handBets[1] = curBet; // hand B starts with same bet as hand A
   sfxChip();
 
-  // Deal one card to each hand
+  // Deal one card to hand A
   state.playerHands[0].push(dealCard());
-  // Aces get only one card each
+  // Aces only get one card each
   if (hand[0].rank === 'A') {
     state.playerHands[1].push(dealCard());
   }
 
-  elems.handBSection.classList.remove('hidden');
+  $('hand-b-section').classList.remove('hidden');
   renderHand(elems.playerCards, state.playerHands[0]);
   renderHand(elems.playerCardsB, state.playerHands[1]);
   sfxDeal();
@@ -1113,6 +1175,7 @@ function split() {
   }
 
   state.activeHand = 0;
+  highlightActiveHand();
   updateDisplays();
   updateDoubleAndSplit();
 }
@@ -1120,7 +1183,7 @@ function split() {
 function surrender() {
   if (state.phase !== 'playing') return;
   const hand = state.playerHands[state.activeHand];
-  if (hand.length !== 2 || state.playerHands[1]) return; // only on original first 2 cards
+  if (hand.length !== 2 || state.playerHands[1] || state.numHands !== 1) return;
 
   logStrategyDecision('U');
 
@@ -1131,7 +1194,6 @@ function surrender() {
 
   recordStrategyHand();
 
-  // Stats — count surrender as a loss
   state.stats.losses++;
   if (state.stats.streakDir === 'lose') state.stats.streak++;
   else { state.stats.streak = 1; state.stats.streakDir = 'lose'; }
@@ -1140,6 +1202,7 @@ function surrender() {
 
   setPhaseButtons('roundComplete');
   elems.insuranceBar.classList.add('hidden');
+  highlightActiveHand(); // clears active highlight
 
   const banner = elems.resultBanner;
   banner.className = 'result-banner push';
@@ -1163,32 +1226,40 @@ function surrender() {
 }
 
 function nextHand() {
-  state.activeHand = 1;
-  if (!state.playerHands[1] || state.playerHands[1].length === 0) {
+  const next = state.activeHand + 1;
+  if (next >= state.playerHands.length) {
     endPlayerTurn();
     return;
   }
-  // Deal a card to second hand if it only has one (split scenario)
-  if (state.playerHands[1].length === 1) {
-    state.playerHands[1].push(dealCard());
-    renderHand(elems.playerCardsB, state.playerHands[1]);
+  state.activeHand = next;
+  const hand = state.playerHands[state.activeHand];
+  if (!hand || hand.length === 0) {
+    endPlayerTurn();
+    return;
+  }
+  // Deal a second card if this hand only has one (split scenario)
+  if (hand.length === 1) {
+    if (!state.handBets[state.activeHand]) state.handBets[state.activeHand] = state.bet;
+    hand.push(dealCard());
+    renderHandByIndex(state.activeHand);
     sfxDeal();
   }
+  highlightActiveHand();
   updateDisplays();
   updateDoubleAndSplit();
-  elems.roundStatus.textContent = 'Playing Hand B';
+  elems.roundStatus.textContent = `Playing ${HAND_LABELS[state.activeHand] || `Hand ${state.activeHand + 1}`}`;
 }
 
 function endPlayerTurn() {
   state.phase = 'dealerTurn';
   setPhaseButtons('dealerTurn');
   elems.insuranceBar.classList.add('hidden');
+  highlightActiveHand(); // clears active highlight
   runDealerTurn();
 }
 
 // ─── DEALER TURN ───────────────────────────────────────────────
 function revealAndResolve() {
-  // Reveal hidden card
   state.dealerCards[1].hidden = false;
   state.hiLoCount += HI_LO[state.dealerCards[1].rank] ?? 0;
   renderHand(elems.dealerCards, state.dealerCards);
@@ -1200,7 +1271,6 @@ function revealAndResolve() {
 function runDealerTurn() {
   elems.roundStatus.textContent = "Dealer's turn…";
 
-  // Reveal hidden card
   state.dealerCards[1].hidden = false;
   state.hiLoCount += HI_LO[state.dealerCards[1].rank] ?? 0;
   renderHand(elems.dealerCards, state.dealerCards);
@@ -1215,7 +1285,6 @@ function dealerDraw() {
   if (dv < 17) {
     state.dealerCards.push(dealCard());
     renderHand(elems.dealerCards, state.dealerCards);
-    // Flip newest card
     setTimeout(() => flipCard(elems.dealerCards, state.dealerCards.length - 1), 50);
     sfxDeal();
     setTimeout(dealerDraw, DEALER_DELAY);
@@ -1229,68 +1298,61 @@ function resolveRound() {
   state.phase = 'roundComplete';
   setPhaseButtons('roundComplete');
 
-  const dealerBJ = isBlackjack(state.dealerCards);
+  const dealerBJ   = isBlackjack(state.dealerCards);
   const dealerBust = isBust(state.dealerCards);
-  const dv = handValue(state.dealerCards);
+  const dv         = handValue(state.dealerCards);
 
   // Resolve insurance first
-  let insuranceResult = 0;
   if (state.insuranceBet > 0) {
     if (dealerBJ) {
-      insuranceResult = state.insuranceBet * 2; // 2:1 payout + return
-      state.balance += insuranceResult;
+      state.balance += state.insuranceBet * 2; // 2:1 payout + return of bet
     }
-    // else insurance is lost (already deducted)
   }
 
-  // Resolve each hand
+  // Resolve each hand using its own bet amount
   const results = [];
   state.playerHands.forEach((hand, i) => {
     if (hand.length === 0) return;
-    const pv = handValue(hand);
-    const playerBJ = isBlackjack(hand) && i === 0 && !state.playerHands[1]; // BJ only on non-split first hand
+    const handBet  = state.handBets[i] !== undefined ? state.handBets[i] : state.bet;
+    const pv       = handValue(hand);
+    // BJ only counts on single un-split hand
+    const playerBJ   = isBlackjack(hand) && i === 0 && !state.playerHands[1] && state.numHands === 1;
     const playerBust = isBust(hand);
 
     let outcome, net;
 
     if (playerBust) {
-      outcome = 'lose'; net = -state.bet;
+      outcome = 'lose'; net = -handBet;
     } else if (dealerBJ && playerBJ) {
       outcome = 'push'; net = 0;
     } else if (dealerBJ) {
-      outcome = 'lose'; net = -state.bet;
+      outcome = 'lose'; net = -handBet;
     } else if (playerBJ) {
-      const bjWin = Math.floor(state.bet * 1.5);
+      const bjWin = Math.floor(handBet * 1.5);
       outcome = 'blackjack'; net = bjWin;
-      state.balance += state.bet + bjWin;
+      state.balance += handBet + bjWin;
     } else if (dealerBust) {
-      outcome = 'win'; net = state.bet;
-      state.balance += state.bet * 2;
+      outcome = 'win'; net = handBet;
+      state.balance += handBet * 2;
     } else if (pv > dv) {
-      outcome = 'win'; net = state.bet;
-      state.balance += state.bet * 2;
+      outcome = 'win'; net = handBet;
+      state.balance += handBet * 2;
     } else if (pv === dv) {
       outcome = 'push'; net = 0;
-      state.balance += state.bet;
+      state.balance += handBet;
     } else {
-      outcome = 'lose'; net = -state.bet;
+      outcome = 'lose'; net = -handBet;
     }
 
     results.push({ outcome, net });
   });
 
-  // Show result banner (use first hand outcome or summarize)
-  const primary = results[0];
-  showResult(primary.outcome, results);
-
-  // Stats
+  showResult(results[0].outcome, results);
   recordStats(results);
 
-  // Dealer value update
   elems.dealerValue.textContent = handValue(state.dealerCards);
   updateDisplays();
 
-  // Check zero balance
   if (state.balance <= 0) {
     setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
   }
@@ -1300,11 +1362,19 @@ function showResult(outcome, results) {
   const banner = elems.resultBanner;
   banner.className = 'result-banner';
 
+  const netTotal = results.reduce((s, r) => s + r.net, 0);
   let label = '';
+
   if (results.length > 1) {
-    // Split — show each outcome
-    label = results.map((r, i) => `Hand ${i+1}: ${r.outcome.toUpperCase()}`).join('  |  ');
-    banner.classList.add(results[0].outcome);
+    // Multi-hand or split — label each hand
+    label = results.map((r, i) =>
+      `${HAND_LABELS[i] || `Hand ${i+1}`}: ${r.outcome.toUpperCase()}`
+    ).join('  |  ');
+    banner.classList.add(netTotal > 0 ? 'win' : netTotal < 0 ? 'lose' : 'push');
+    // Sound + effects for multi-hand based on net
+    if (netTotal > 0) { sfxWin(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); }
+    else if (netTotal < 0) sfxLose();
+    else sfxPush();
   } else {
     switch(outcome) {
       case 'blackjack': label = 'Blackjack! 🃏'; banner.classList.add('bj'); sfxBJ(); launchChipRain(); jazzStart(); setTimeout(showSlotMachine, 900); break;
@@ -1319,29 +1389,34 @@ function showResult(outcome, results) {
   elems.roundStatus.textContent = 'Place your bet to play again';
 
   // Animate balance
-  const netTotal = results.reduce((s, r) => s + r.net, 0);
   const balEl = elems.balanceDisplay;
   balEl.classList.remove('balance-up', 'balance-down');
-  void balEl.offsetWidth; // reflow
+  void balEl.offsetWidth;
   if (netTotal > 0) balEl.classList.add('balance-up');
   else if (netTotal < 0) balEl.classList.add('balance-down');
 }
 
 function recordStats(results) {
-  const primary = results[0];
   const net = results.reduce((s, r) => s + r.net, 0);
 
   state.handsPlayed++;
   recordStrategyHand();
 
-  const isWin = primary.outcome === 'win' || primary.outcome === 'blackjack';
+  // Determine overall outcome by net
+  const hasBJ  = results[0].outcome === 'blackjack';
+  let primaryOutcome;
+  if (net > 0)      primaryOutcome = hasBJ ? 'blackjack' : 'win';
+  else if (net < 0) primaryOutcome = 'lose';
+  else              primaryOutcome = 'push';
+
+  const isWin = primaryOutcome === 'win' || primaryOutcome === 'blackjack';
 
   if (isWin) {
     state.stats.wins++;
     if (net > state.stats.biggestWin) state.stats.biggestWin = net;
     if (state.stats.streakDir === 'win') state.stats.streak++;
     else { state.stats.streak = 1; state.stats.streakDir = 'win'; }
-  } else if (primary.outcome === 'lose') {
+  } else if (primaryOutcome === 'lose') {
     state.stats.losses++;
     if (state.stats.streakDir === 'lose') state.stats.streak++;
     else { state.stats.streak = 1; state.stats.streakDir = 'lose'; }
@@ -1351,14 +1426,14 @@ function recordStats(results) {
   }
 
   state.stats.history.push({
-    outcome: primary.outcome === 'blackjack' ? 'win' : primary.outcome,
+    outcome: primaryOutcome === 'blackjack' ? 'win' : primaryOutcome,
     bet: state.bet,
     net
   });
   if (state.stats.history.length > 20) state.stats.history.shift();
 
   checkAchievements({
-    blackjack:   primary.outcome === 'blackjack',
+    blackjack:   hasBJ,
     bigWin:      isWin ? net : 0,
     comebackWin: isWin && state.wasLowBalance,
   });
@@ -1369,8 +1444,9 @@ function recordStats(results) {
 // ─── BETTING ───────────────────────────────────────────────────
 function addBet(amount) {
   if (state.phase !== 'betting' && state.phase !== 'roundComplete') return;
-  const max = state.balance;
-  state.bet = Math.min(state.bet + amount, max);
+  // Cap per-hand bet so total doesn't exceed balance
+  const maxPerHand = state.numHands > 1 ? Math.floor(state.balance / state.numHands) : state.balance;
+  state.bet = Math.min(state.bet + amount, maxPerHand);
   sfxChip();
   updateDisplays();
   elems.dealBtn.disabled = state.bet === 0;
@@ -1381,6 +1457,7 @@ function clearBet() {
   if (state.phase === 'roundComplete') {
     state.phase = 'betting';
     elems.resultBanner.classList.add('hidden');
+    resetHandSections();
     setPhaseButtons('betting');
   }
   updateDisplays();
@@ -1405,17 +1482,18 @@ function declineInsurance() {
 // ─── DEAL AGAIN ────────────────────────────────────────────────
 function dealAgain() {
   if (state.phase !== 'roundComplete') return;
-  // Keep bet from previous round (capped at balance)
-  state.bet = Math.min(state.bet, state.balance);
+  // Cap bet at what can be afforded for all hands
+  const maxPerHand = state.numHands > 1 ? Math.floor(state.balance / state.numHands) : state.balance;
+  state.bet = Math.min(state.bet, maxPerHand);
   if (state.bet === 0) {
     elems.roundStatus.textContent = 'Place your bet to begin';
     state.phase = 'betting';
+    resetHandSections();
     setPhaseButtons('betting');
     elems.resultBanner.classList.add('hidden');
     return;
   }
-  // Deduct bet for new round
-  state.balance -= state.bet;
+  state.balance -= state.bet * state.numHands;
   startRound();
 }
 
@@ -1430,6 +1508,78 @@ function applyTheme(theme) {
   themeIdx = THEMES.indexOf(theme);
 }
 
+// ─── LEADERBOARD ─────────────────────────────────────────────
+function getLeaderboard() {
+  return JSON.parse(localStorage.getItem('bjq_leaderboard') || '[]');
+}
+
+function saveLeaderboard() {
+  if (!state.dailyMode) return;
+  const lb = getLeaderboard();
+  const dateStr = getDailyDateStr();
+  const entry = {
+    balance: state.balance,
+    net: state.balance - STARTING_BALANCE,
+    handsPlayed: state.handsPlayed,
+    date: dateStr,
+  };
+  // Update existing entry for today if it's an improvement
+  const todayIdx = lb.findIndex(e => e.date === dateStr);
+  if (todayIdx >= 0) {
+    if (entry.balance > lb[todayIdx].balance) lb[todayIdx] = entry;
+  } else {
+    lb.push(entry);
+  }
+  // Sort by balance descending, keep top 10
+  lb.sort((a, b) => b.balance - a.balance);
+  lb.splice(10);
+  localStorage.setItem('bjq_leaderboard', JSON.stringify(lb));
+}
+
+function renderLeaderboard() {
+  const lb = getLeaderboard();
+  const content = $('lb-content');
+  const today = getDailyDateStr();
+  if (!lb.length) {
+    content.innerHTML = '<p class="lb-empty">No entries yet — complete a Daily Challenge to appear here!</p>';
+    return;
+  }
+  const medals = ['🥇', '🥈', '🥉'];
+  const rows = lb.slice(0, 10).map((e, i) => {
+    const netSign = e.net >= 0 ? '+' : '';
+    const netCls  = e.net >= 0 ? 'profit' : 'loss';
+    const todayCls = e.date === today ? ' lb-today' : '';
+    return `<tr class="lb-row${todayCls}">
+      <td>${medals[i] || `#${i+1}`}</td>
+      <td>${fmt(e.balance)}</td>
+      <td class="${netCls}">${netSign}${fmt(e.net)}</td>
+      <td>${e.handsPlayed}</td>
+      <td>${e.date}</td>
+    </tr>`;
+  }).join('');
+  content.innerHTML = `
+    <table class="lb-table">
+      <thead>
+        <tr>
+          <th>Rank</th><th>Balance</th><th>Net</th><th>Hands</th><th>Date</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function showLeaderboard() {
+  renderLeaderboard();
+  $('leaderboard-overlay').classList.remove('hidden');
+}
+
+// ─── SYNC HAND COUNT UI ───────────────────────────────────────
+function syncHandCountUI() {
+  elems.handCountBtns.forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.n, 10) === state.numHands)
+  );
+}
+
 // ─── KEYBOARD SHORTCUTS ──────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
@@ -1442,7 +1592,7 @@ document.addEventListener('keydown', e => {
       if (!elems.dealBtn.disabled) {
         if (state.phase === 'roundComplete') dealAgain();
         else if (state.phase === 'betting' && state.bet > 0) {
-          state.balance -= state.bet;
+          state.balance -= state.bet * state.numHands;
           startRound();
         }
       } else if (!elems.doubleBtn.disabled) doubleDown();
@@ -1463,7 +1613,7 @@ elems.dealBtn.addEventListener('click', () => {
   if (state.phase === 'roundComplete') {
     dealAgain();
   } else if (state.phase === 'betting' && state.bet > 0) {
-    state.balance -= state.bet;
+    state.balance -= state.bet * state.numHands;
     startRound();
   }
 });
@@ -1474,7 +1624,12 @@ elems.standBtn.addEventListener('click', stand);
 elems.doubleBtn.addEventListener('click', doubleDown);
 elems.splitBtn.addEventListener('click', split);
 elems.surrenderBtn.addEventListener('click', surrender);
-elems.betMinus.addEventListener('click', () => { state.bet = Math.max(0, state.bet - BET_STEP); sfxChip(); updateDisplays(); elems.dealBtn.disabled = state.bet === 0; });
+elems.betMinus.addEventListener('click', () => {
+  state.bet = Math.max(0, state.bet - BET_STEP);
+  sfxChip();
+  updateDisplays();
+  elems.dealBtn.disabled = state.bet === 0;
+});
 elems.betPlus.addEventListener('click', () => addBet(BET_STEP));
 elems.muteBtn.addEventListener('click', toggleMute);
 elems.insuranceYes.addEventListener('click', takeInsurance);
@@ -1535,16 +1690,42 @@ elems.dailyOverlay.addEventListener('click', e => {
   if (e.target === elems.dailyOverlay) elems.dailyOverlay.classList.add('hidden');
 });
 
+// Hand count selector
+elems.handCountBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (state.phase !== 'betting' && state.phase !== 'roundComplete') return;
+    state.numHands = parseInt(btn.dataset.n, 10);
+    syncHandCountUI();
+    // Re-cap bet if it now exceeds per-hand limit
+    const maxPerHand = Math.floor(state.balance / state.numHands);
+    if (state.bet > maxPerHand) {
+      state.bet = maxPerHand;
+    }
+    sfxChip();
+    updateDisplays();
+  });
+});
+
+// Leaderboard
+elems.leaderboardBtn.addEventListener('click', showLeaderboard);
+$('close-leaderboard-btn').addEventListener('click', () => $('leaderboard-overlay').classList.add('hidden'));
+$('leaderboard-overlay').addEventListener('click', e => {
+  if (e.target === $('leaderboard-overlay')) $('leaderboard-overlay').classList.add('hidden');
+});
+
 // ─── BROKE RESET ─────────────────────────────────────────────
 $('broke-reset-btn').addEventListener('click', () => {
   $('broke-overlay').classList.add('hidden');
   state.balance = STARTING_BALANCE;
   state.bet = 0;
+  state.numHands = 1;
   state.phase = 'betting';
   state.dailyMode = false;
   dailyRng = null;
   elems.dailyBadge.classList.add('hidden');
   elems.resultBanner.classList.add('hidden');
+  resetHandSections();
+  syncHandCountUI();
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = 'Place your bet to begin';
@@ -1553,6 +1734,7 @@ $('broke-reset-btn').addEventListener('click', () => {
 // ─── INIT ────────────────────────────────────────────────────
 function init() {
   state.phase = 'betting';
+  syncHandCountUI();
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = 'Place your bet to begin';
