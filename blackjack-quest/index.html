@@ -154,7 +154,7 @@
     <div class="slot-modal">
       <div class="slot-header">
         <div class="slot-title">🎰 Bonus Round!</div>
-        <div class="slot-subtitle">Spinning for bonus chips…</div>
+        <div class="slot-subtitle" id="slot-subtitle">You won! Spin the bonus slots?</div>
       </div>
       <div class="slot-machine">
         <div class="slot-reel"><div class="reel-symbol" id="reel-0">🎰</div></div>
@@ -169,6 +169,15 @@
         <span>⭐⭐⭐ = 6×</span>
         <span>🔔🔔🔔 = 3×</span>
       </div>
+      <!-- Pre-spin: wager info + choose -->
+      <div class="slot-pre-spin" id="slot-pre-spin">
+        <div class="slot-wager-info" id="slot-wager-info"></div>
+        <div class="slot-actions">
+          <button class="action-btn primary" id="slot-spin-btn">🎰 Spin!</button>
+          <button class="action-btn" id="slot-skip-btn">Skip (safe)</button>
+        </div>
+      </div>
+      <!-- Post-spin: result -->
       <div class="slot-result-msg hidden" id="slot-result-msg"></div>
       <button class="action-btn primary slot-collect-btn hidden" id="slot-collect-btn">Collect!</button>
     </div>

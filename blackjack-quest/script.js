@@ -185,6 +185,19 @@ function sfxPush()  { playTone(500, 0.2, 'triangle', 0.1); }
 function sfxBJ()    {
   [500,700,900,1100].forEach((f,i) => setTimeout(() => playTone(f, 0.25, 'sine', 0.2), i * 80));
 }
+// Slot machine SFX
+function sfxSlotTick()    { playTone(650 + Math.random() * 350, 0.025, 'square', 0.025); }
+function sfxReelStop()    {
+  playTone(240, 0.1,  'sine', 0.22);
+  setTimeout(() => playTone(170, 0.08, 'sine', 0.12), 38);
+}
+function sfxSlotWin()     { [600,750,900,1050].forEach((f,i) => setTimeout(() => playTone(f, 0.14, 'sine', 0.16), i*75)); }
+function sfxSlotBigWin()  { [500,650,800,950,1150].forEach((f,i) => setTimeout(() => playTone(f, 0.18, 'sine', 0.18), i*70)); }
+function sfxSlotJackpot() {
+  [300,400,500,650,800,1000,1200,1500].forEach((f,i) => setTimeout(() => playTone(f, 0.22, 'sine', 0.2), i*70));
+  setTimeout(() => [700,900,1100,1300].forEach((f,i) => setTimeout(() => playTone(f, 0.15, 'triangle', 0.15), i*60)), 620);
+}
+function sfxSlotNoWin()   { [420,320,240].forEach((f,i) => setTimeout(() => playTone(f, 0.14, 'sawtooth', 0.08), i*120)); }
 
 // ─── DOM REFS ─────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -279,41 +292,108 @@ function launchChipRain() {
 
 // ─── SLOT MACHINE ─────────────────────────────────────────────
 const SLOT_SYMS    = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'];
-const SLOT_WEIGHTS = [  5,    4,    3,    2,   1.2,   0.8];  // heavier = more common
 
+// Payout multipliers applied to the side bet
 const SLOT_PAYOUTS = {
-  '🍒': { two: 0,   three: 1    },
-  '🍋': { two: 0,   three: 1.5  },
-  '🔔': { two: 0.5, three: 3    },
-  '⭐': { two: 1,   three: 6    },
-  '💎': { two: 2,   three: 12   },
-  '7️⃣': { two: 3,   three: 25   },
+  '🍒': { two: 0,   three: 2    },
+  '🍋': { two: 0,   three: 3    },
+  '🔔': { two: 1,   three: 5    },
+  '⭐': { two: 2,   three: 8    },
+  '💎': { two: 4,   three: 15   },
+  '7️⃣': { two: 6,   three: 25   },
 };
 
-function slotRandom() {
-  const total = SLOT_WEIGHTS.reduce((s, w) => s + w, 0);
+// Win probability drops as main bet rises (higher bet = riskier slots)
+function slotWinProb(bet) {
+  if (bet <= 10)  return 0.72;
+  if (bet <= 25)  return 0.60;
+  if (bet <= 50)  return 0.46;
+  if (bet <= 100) return 0.34;
+  return 0.22;
+}
+
+function slotOddsLabel(bet) {
+  if (bet <= 10)  return '72%';
+  if (bet <= 25)  return '60%';
+  if (bet <= 50)  return '46%';
+  if (bet <= 100) return '34%';
+  return '22%';
+}
+
+// Weighted pick from a symbol weight array
+function slotPick(weights) {
+  const total = weights.reduce((s, w) => s + w, 0);
   let r = Math.random() * total;
   for (let i = 0; i < SLOT_SYMS.length; i++) {
-    r -= SLOT_WEIGHTS[i];
+    r -= weights[i];
     if (r <= 0) return SLOT_SYMS[i];
   }
   return SLOT_SYMS[0];
 }
 
+// Rigged: pre-determine win/loss, then build matching symbol set
+function determineSlotResults(bet) {
+  const isWin = Math.random() < slotWinProb(bet);
+
+  if (isWin) {
+    const isTriple = Math.random() < 0.42;
+    // Common symbols weighted more heavily for wins
+    const winW = [6, 5, 3, 1.5, 0.4, 0.2];
+    const sym = slotPick(winW);
+
+    if (isTriple) return [sym, sym, sym];
+
+    // Pair: place the odd symbol at a random position
+    const others = SLOT_SYMS.filter(s => s !== sym);
+    const odd = others[Math.floor(Math.random() * others.length)];
+    const pos = Math.floor(Math.random() * 3);
+    if (pos === 0) return [odd, sym, sym];
+    if (pos === 1) return [sym, odd, sym];
+    return [sym, sym, odd];
+  } else {
+    // Guaranteed no-match: shuffle and take first 3 distinct symbols
+    const shuffled = [...SLOT_SYMS].sort(() => Math.random() - 0.5);
+    return [shuffled[0], shuffled[1], shuffled[2]];
+  }
+}
+
+// Drum-roll reel animation — very fast flicker that slows to a stop
 function animateReel(symEl, finalSym, duration, onDone) {
   const start = Date.now();
   symEl.parentElement.classList.add('reel-spinning');
+  symEl.classList.add('rolling');
+  let fastTickCount = 0;
 
   function tick() {
-    const elapsed = Date.now() - start;
-    if (elapsed >= duration) {
+    const elapsed   = Date.now() - start;
+    const remaining = duration - elapsed;
+
+    if (remaining <= 0) {
+      symEl.classList.remove('rolling');
       symEl.textContent = finalSym;
+      symEl.classList.add('stopped');
       symEl.parentElement.classList.remove('reel-spinning');
+      sfxReelStop();
+      setTimeout(() => symEl.classList.remove('stopped'), 300);
       if (onDone) onDone();
       return;
     }
-    const remaining = duration - elapsed;
-    const delay = remaining > 700 ? 55 : remaining > 350 ? 120 : 210;
+
+    let delay;
+    if (remaining > 800) {
+      // Blazing fast — tick every 4th frame (~112ms) to avoid audio spam
+      fastTickCount++;
+      if (fastTickCount % 4 === 0) sfxSlotTick();
+      delay = 28;
+    } else if (remaining > 400) {
+      symEl.classList.remove('rolling');
+      sfxSlotTick();   // every slow-phase tick
+      delay = 90;
+    } else {
+      sfxSlotTick();   // final slow ticks
+      delay = 180;
+    }
+
     symEl.textContent = SLOT_SYMS[Math.floor(Math.random() * SLOT_SYMS.length)];
     setTimeout(tick, delay);
   }
@@ -321,80 +401,100 @@ function animateReel(symEl, finalSym, duration, onDone) {
 }
 
 function showSlotMachine() {
-  const overlay     = $('slot-overlay');
-  const subtitle    = overlay.querySelector('.slot-subtitle');
-  const resultMsg   = $('slot-result-msg');
-  const collectBtn  = $('slot-collect-btn');
-  const reelEls     = [$('reel-0'), $('reel-1'), $('reel-2')];
+  const overlay    = $('slot-overlay');
+  const subtitle   = $('slot-subtitle');
+  const resultMsg  = $('slot-result-msg');
+  const collectBtn = $('slot-collect-btn');
+  const preSpin    = $('slot-pre-spin');
+  const spinBtn    = $('slot-spin-btn');
+  const skipBtn    = $('slot-skip-btn');
+  const wagerInfo  = $('slot-wager-info');
+  const reelEls    = [$('reel-0'), $('reel-1'), $('reel-2')];
 
-  // Reset UI
-  subtitle.textContent = 'Spinning for bonus chips…';
-  resultMsg.className  = 'slot-result-msg hidden';
-  resultMsg.textContent = '';
+  // Side bet = 25% of main bet, minimum $5
+  const sideBet    = Math.max(5, Math.round(state.bet * 0.25));
+  const maxPayout  = sideBet * 25; // 7️⃣7️⃣7️⃣ pays 25×
+  const oddsLabel  = slotOddsLabel(state.bet);
+  const isHighRoller = state.bet > 50;
+
+  // Reset
+  subtitle.textContent    = 'You won! Try your luck on the bonus slots?';
+  resultMsg.className     = 'slot-result-msg hidden';
+  resultMsg.textContent   = '';
   collectBtn.classList.add('hidden');
+  preSpin.classList.remove('hidden');
   reelEls.forEach(el => {
     el.textContent = '🎰';
+    el.classList.remove('rolling', 'stopped');
     el.parentElement.classList.remove('reel-spinning', 'reel-matched', 'reel-matched-jackpot');
   });
 
+  wagerInfo.innerHTML =
+    `Wager <strong>${fmt(sideBet)}</strong> → win up to <strong>${fmt(maxPayout)}</strong><br>` +
+    `Win odds: <strong>${oddsLabel}</strong>` +
+    (isHighRoller ? `<br><span class="odds-warning">⚠ High bet — tough odds on slots!</span>` : '');
+
   overlay.classList.remove('hidden');
 
-  // Pre-determine results and auto-spin
-  const results = [slotRandom(), slotRandom(), slotRandom()];
+  spinBtn.onclick = () => {
+    if (state.balance < sideBet) { overlay.classList.add('hidden'); return; }
+    state.balance -= sideBet;
+    updateDisplays();
 
-  // Stagger reel stops: 1600ms → 1000ms → 700ms
-  animateReel(reelEls[0], results[0], 1600, () => {
-    animateReel(reelEls[1], results[1], 1000, () => {
-      animateReel(reelEls[2], results[2], 700, () => {
-        resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn);
+    preSpin.classList.add('hidden');
+    subtitle.textContent = 'Spinning…';
+
+    const results = determineSlotResults(state.bet);
+
+    // Stagger stops: reel 0 longest, reel 2 shortest
+    animateReel(reelEls[0], results[0], 1800, () => {
+      animateReel(reelEls[1], results[1], 1100, () => {
+        animateReel(reelEls[2], results[2], 700, () => {
+          resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn, sideBet);
+        });
       });
     });
-  });
+  };
 
-  collectBtn.onclick = () => overlay.classList.add('hidden');
+  skipBtn.onclick = () => overlay.classList.add('hidden');
 }
 
-function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn) {
+function resolveSlot(results, reelEls, subtitle, resultMsg, collectBtn, sideBet) {
   const [a, b, c] = results;
   let payout = 0, msgClass = 'no-win', msgText = '';
-  const isJackpot = a === '7️⃣' || a === '💎';
 
   if (a === b && b === c) {
-    payout = Math.round(state.bet * SLOT_PAYOUTS[a].three);
-    const matchClass = (a === '7️⃣' || a === '💎') ? 'reel-matched-jackpot' : 'reel-matched';
+    payout = sideBet * SLOT_PAYOUTS[a].three;
+    const isJackpot = a === '7️⃣' || a === '💎';
+    const matchClass = isJackpot ? 'reel-matched-jackpot' : 'reel-matched';
     reelEls.forEach(el => el.parentElement.classList.add(matchClass));
-    if (a === '7️⃣') {
-      msgClass = 'jackpot'; msgText = `💥 JACKPOT! 7️⃣7️⃣7️⃣ — +${fmt(payout)}!`;
-    } else if (a === '💎') {
-      msgClass = 'jackpot'; msgText = `💎 TRIPLE DIAMONDS — +${fmt(payout)}!`;
-    } else {
-      msgClass = 'big-win'; msgText = `${a}${b}${c} — Triple! +${fmt(payout)}!`;
-    }
+    if (a === '7️⃣')      { msgClass = 'jackpot'; msgText = `💥 JACKPOT! 7️⃣7️⃣7️⃣ — +${fmt(payout)}!`; sfxSlotJackpot(); }
+    else if (a === '💎') { msgClass = 'jackpot'; msgText = `💎 TRIPLE DIAMONDS — +${fmt(payout)}!`; sfxSlotJackpot(); }
+    else                  { msgClass = 'big-win'; msgText = `${a}${b}${c} — Triple! +${fmt(payout)}!`; sfxSlotBigWin(); }
     if (payout > 0) launchChipRain();
   } else if (a === b || b === c || a === c) {
     const paired = a === b ? a : b === c ? b : a;
-    payout = Math.round(state.bet * SLOT_PAYOUTS[paired].two);
+    payout = sideBet * SLOT_PAYOUTS[paired].two;
     const matchIdxs = a === b ? [0,1] : b === c ? [1,2] : [0,2];
     matchIdxs.forEach(i => reelEls[i].parentElement.classList.add('reel-matched'));
-    if (payout > 0) {
-      msgClass = 'small-win'; msgText = `Pair of ${paired}! +${fmt(payout)}!`;
-    } else {
-      msgText = 'So close — no bonus this time.';
-    }
+    if (payout > 0) { msgClass = 'small-win'; msgText = `Pair of ${paired}! +${fmt(payout)}!`; sfxSlotWin(); }
+    else            { msgText = 'So close — no bonus this time.'; sfxSlotNoWin(); }
   } else {
-    msgText = 'No match. Better luck next round!';
+    msgText = `No match — lost ${fmt(sideBet)}.`;
+    sfxSlotNoWin();
   }
 
+  payout = Math.round(payout);
   state.balance += payout;
   updateDisplays();
 
-  subtitle.textContent = payout > 0 ? `+${fmt(payout)} added to your balance!` : 'No bonus this time.';
-  resultMsg.className  = `slot-result-msg ${msgClass}`;
-  resultMsg.textContent = msgText;
+  subtitle.textContent    = payout > 0 ? `+${fmt(payout)} added to your balance!` : `Lost ${fmt(sideBet)} on the slots.`;
+  resultMsg.className     = `slot-result-msg ${msgClass}`;
+  resultMsg.textContent   = msgText;
   resultMsg.classList.remove('hidden');
-
-  collectBtn.textContent = payout > 0 ? `Collect ${fmt(payout)}!` : 'Continue';
+  collectBtn.textContent  = payout > 0 ? `Collect ${fmt(payout)}!` : 'Continue';
   collectBtn.classList.remove('hidden');
+  collectBtn.onclick      = () => $('slot-overlay').classList.add('hidden');
 }
 
 // ─── RENDER ───────────────────────────────────────────────────

@@ -634,6 +634,32 @@ body {
 .slot-result-msg.big-win  { color: var(--result-win); }
 .slot-result-msg.small-win { color: var(--gold); }
 .slot-result-msg.no-win   { color: var(--text-dim); font-size: 1rem; }
+/* Drum-roll spin animation */
+@keyframes drumRoll {
+  0%   { transform: translateY(0)    scaleY(1);    filter: blur(0px);  opacity: 1; }
+  22%  { transform: translateY(-14px) scaleY(0.7); filter: blur(3px);  opacity: 0.4; }
+  50%  { transform: translateY(14px)  scaleY(0.7); filter: blur(3px);  opacity: 0.4; }
+  78%  { transform: translateY(-6px)  scaleY(0.85); filter: blur(1px); opacity: 0.75; }
+  100% { transform: translateY(0)    scaleY(1);    filter: blur(0px);  opacity: 1; }
+}
+.reel-symbol.rolling { animation: drumRoll 0.09s linear infinite; }
+/* Stop pop */
+@keyframes reelStop {
+  0%   { transform: scale(1.3); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1);   }
+}
+.reel-symbol.stopped { animation: reelStop 0.25s ease-out forwards; }
+/* Pre-spin layout */
+.slot-pre-spin { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; width: 100%; }
+.slot-wager-info {
+  font-size: 0.88rem; color: var(--text-dim);
+  text-align: center; line-height: 1.5;
+  background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.4rem 0.9rem;
+}
+.slot-wager-info strong { color: var(--gold); }
+.slot-wager-info .odds-warning { color: var(--result-lose); font-size: 0.78rem; }
+.slot-actions { display: flex; gap: 0.75rem; }
 .slot-collect-btn { font-size: 1rem; padding: 0.65rem 2.5rem; }
 
 /* ===== CHIP RAIN ===== */
