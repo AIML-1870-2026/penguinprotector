@@ -359,10 +359,10 @@ function setPhaseButtons(phase) {
   const isPlaying = phase === 'playing';
   const isDone    = phase === 'roundComplete';
 
-  // Bet chips & adj
-  elems.chips.forEach(c => c.disabled = !isBetting);
-  elems.betMinus.disabled = !isBetting;
-  elems.betPlus.disabled  = !isBetting;
+  // Bet chips & adj (available during betting and after a round ends)
+  elems.chips.forEach(c => c.disabled = !(isBetting || isDone));
+  elems.betMinus.disabled = !(isBetting || isDone);
+  elems.betPlus.disabled  = !(isBetting || isDone);
 
   // Action row
   elems.dealBtn.disabled     = !(isBetting && state.bet > 0) && !isDone;
@@ -726,7 +726,7 @@ function recordStats(results) {
 
 // ─── BETTING ───────────────────────────────────────────────────
 function addBet(amount) {
-  if (state.phase !== 'betting') return;
+  if (state.phase !== 'betting' && state.phase !== 'roundComplete') return;
   const max = state.balance;
   state.bet = Math.min(state.bet + amount, max);
   sfxChip();
@@ -735,10 +735,11 @@ function addBet(amount) {
 }
 
 function clearBet() {
-  if (state.phase === 'betting') {
-    state.bet = 0;
-  } else if (state.phase === 'roundComplete') {
-    state.bet = 0;
+  state.bet = 0;
+  if (state.phase === 'roundComplete') {
+    state.phase = 'betting';
+    elems.resultBanner.classList.add('hidden');
+    setPhaseButtons('betting');
   }
   updateDisplays();
   elems.dealBtn.disabled = true;
