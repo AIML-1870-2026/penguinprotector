@@ -658,12 +658,7 @@ function resolveRound() {
 
   // Check zero balance
   if (state.balance <= 0) {
-    setTimeout(() => {
-      if (confirm('You\'re out of money! Reset to $1,000?')) {
-        state.balance = STARTING_BALANCE;
-        updateDisplays();
-      }
-    }, 800);
+    setTimeout(() => $('broke-overlay').classList.remove('hidden'), 900);
   }
 }
 
@@ -868,6 +863,18 @@ elems.themeChips.forEach(chip => {
 elems.themeBtn.addEventListener('click', () => {
   themeIdx = (themeIdx + 1) % THEMES.length;
   applyTheme(THEMES[themeIdx]);
+});
+
+// ─── BROKE RESET ─────────────────────────────────────────────
+$('broke-reset-btn').addEventListener('click', () => {
+  $('broke-overlay').classList.add('hidden');
+  state.balance = STARTING_BALANCE;
+  state.bet = 0;
+  state.phase = 'betting';
+  elems.resultBanner.classList.add('hidden');
+  setPhaseButtons('betting');
+  updateDisplays();
+  elems.roundStatus.textContent = 'Place your bet to begin';
 });
 
 // ─── INIT ────────────────────────────────────────────────────

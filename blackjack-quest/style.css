@@ -508,6 +508,30 @@ body {
 .insurance-yes { background: var(--result-win); border-color: var(--result-win); color: #fff; }
 .insurance-no  { background: var(--result-lose); border-color: var(--result-lose); color: #fff; }
 
+/* ===== BROKE MODAL ===== */
+.broke-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+}
+.broke-modal {
+  background: var(--panel-bg);
+  border: 2px solid var(--result-lose);
+  border-radius: 16px;
+  padding: 2.5rem 3rem;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  box-shadow: 0 0 40px rgba(192,57,43,0.4);
+  animation: popIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+.broke-icon { font-size: 3.5rem; line-height: 1; }
+.broke-modal h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem; color: var(--result-lose);
+}
+.broke-modal p { color: var(--text-dim); font-size: 1rem; }
+.broke-modal .action-btn { margin-top: 0.5rem; padding: 0.75rem 2rem; font-size: 1rem; }
+
 /* ===== UTILITY ===== */
 .hidden { display: none !important; }
 
