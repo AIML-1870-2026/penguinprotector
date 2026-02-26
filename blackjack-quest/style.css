@@ -1109,6 +1109,95 @@ body {
   animation: ctaBlink 2.5s ease-in-out infinite;
 }
 
+/* ===== TURBO BADGE ===== */
+.turbo-badge {
+  background: linear-gradient(135deg, #f39c12, #e74c3c);
+  border-radius: 20px;
+  padding: 0.2rem 0.9rem;
+  font-size: 0.78rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  animation: ctaBlink 1.4s ease-in-out infinite;
+}
+
+/* ===== SIDE BET ROW ===== */
+.side-bet-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+.side-bet-btn {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.28rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  letter-spacing: 0.04em;
+}
+
+.side-bet-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.35);
+  color: var(--text-main);
+}
+
+.side-bet-btn.active {
+  background: rgba(212,175,55,0.18);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.side-bet-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ===== SIDE BET RESULT BAR ===== */
+.side-bet-result-bar {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+  border-radius: 8px;
+  margin: 0.3rem auto;
+  max-width: 600px;
+  letter-spacing: 0.03em;
+  transition: opacity 0.3s;
+}
+
+.side-bet-result-bar.side-bet-win {
+  background: rgba(39,174,96,0.18);
+  border: 1px solid rgba(39,174,96,0.45);
+  color: #2ecc71;
+}
+
+.side-bet-result-bar.side-bet-loss {
+  background: rgba(192,57,43,0.12);
+  border: 1px solid rgba(192,57,43,0.35);
+  color: #e74c3c;
+}
+
+/* ===== TURBO SPEED OVERRIDES ===== */
+body.turbo .card-inner {
+  transition-duration: 0.18s !important;
+}
+
+body.turbo .card {
+  animation-duration: 0.12s !important;
+}
+
+body.turbo .shuffle-deck-left,
+body.turbo .shuffle-deck-right {
+  animation-duration: 0.25s !important;
+}
+
 /* ===== HELP BUTTON ===== */
 .help-icon-btn {
   font-size: 1rem;

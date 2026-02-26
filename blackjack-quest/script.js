@@ -37,7 +37,15 @@ const ACHIEVEMENTS = [
   { id: 'big_win',        icon: '💰', title: 'High Roller',      desc: 'Win $200 or more in one hand' },
   { id: 'surrender_used', icon: '🏳️', title: 'Tactical Retreat', desc: 'Use Surrender for the first time' },
   { id: 'strategy_10',    icon: '📚', title: 'By the Book',      desc: 'Follow basic strategy for 10 hands in a row' },
-  { id: 'comeback',       icon: '🦅', title: 'Comeback Kid',     desc: 'Win a hand when balance was under $200' },
+  { id: 'comeback',          icon: '🦅', title: 'Comeback Kid',     desc: 'Win a hand when balance was under $200' },
+  { id: 'five_card_charlie', icon: '🎴', title: 'Five Card Charlie', desc: 'Build a 5-card hand without busting' },
+  { id: 'double_win',        icon: '💪', title: 'Press Your Luck',   desc: 'Win a doubled-down hand' },
+  { id: 'split_win_both',    icon: '✌️', title: 'Two for Two',       desc: 'Win both hands after a split' },
+  { id: 'balance_2000',      icon: '💵', title: 'House Money',       desc: 'Reach a $2,000 balance' },
+  { id: 'hat_trick',         icon: '🎩', title: 'Hat Trick',         desc: 'Get 3 blackjacks in one session' },
+  { id: 'turbo_master',      icon: '⚡', title: 'Speed Demon',       desc: 'Play 10 hands in Turbo Mode' },
+  { id: 'side_bet_win',      icon: '🎲', title: 'Bonus Hunter',      desc: 'Win any side bet' },
+  { id: 'perfect_pair',      icon: '💎', title: 'Perfect Pair',      desc: 'Win a Perfect Pair side bet' },
 ];
 
 let unlockedAchievements = new Set(
@@ -127,6 +135,14 @@ function checkAchievements(ctx = {}) {
   if (ctx.surrender) unlockAchievement('surrender_used');
   if (state.strategyTracker.perfectHandStreak >= 10) unlockAchievement('strategy_10');
   if (ctx.comebackWin) unlockAchievement('comeback');
+  if (ctx.fiveCardCharlie) unlockAchievement('five_card_charlie');
+  if (ctx.doubleWin) unlockAchievement('double_win');
+  if (ctx.splitWonBoth) unlockAchievement('split_win_both');
+  if (state.balance >= 2000) unlockAchievement('balance_2000');
+  if (state.sessionBlackjacks >= 3) unlockAchievement('hat_trick');
+  if (state.turboHandsPlayed >= 10) unlockAchievement('turbo_master');
+  if (ctx.sideBetWin) unlockAchievement('side_bet_win');
+  if (ctx.perfectPairWin) unlockAchievement('perfect_pair');
 }
 
 function renderAchievementsPanel() {
@@ -143,6 +159,79 @@ function renderAchievementsPanel() {
       `<div class="badge-title">${ach.title}</div>` +
       `<div class="badge-desc">${isUnlocked ? ach.desc : '???'}</div>`;
     grid.appendChild(el);
+  });
+}
+
+// ─── SIDE BET HELPERS ────────────────────────────────────────
+function sideBetRankVal(rank) {
+  if (rank === 'A') return 1;
+  if (rank === 'J') return 11;
+  if (rank === 'Q') return 12;
+  if (rank === 'K') return 13;
+  return parseInt(rank, 10);
+}
+
+function resolvePerfectPairs(playerCards) {
+  const c1 = playerCards[0], c2 = playerCards[1];
+  if (c1.rank !== c2.rank) return null;
+  const sameColor = RED_SUITS.has(c1.suit) === RED_SUITS.has(c2.suit);
+  const sameSuit  = c1.suit === c2.suit;
+  if (sameSuit)  return { type: 'Perfect Pair',  mult: 25 };
+  if (sameColor) return { type: 'Colored Pair',  mult: 12 };
+  return              { type: 'Mixed Pair',      mult: 6 };
+}
+
+function resolve21Plus3(playerCards, dealerUpCard) {
+  const cards = [playerCards[0], playerCards[1], dealerUpCard];
+  const ranks = cards.map(c => c.rank);
+  const suits = cards.map(c => c.suit);
+  const allSameSuit = suits.every(s => s === suits[0]);
+
+  if (ranks.every(r => r === ranks[0]) && allSameSuit) return { type: 'Suited Trips',  mult: 100 };
+  if (ranks.every(r => r === ranks[0]))                 return { type: 'Three of a Kind', mult: 30 };
+
+  // Check for straight using face values (A=1 low or A=14 high)
+  const faceVals = cards.map(c => sideBetRankVal(c.rank));
+  const isConseq = (vals) => {
+    const s = [...vals].sort((a, b) => a - b);
+    return s[2] - s[0] === 2 && s[1] - s[0] === 1;
+  };
+  const isStraight = isConseq(faceVals) ||
+    isConseq(faceVals.map(v => v === 1 ? 14 : v));
+
+  if (isStraight && allSameSuit) return { type: 'Straight Flush', mult: 40 };
+  if (isStraight)                return { type: 'Straight',       mult: 10 };
+  if (allSameSuit)               return { type: 'Flush',          mult: 5 };
+  return null;
+}
+
+function showSideBetResult(ppResult, tfResult) {
+  const bar = $('side-bet-result-bar');
+  if (!bar) return;
+  const parts = [];
+  if (ppResult) parts.push(`PP: ${ppResult.type} (${ppResult.mult}×) +${fmt(state.sideBetPP * ppResult.mult)}`);
+  else if (state.sideBetPP > 0) parts.push(`PP: No Pair — lost ${fmt(state.sideBetPP)}`);
+  if (tfResult) parts.push(`21+3: ${tfResult.type} (${tfResult.mult}×) +${fmt(state.sideBetTF * tfResult.mult)}`);
+  else if (state.sideBetTF > 0) parts.push(`21+3: No combo — lost ${fmt(state.sideBetTF)}`);
+  if (parts.length === 0) return;
+  bar.textContent = parts.join('  ·  ');
+  bar.classList.remove('hidden', 'side-bet-win', 'side-bet-loss');
+  const anyWin = ppResult || tfResult;
+  bar.classList.add(anyWin ? 'side-bet-win' : 'side-bet-loss');
+  clearTimeout(bar._hideTimer);
+  bar._hideTimer = setTimeout(() => bar.classList.add('hidden'), 3500);
+}
+
+function updateSideBetBtns() {
+  const singleOnly = state.numHands === 1;
+  ['pp', 'tf'].forEach(key => {
+    const betVal = key === 'pp' ? state.sideBetPP : state.sideBetTF;
+    const btn = $(`side-bet-${key}-btn`);
+    if (!btn) return;
+    btn.textContent = betVal === 0 ? `${key === 'pp' ? 'PP' : '21+3'}: Off` :
+                      betVal === 5 ? `${key === 'pp' ? 'PP' : '21+3'}: $5` : `${key === 'pp' ? 'PP' : '21+3'}: $25`;
+    btn.classList.toggle('active', betVal > 0);
+    btn.disabled = !singleOnly || state.phase === 'playing' || state.phase === 'dealerTurn';
   });
 }
 
@@ -170,6 +259,12 @@ let state = {
   deckCount: parseInt(localStorage.getItem('bjq_deckCount') || '6', 10),
   cardBack: localStorage.getItem('bjq_cardBack') || 'classic',
   reshuffleNeeded: false, // cut card reached — rebuild shoe before next round
+  turboMode: localStorage.getItem('bjq_turbo') === 'true',
+  sideBetPP: 0,          // Perfect Pairs bet ($0 / $5 / $25)
+  sideBetTF: 0,          // 21+3 bet ($0 / $5 / $25)
+  sessionBlackjacks: 0,  // for hat_trick achievement
+  turboHandsPlayed: 0,   // for turbo_master achievement
+  doubledHands: [],      // tracks which hand indices were doubled this round
   strategyTracker: {
     decisions: 0,
     correct: 0,
@@ -1069,13 +1164,24 @@ function updateDoubleAndSplit() {
 // ─── SHUFFLE ANIMATION ────────────────────────────────────────
 function showShuffleAnimation(callback) {
   const overlay = $('shuffle-overlay');
-  // Re-trigger CSS animations by removing/re-adding the elements
   const left  = overlay.querySelector('.shuffle-deck-left');
   const right = overlay.querySelector('.shuffle-deck-right');
   [left, right].forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
   overlay.classList.remove('hidden');
   sfxShuffle();
-  setTimeout(() => { overlay.classList.add('hidden'); callback(); }, 960);
+  const dur = state.turboMode ? 380 : 960;
+  setTimeout(() => { overlay.classList.add('hidden'); callback(); }, dur);
+}
+
+// ─── TURBO MODE ────────────────────────────────────────────────
+function toggleTurboMode() {
+  state.turboMode = !state.turboMode;
+  localStorage.setItem('bjq_turbo', state.turboMode);
+  document.body.classList.toggle('turbo', state.turboMode);
+  const badge = $('turbo-badge');
+  if (badge) badge.classList.toggle('hidden', !state.turboMode);
+  const toggle = $('turbo-toggle');
+  if (toggle) toggle.checked = state.turboMode;
 }
 
 // ─── GAME FLOW ─────────────────────────────────────────────────
@@ -1085,6 +1191,16 @@ function startRound() {
 
   // Track low balance before this round
   state.wasLowBalance = (state.balance + state.bet * state.numHands) < 200;
+
+  // Deduct side bets upfront (only in single-hand, non-daily mode)
+  if (state.numHands === 1 && !state.dailyMode) {
+    const sbTotal = state.sideBetPP + state.sideBetTF;
+    if (sbTotal > state.balance - state.bet) {
+      state.sideBetPP = 0; state.sideBetTF = 0; // can't afford — cancel
+    } else {
+      state.balance -= sbTotal;
+    }
+  }
 
   // Shoe management
   const needsShuffle = !state.dailyMode && (state.deck.length === 0 || state.reshuffleNeeded);
@@ -1112,12 +1228,15 @@ function dealRound() {
   state.activeHand  = 0;
   state.insuranceBet = 0;
   state.result = null;
+  state.doubledHands = [];
   state.strategyTracker.currentHandDecisions = [];
 
   // Hide UI elements
   elems.resultBanner.classList.add('hidden');
   elems.insuranceBar.classList.add('hidden');
   $('streak-badge').classList.add('hidden');
+  const sbBar = $('side-bet-result-bar');
+  if (sbBar) sbBar.classList.add('hidden');
   resetHandSections();
   HAND_HINT_IDS.forEach(id => { const el = $(id); if (el) el.classList.add('hidden'); });
 
@@ -1142,6 +1261,28 @@ function dealRound() {
 
   renderAll();
   sfxDeal();
+
+  // Resolve side bets (single-hand only)
+  if (state.numHands === 1 && (state.sideBetPP > 0 || state.sideBetTF > 0)) {
+    const ph = state.playerHands[0];
+    const ppResult = state.sideBetPP > 0 ? resolvePerfectPairs(ph) : null;
+    const tfResult = state.sideBetTF > 0 ? resolve21Plus3(ph, state.dealerCards[0]) : null;
+    let sbWin = 0;
+    let sideBetAchCtx = {};
+    if (ppResult) {
+      sbWin += state.sideBetPP * ppResult.mult;
+      sideBetAchCtx.sideBetWin = true;
+      if (ppResult.mult === 25) sideBetAchCtx.perfectPairWin = true;
+    }
+    if (tfResult) {
+      sbWin += state.sideBetTF * tfResult.mult;
+      sideBetAchCtx.sideBetWin = true;
+    }
+    state.balance += sbWin;
+    if (Object.keys(sideBetAchCtx).length) checkAchievements(sideBetAchCtx);
+    showSideBetResult(ppResult, tfResult);
+    updateDisplays();
+  }
 
   // Auto-resolve blackjack only in single-hand mode
   if (state.numHands === 1 && isBlackjack(state.playerHands[0])) {
@@ -1214,6 +1355,7 @@ function doubleDown() {
   logStrategyDecision('D');
   state.balance -= curBet;
   state.handBets[state.activeHand] = curBet * 2;
+  state.doubledHands[state.activeHand] = true;
   updateDisplays();
   hand.push(dealCard());
   renderAll();
@@ -1367,7 +1509,8 @@ function runDealerTurn() {
   setTimeout(() => flipCard(elems.dealerCards, 1), 50);
   sfxFlip();
 
-  setTimeout(dealerDraw, DEALER_DELAY);
+  const dd = state.turboMode ? 280 : DEALER_DELAY;
+  setTimeout(dealerDraw, dd);
 }
 
 function dealerDraw() {
@@ -1377,7 +1520,8 @@ function dealerDraw() {
     renderHand(elems.dealerCards, state.dealerCards);
     setTimeout(() => flipCard(elems.dealerCards, state.dealerCards.length - 1), 50);
     sfxDeal();
-    setTimeout(dealerDraw, DEALER_DELAY);
+    const dd = state.turboMode ? 280 : DEALER_DELAY;
+    setTimeout(dealerDraw, dd);
   } else {
     resolveRound();
   }
@@ -1532,10 +1676,30 @@ function recordStats(results) {
   });
   if (state.stats.history.length > 20) state.stats.history.shift();
 
+  if (hasBJ) state.sessionBlackjacks++;
+  if (state.turboMode) state.turboHandsPlayed++;
+
+  // Five Card Charlie: any hand has 5+ cards without busting
+  const fiveCardCharlie = state.playerHands.some(h => h.length >= 5 && !isBust(h));
+
+  // Double win: any hand that was doubled and won
+  const doubleWin = state.playerHands.some((_h, i) =>
+    state.doubledHands[i] && results[i] && (results[i].outcome === 'win' || results[i].outcome === 'blackjack')
+  );
+
+  // Split win both: exactly 2 hands (from a split, not multi-hand), both won
+  const fromSplit = state.numHands === 1 && state.playerHands.length === 2;
+  const splitWonBoth = fromSplit &&
+    results.length === 2 &&
+    results.every(r => r.outcome === 'win' || r.outcome === 'blackjack');
+
   checkAchievements({
-    blackjack:   hasBJ,
-    bigWin:      isWin ? net : 0,
-    comebackWin: isWin && state.wasLowBalance,
+    blackjack:       hasBJ,
+    bigWin:          isWin ? net : 0,
+    comebackWin:     isWin && state.wasLowBalance,
+    fiveCardCharlie,
+    doubleWin,
+    splitWonBoth,
   });
 
   updateStreakBadge();
@@ -1846,6 +2010,7 @@ elems.handCountBtns.forEach(btn => {
       state.bet = maxPerHand;
     }
     sfxChip();
+    updateSideBetBtns();
     updateDisplays();
   });
 });
@@ -2324,12 +2489,39 @@ $('drill-double-btn').addEventListener('click', () => gradeDrillAnswer('D'));
 $('drill-split-btn').addEventListener('click', () => gradeDrillAnswer('P'));
 $('drill-next-btn').addEventListener('click', newDrillHand);
 
+// ─── SIDE BET & TURBO EVENT LISTENERS ────────────────────────
+const SIDE_BET_CYCLE = [0, 5, 25];
+['pp', 'tf'].forEach(key => {
+  const btn = $(`side-bet-${key}-btn`);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (state.phase === 'playing' || state.phase === 'dealerTurn') return;
+    if (state.numHands !== 1) return;
+    const cur = key === 'pp' ? state.sideBetPP : state.sideBetTF;
+    const next = SIDE_BET_CYCLE[(SIDE_BET_CYCLE.indexOf(cur) + 1) % SIDE_BET_CYCLE.length];
+    if (key === 'pp') state.sideBetPP = next;
+    else              state.sideBetTF = next;
+    sfxChip();
+    updateSideBetBtns();
+  });
+});
+
+const turboToggleEl = $('turbo-toggle');
+if (turboToggleEl) turboToggleEl.addEventListener('change', toggleTurboMode);
+
 // ─── INIT ────────────────────────────────────────────────────
 function init() {
   state.phase = 'betting';
   syncHandCountUI();
   syncDeckCountUI();
   syncCardBackUI();
+  updateSideBetBtns();
+  // Apply persisted turbo state
+  document.body.classList.toggle('turbo', state.turboMode);
+  const turboBadge = $('turbo-badge');
+  if (turboBadge) turboBadge.classList.toggle('hidden', !state.turboMode);
+  const turboToggle = $('turbo-toggle');
+  if (turboToggle) turboToggle.checked = state.turboMode;
   setPhaseButtons('betting');
   updateDisplays();
   elems.roundStatus.textContent = 'Place your bet to begin';

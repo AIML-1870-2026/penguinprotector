@@ -43,6 +43,10 @@
         <input type="checkbox" id="practice-toggle">
         <span>Practice Mode <em>(unlimited balance, no slots)</em></span>
       </label>
+      <label class="setting-row">
+        <input type="checkbox" id="turbo-toggle">
+        <span>Turbo Mode <em>(faster dealer, skip animations)</em></span>
+      </label>
       <div class="setting-row"><span>Deck Count</span></div>
       <div class="deck-count-row">
         <button class="deck-count-btn" data-n="1">1</button>
@@ -112,6 +116,7 @@
     <div class="play-again-cta hidden" id="play-again-cta">▶ Deal Again (D) to keep playing</div>
     <div class="daily-badge hidden" id="daily-badge">📅 Daily Challenge</div>
     <div class="practice-badge hidden" id="practice-badge">💡 Practice Mode</div>
+    <div class="turbo-badge hidden" id="turbo-badge">⚡ Turbo</div>
 
     <!-- Info Bar -->
     <div class="info-bar">
@@ -166,6 +171,9 @@
       <button class="action-btn insurance-no" id="insurance-no-btn">No Thanks</button>
     </div>
 
+    <!-- Side Bet Result -->
+    <div class="side-bet-result-bar hidden" id="side-bet-result-bar"></div>
+
     <!-- Betting Controls -->
     <div class="betting-controls" id="betting-controls">
       <div class="hand-count-row">
@@ -185,6 +193,10 @@
         <button class="adj-btn" id="bet-minus">−</button>
         <span class="bet-big" id="bet-big">$0</span>
         <button class="adj-btn" id="bet-plus">+</button>
+      </div>
+      <div class="side-bet-row">
+        <button class="side-bet-btn" id="side-bet-pp-btn" title="Perfect Pairs side bet">PP: Off</button>
+        <button class="side-bet-btn" id="side-bet-tf-btn" title="21+3 side bet (player 2 cards + dealer upcard)">21+3: Off</button>
       </div>
     </div>
 
