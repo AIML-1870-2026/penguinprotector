@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rat Race</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Start Screen -->
+    <div class="screen" id="start-screen">
+      <h1 class="game-title">RAT RACE</h1>
+      <p class="subtitle">A City Rooftop Endless Runner</p>
+      <div class="best-line" id="start-best"></div>
+      <div class="menu-buttons">
+        <button class="menu-btn primary" id="play-btn">▶ Play</button>
+        <button class="menu-btn" id="leaderboard-btn">🏆 Leaderboard</button>
+      </div>
+      <p class="controls-hint">
+        SPACE / W / ↑ &nbsp;Jump &nbsp;·&nbsp; Double-tap = Double Jump &nbsp;·&nbsp; S / ↓ = Slide
+      </p>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="screen hidden" id="leaderboard-screen">
+      <h2 class="screen-title">Top Runs</h2>
+      <div id="leaderboard-list"></div>
+      <button class="menu-btn" id="lb-close-btn">← Back</button>
+    </div>
+
+    <!-- Game Over -->
+    <div class="screen hidden" id="gameover-screen">
+      <h2 class="go-title">GAME OVER</h2>
+      <p class="death-cause" id="death-cause"></p>
+      <div class="go-stats">
+        <div class="stat-row"><span>Score</span><strong id="go-score">0</strong></div>
+        <div class="stat-row"><span>High Score</span><strong id="go-highscore">0</strong></div>
+        <div class="stat-row"><span>Distance</span><strong id="go-dist">0m</strong></div>
+        <div class="stat-row"><span>Jumps</span><strong id="go-jumps">0</strong></div>
+      </div>
+      <p class="ghost-note hidden" id="ghost-note">👻 Ghost saved — race yourself next run!</p>
+      <div class="go-buttons">
+        <button class="menu-btn primary" id="retry-btn">↺ Try Again</button>
+        <button class="menu-btn" id="menu-btn-go">⌂ Menu</button>
+      </div>
+    </div>
+
+    <!-- HUD (shown during gameplay) -->
+    <div class="hud hidden" id="hud">
+      <div class="hud-left">
+        <div class="zone-name" id="zone-name"></div>
+      </div>
+      <div class="hud-center">
+        <div class="score-display" id="score-display">0</div>
+      </div>
+      <div class="hud-right">
+        <div class="hs-line" id="hs-line"></div>
+        <span class="tod-icon" id="tod-icon">🌅</span>
+        <button class="mute-btn" id="mute-btn">🔊</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
