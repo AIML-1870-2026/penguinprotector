@@ -812,44 +812,214 @@ function rRect(x, y, w, h, r) {
 }
 
 function drawRat(state, frame, sliding) {
-  const bH = sliding ? 9  : 14;
-  const bW = sliding ? 19 : 12;
-  const bY = sliding ? 4  : 0;
+  const C_BACK  = '#6b3010';  // dark dorsal fur
+  const C_BODY  = '#9a4a18';  // main fur
+  const C_BELLY = '#c07030';  // underbelly
+  const C_LIMB  = '#7a3810';  // legs/arms
+  const C_SNOUT = '#b86828';  // snout highlight
+  const C_EAR_O = '#c87030';  // outer ear
+  const C_EAR_I = '#e87890';  // inner ear pink
+  const C_NOSE  = '#ff7090';  // nose
+  const f = frame * Math.PI / 2;  // 0, π/2, π, 3π/2
 
-  // Tail
-  ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-  const wag = Math.sin(frame * 1.5) * 3;
+  // ── SLIDE ───────────────────────────────────────────────────────
+  // When sliding: drawing center is at ground level (y=0 = GROUND_Y)
+  if (sliding) {
+    // Tail arcing upward behind body
+    ctx.strokeStyle = C_BACK; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-9, 1);
+    ctx.bezierCurveTo(-16, 4, -22, 0, -26, -6);
+    ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-26, -6);
+    ctx.bezierCurveTo(-28, -10, -28, -15, -26, -20);
+    ctx.stroke();
+
+    // Flat body (elongated ellipses)
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.ellipse(0, 1, 13, 4.5, 0.12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = C_BODY;
+    ctx.beginPath(); ctx.ellipse(1, 1.5, 12, 4, 0.12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = C_BELLY;
+    ctx.beginPath(); ctx.ellipse(2, 2.5, 9, 2.5, 0.12, 0, Math.PI*2); ctx.fill();
+
+    // Legs trailing behind
+    ctx.fillStyle = C_LIMB;
+    ctx.beginPath(); ctx.ellipse(-4, 5.5, 5, 2, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2, 5.5, 5, 2, 0.3, 0, Math.PI*2); ctx.fill();
+
+    // Head (low, streamlined)
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.arc(10.5, -1, 6.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = C_BODY;
+    ctx.beginPath(); ctx.arc(11.5, -0.5, 6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = C_BELLY;
+    ctx.beginPath(); ctx.ellipse(15, 0.5, 4.5, 3, 0, 0, Math.PI*2); ctx.fill();
+
+    // Ear (tucked)
+    ctx.fillStyle = C_EAR_O;
+    ctx.beginPath(); ctx.ellipse(7.5, -7, 3, 4.5, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = C_EAR_I;
+    ctx.beginPath(); ctx.ellipse(7.7, -6.8, 1.7, 2.8, -0.4, 0, Math.PI*2); ctx.fill();
+
+    // Snout
+    ctx.fillStyle = C_SNOUT;
+    ctx.beginPath(); ctx.ellipse(17, 0.5, 4, 2.8, -0.1, 0, Math.PI*2); ctx.fill();
+
+    // Eye
+    ctx.fillStyle = '#c03020'; ctx.beginPath(); ctx.arc(13.5, -2.5, 2,   0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';    ctx.beginPath(); ctx.arc(13.5, -2.5, 1.1, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(14, -3, 0.55, 0, Math.PI*2); ctx.fill();
+
+    // Nose
+    ctx.fillStyle = C_NOSE; ctx.beginPath(); ctx.arc(20.5, 0.5, 1.6, 0, Math.PI*2); ctx.fill();
+
+    // Whiskers
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(18, -0.5); ctx.lineTo(25, -3);  ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(18,  0.8); ctx.lineTo(25,  2.5); ctx.stroke();
+    return;
+  }
+
+  // ── UPRIGHT STATES ──────────────────────────────────────────────
+  // Drawing center is 14px above ground (y=+14 = GROUND_Y in screen space)
+  const isRun  = state === 'run' || state === 'land';
+  const isJump = state === 'jump';
+  const isFall = state === 'fall';
+  const bob    = isRun ? Math.sin(f) * 1.3 : 0;
+
+  // ── Tail ────────────────────────────────────────────────────────
+  const wagY = isRun ? Math.sin(f) * 5 : (isJump ? -10 : (isFall ? 9 : 2));
+  ctx.strokeStyle = C_BACK; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(-bW/2, bY + bH/2);
-  ctx.bezierCurveTo(-bW/2 - 8, bY + bH/2 + 4, -bW/2 - 14, bY - 6 + wag, -bW/2 - 18, bY - 11 + wag);
+  ctx.moveTo(-8, bob + 3);
+  ctx.bezierCurveTo(-16, bob + 8, -22, bob + wagY, -26, bob + wagY - 8);
+  ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-26, bob + wagY - 8);
+  ctx.bezierCurveTo(-28, bob + wagY - 12, -28, bob + wagY - 17, -26, bob + wagY - 22);
   ctx.stroke();
 
-  // Body
-  ctx.fillStyle = '#a0522d'; ctx.beginPath(); rRect(-bW/2, bY - bH/2, bW, bH, 5); ctx.fill();
-
-  if (!sliding) {
-    // Head
-    ctx.fillStyle = '#8b4513'; ctx.beginPath(); ctx.arc(bW/2 + 2, bY - bH/2, 7, 0, Math.PI*2); ctx.fill();
-    // Ear
-    ctx.fillStyle = '#cd853f'; ctx.beginPath(); ctx.ellipse(bW/2, bY - bH/2 - 6, 3, 5, -0.3, 0, Math.PI*2); ctx.fill();
-    // Eye
-    ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(bW/2 + 4, bY - bH/2 - 1, 1.5, 0, Math.PI*2); ctx.fill();
-    // Nose
-    ctx.fillStyle = '#ff69b4'; ctx.beginPath(); ctx.arc(bW/2 + 9, bY - bH/2 + 1, 1.5, 0, Math.PI*2); ctx.fill();
-    // Whiskers
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.8;
-    for (const i of [-1, 1]) {
-      ctx.beginPath(); ctx.moveTo(bW/2 + 7, bY - bH/2 + 1); ctx.lineTo(bW/2 + 17, bY - bH/2 + 1 + i*3); ctx.stroke();
-    }
+  // ── Back legs (drawn before body so body overlaps at hip) ───────
+  if (isRun) {
+    const l1 = Math.sin(f), l2 = -l1;
+    // Far leg
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.ellipse(-4 + l1*2.5, bob+5, 4, 2.5, l1*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-4+l1*2.5, bob+7); ctx.lineTo(-5+l1*4.5, 13-Math.abs(l1)); ctx.stroke();
+    // Near leg
+    ctx.fillStyle = C_LIMB;
+    ctx.beginPath(); ctx.ellipse(-3 + l2*2.5, bob+5, 4, 2.5, l2*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_LIMB; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-3+l2*2.5, bob+7); ctx.lineTo(-2+l2*4.5, 13-Math.abs(l2)); ctx.stroke();
+  } else if (isJump) {
+    // Legs tucked under body
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.ellipse(-6, bob+3, 4, 2.5, -0.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-6, bob+4.5); ctx.lineTo(-8, bob+8); ctx.stroke();
+    ctx.fillStyle = C_LIMB;
+    ctx.beginPath(); ctx.ellipse(-3, bob+3, 4, 2.5, -0.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_LIMB; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-3, bob+4.5); ctx.lineTo(-2, bob+8); ctx.stroke();
+  } else if (isFall) {
+    // Legs spread wide, bracing for landing
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.ellipse(-7, bob+6, 4, 2.5, 0.55, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-7, bob+7.5); ctx.lineTo(-10, 13); ctx.stroke();
+    ctx.fillStyle = C_LIMB;
+    ctx.beginPath(); ctx.ellipse(-2, bob+6, 4, 2.5, 0.55, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_LIMB; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-2, bob+7.5); ctx.lineTo(-1, 13); ctx.stroke();
+  } else {
+    ctx.fillStyle = C_BACK;
+    ctx.beginPath(); ctx.ellipse(-5, bob+5, 4, 2.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-5, bob+6.5); ctx.lineTo(-6, 13); ctx.stroke();
+    ctx.fillStyle = C_LIMB;
+    ctx.beginPath(); ctx.ellipse(-2, bob+5, 4, 2.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_LIMB; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-2, bob+6.5); ctx.lineTo(-1, 13); ctx.stroke();
   }
 
-  // Legs
-  if (state === 'run') {
-    const lp = frame * Math.PI / 2;
-    ctx.fillStyle = '#7b3f00';
-    ctx.fillRect(-2 + Math.sin(lp)*3, bY + bH/2, 3, 5 + Math.abs(Math.sin(lp))*2);
-    ctx.fillRect( 3 + Math.sin(lp+Math.PI)*3, bY + bH/2, 3, 5 + Math.abs(Math.sin(lp+Math.PI))*2);
+  // ── Body (three layers: dark back → main → belly) ───────────────
+  ctx.fillStyle = C_BACK;
+  ctx.beginPath(); ctx.ellipse(0, bob, 10, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = C_BODY;
+  ctx.beginPath(); ctx.ellipse(1, bob, 10, 6.5, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = C_BELLY;
+  ctx.beginPath(); ctx.ellipse(2, bob+2, 8, 4.5, 0.2, 0, Math.PI*2); ctx.fill();
+
+  // ── Front paws ──────────────────────────────────────────────────
+  ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  if (isJump) {
+    // Arms reaching forward-upward
+    ctx.strokeStyle = C_LIMB;
+    ctx.beginPath(); ctx.moveTo(7, bob); ctx.lineTo(11, bob-6); ctx.stroke();
+    ctx.fillStyle = C_LIMB; ctx.beginPath(); ctx.arc(11.5, bob-7, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK;
+    ctx.beginPath(); ctx.moveTo(7, bob+1); ctx.lineTo(10, bob-5); ctx.stroke();
+    ctx.fillStyle = C_BACK; ctx.beginPath(); ctx.arc(10.5, bob-6, 2, 0, Math.PI*2); ctx.fill();
+  } else if (isFall) {
+    // Arms out to sides for balance
+    ctx.strokeStyle = C_LIMB;
+    ctx.beginPath(); ctx.moveTo(7, bob); ctx.lineTo(12, bob+5); ctx.stroke();
+    ctx.fillStyle = C_LIMB; ctx.beginPath(); ctx.arc(12.5, bob+6, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = C_BACK;
+    ctx.beginPath(); ctx.moveTo(7, bob+1); ctx.lineTo(11, bob+6); ctx.stroke();
+    ctx.fillStyle = C_BACK; ctx.beginPath(); ctx.arc(11.5, bob+7, 2, 0, Math.PI*2); ctx.fill();
+  } else if (isRun) {
+    // Front paws pump in opposite phase to back legs
+    const fa = Math.sin(f);
+    ctx.strokeStyle = C_BACK;
+    ctx.beginPath(); ctx.moveTo(7, bob); ctx.lineTo(7 - fa*1.5, bob+6); ctx.stroke();
+    ctx.strokeStyle = C_LIMB;
+    ctx.beginPath(); ctx.moveTo(8, bob); ctx.lineTo(8 + fa*1.5, bob+6); ctx.stroke();
   }
+
+  // ── Head (drawn last so it's on top of everything) ──────────────
+  // Back of skull (shadow layer)
+  ctx.fillStyle = C_BACK;
+  ctx.beginPath(); ctx.arc(9, bob-6, 8, 0, Math.PI*2); ctx.fill();
+  // Main head
+  ctx.fillStyle = C_BODY;
+  ctx.beginPath(); ctx.arc(10.5, bob-6, 7.5, 0, Math.PI*2); ctx.fill();
+  // Cheek/face highlight
+  ctx.fillStyle = C_BELLY;
+  ctx.beginPath(); ctx.ellipse(14, bob-4.5, 5, 3.5, 0.15, 0, Math.PI*2); ctx.fill();
+
+  // Ear (outer)
+  ctx.fillStyle = C_EAR_O;
+  ctx.beginPath(); ctx.ellipse(6.5, bob-13.5, 3.5, 5.5, -0.25, 0, Math.PI*2); ctx.fill();
+  // Ear (inner pink)
+  ctx.fillStyle = C_EAR_I;
+  ctx.beginPath(); ctx.ellipse(6.8, bob-13.2, 2, 3.5, -0.25, 0, Math.PI*2); ctx.fill();
+
+  // Snout
+  ctx.fillStyle = C_SNOUT;
+  ctx.beginPath(); ctx.ellipse(17, bob-5, 5, 3.2, -0.1, 0, Math.PI*2); ctx.fill();
+  // Nose
+  ctx.fillStyle = C_NOSE;
+  ctx.beginPath(); ctx.arc(21.2, bob-5, 1.8, 0, Math.PI*2); ctx.fill();
+
+  // Eye: red iris → dark pupil → white specular
+  ctx.fillStyle = '#c03020';
+  ctx.beginPath(); ctx.arc(13.5, bob-9, 2.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(13.5, bob-9, 1.2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath(); ctx.arc(14.1, bob-9.6, 0.6, 0, Math.PI*2); ctx.fill();
+
+  // Whiskers (3 per side)
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.8; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(18.5, bob-6);   ctx.lineTo(26, bob-9);   ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(18.5, bob-5);   ctx.lineTo(26, bob-4.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(18.5, bob-5.5); ctx.lineTo(25.5, bob-1.5); ctx.stroke();
 }
 
 function drawPlayer() {
