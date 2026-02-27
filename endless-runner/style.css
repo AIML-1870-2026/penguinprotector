@@ -153,6 +153,20 @@ html, body {
 }
 .stat-row span { color: #666; }
 .stat-row strong { color: #fff; }
+.go-newbest {
+  color: #f1c40f;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  text-shadow: 0 0 12px rgba(241, 196, 15, 0.8), 0 0 28px rgba(241, 196, 15, 0.4);
+  animation: nb-pulse 0.7s ease-in-out infinite alternate;
+}
+.go-newbest.hidden { display: none; }
+@keyframes nb-pulse {
+  from { text-shadow: 0 0 8px rgba(241, 196, 15, 0.6), 0 0 18px rgba(241, 196, 15, 0.3); }
+  to   { text-shadow: 0 0 18px rgba(241, 196, 15, 1),   0 0 36px rgba(241, 196, 15, 0.6); }
+}
+
 .ghost-note { color: #7f8c8d; font-size: 0.7rem; letter-spacing: 0.04em; }
 .ghost-note.hidden { display: none; }
 .go-buttons { display: flex; gap: 0.65rem; flex-wrap: wrap; justify-content: center; }

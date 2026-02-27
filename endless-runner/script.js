@@ -77,6 +77,7 @@ function sfxDblJump()   { playTone(580, 0.1, 'sine', 0.12); setTimeout(() => pla
 function sfxLand()      { playTone(110, 0.07, 'triangle', 0.14); }
 function sfxDeath()     { playTone(180, 0.3, 'sawtooth', 0.14); setTimeout(() => playTone(130, 0.4, 'sawtooth', 0.1), 160); }
 function sfxPickup()    { playTone(880, 0.07, 'sine', 0.11); setTimeout(() => playTone(1100, 0.07, 'sine', 0.09), 60); }
+function sfxPowerUp()   { playTone(660, 0.09, 'sine', 0.13); setTimeout(() => playTone(880, 0.09, 'sine', 0.12), 65); setTimeout(() => playTone(1100, 0.14, 'sine', 0.14), 130); }
 
 let ambOsc = null, ambGain = null;
 function startAmbient() {
@@ -171,8 +172,13 @@ function resetGS() {
     platforms: [],
     hazards:   [],
     props:     [],
+    items:     [],
     particles: [],
     popups:    [],
+
+    // power-ups
+    powerUp:    null,   // { type, t, maxT }
+    scoreMulti: 1,
 
     nextChunkX:   LW + 60,
     lastChunkType: '',
@@ -201,6 +207,9 @@ function resetGS() {
 
     // menu preview animation
     menuFrame: 0, menuFrameT: 0,
+
+    // milestone tracking
+    lastMilestoneD: 0,
   };
 }
 
@@ -369,21 +378,33 @@ function pickChunk(diff, lastType, chunkCount) {
   return 'flat';
 }
 
+const POWERUP_TYPES = ['shield', 'boost', 'magnet'];
+
 function spawnChunks() {
   while (gs.nextChunkX < gs.scrollX + LW * 3) {
     const type = pickChunk(gs.difficulty, gs.lastChunkType, gs.chunkCount);
-    const chunk = makeChunk(type, gs.nextChunkX);
+    const chunkStartX = gs.nextChunkX;
+    const chunk = makeChunk(type, chunkStartX);
     gs.platforms.push(...chunk.platforms);
     gs.hazards.push(...chunk.hazards);
     gs.props.push(...chunk.props);
     gs.nextChunkX += chunk.width;
     gs.lastChunkType = type;
     gs.chunkCount++;
+
+    // Spawn a floating power-up after the grace period (~20% chance per chunk)
+    if (gs.chunkCount > 6 && Math.random() < 0.22) {
+      const puType = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+      const itemX  = chunkStartX + chunk.width * 0.35 + Math.random() * chunk.width * 0.3;
+      const baseY  = GROUND_Y - PLAYER_H - 12;
+      gs.items.push({ x: itemX, baseY, screenY: baseY, type: puType, bT: Math.random() * Math.PI * 2, collected: false });
+    }
   }
   const cutX = gs.scrollX - 300;
   gs.platforms = gs.platforms.filter(p => p.x + p.w > cutX);
   gs.hazards   = gs.hazards.filter(h => h.x + h.w + 60 > cutX);
   gs.props     = gs.props.filter(p => p.x + 60 > cutX);
+  gs.items     = gs.items.filter(i => !i.collected && i.x + 20 > cutX);
 }
 
 // ─── JUMP ──────────────────────────────────────────────────────
@@ -502,12 +523,37 @@ function checkCollisions() {
   const pH = p.sliding ? SLIDE_H : PLAYER_H;
   const pL = p.worldX + 5, pR = p.worldX + PLAYER_W - 5;
   const pT = p.y + 5,      pB = p.y + pH - 5;
+  const px = p.worldX + PLAYER_W / 2, py = p.y + pH / 2;
+
+  // Power-up item pickup
+  for (const item of gs.items) {
+    if (item.collected) continue;
+    if (Math.abs(px - item.x) < 28 && Math.abs(py - item.screenY) < 28) {
+      item.collected = true;
+      activatePowerUp(item.type, item.x, item.screenY);
+    }
+  }
 
   for (const h of gs.hazards) {
     const hL = h.x, hR = h.x + h.w, hT = h.y, hB = h.y + h.h;
     const xOvlp = pR > hL && pL < hR;
     const yOvlp = pB > hT && pT < hB;
     if (!xOvlp || !yOvlp) continue;
+
+    const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active);
+    if (!lethal) continue;
+
+    // Shield absorbs one hit
+    if (gs.powerUp?.type === 'shield') {
+      gs.powerUp = null;
+      p.hitFlash = 1.2; p.state = 'hit';
+      shake(0.3, 4);
+      for (let i = 0; i < 10; i++) {
+        const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 3;
+        gs.particles.push({ x: px, y: py, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, life: 0.55, ml: 0.55, col: '#4fc3f7', r: 3 });
+      }
+      return;
+    }
 
     if (h.type === 'fan')     killPlayer('Sliced by a ventilation fan!');
     if (h.type === 'antenna') killPlayer('Impaled on an antenna!');
@@ -530,13 +576,60 @@ function killPlayer(cause) {
 
 function shake(dur, amt) { gs.shakeTimer = dur; gs.shakeAmt = amt; }
 
+// ─── POWER-UPS ─────────────────────────────────────────────────
+const PU_COLORS = { shield: '#4fc3f7', boost: '#ffd740', magnet: '#ce93d8' };
+const PU_LABELS = { shield: 'SHIELD!', boost: 'SPEED BOOST!', magnet: 'SCORE ×3!' };
+
+function activatePowerUp(type, x, y) {
+  // Cancel any existing power-up cleanly
+  if (gs.powerUp) {
+    if (gs.powerUp.type === 'magnet') gs.scoreMulti = 1;
+    // boost speed restores via updateProgression formula naturally
+  }
+  const col = PU_COLORS[type];
+  if (type === 'shield') {
+    gs.powerUp = { type, t: 5.0, maxT: 5.0 };
+  } else if (type === 'boost') {
+    const natural = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime / 28 * 0.22);
+    gs.speed  = Math.min(natural * 1.55, BASE_SPEED * 3);
+    gs.powerUp = { type, t: 4.0, maxT: 4.0 };
+  } else if (type === 'magnet') {
+    gs.scoreMulti = 3;
+    gs.powerUp = { type, t: 8.0, maxT: 8.0 };
+  }
+  popup(x, y - 20, PU_LABELS[type], col, 14);
+  sfxPowerUp();
+  shake(0.25, 3);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, sp = 2 + Math.random() * 3;
+    gs.particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1.5, life: 0.6, ml: 0.6, col, r: 3 });
+  }
+}
+
+function updateItems(dt) {
+  for (const item of gs.items) {
+    item.bT += dt;
+    item.screenY = item.baseY + Math.sin(item.bT * 3) * 5;
+  }
+}
+
+function updatePowerUp(dt) {
+  if (!gs.powerUp) return;
+  gs.powerUp.t -= dt;
+  if (gs.powerUp.t <= 0) {
+    if (gs.powerUp.type === 'magnet') gs.scoreMulti = 1;
+    // boost: speed is restored by updateProgression overwriting it next frame
+    gs.powerUp = null;
+  }
+}
+
 // ─── PARTICLES & POPUPS ────────────────────────────────────────
 function dustAt(x, y) {
   for (let i = 0; i < 5; i++) {
     gs.particles.push({ x, y, vx: (Math.random()-0.5)*3, vy: -Math.random()*2, life: 0.3, ml: 0.3, col: '#bbb', r: 2+Math.random()*2 });
   }
 }
-function popup(x, y, text) { gs.popups.push({ x, y, text, life: 1.1, ml: 1.1 }); }
+function popup(x, y, text, col = '#f1c40f', size = 13) { gs.popups.push({ x, y, text, col, size, life: 1.1, ml: 1.1 }); }
 
 function updateParticles(dt) {
   for (const p of gs.particles) { p.x += p.vx*dt*60; p.y += p.vy*dt*60; p.vy += 0.12*dt*60; p.life -= dt; }
@@ -556,13 +649,31 @@ function updateParallax(dt) {
 function updateProgression(dt) {
   gs.runTime += dt;
   gs.distance += gs.speed * dt * 60 / 10;
-  gs.speed = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime / 28 * 0.22);
+  // Only advance natural speed when boost isn't active (boost holds gs.speed elevated)
+  if (!gs.powerUp || gs.powerUp.type !== 'boost') {
+    gs.speed = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime / 28 * 0.22);
+  }
   gs.difficulty = Math.min(4, Math.floor(gs.runTime / 30));
-  gs.score += Math.ceil((gs.speed / BASE_SPEED) * 2 * dt * 60);
+  gs.score += Math.ceil((gs.speed / BASE_SPEED) * 2 * gs.scoreMulti * dt * 60);
 
   // ToD
   gs.todT += dt;
   if (gs.todT >= 60) { gs.todT -= 60; gs.todIdx = (gs.todIdx + 1) % TOD.length; updateTodIcon(); }
+
+  // Milestones
+  const MILESTONES = [
+    { d: 100,  text: '100m!',   col: '#2ecc71', size: 15 },
+    { d: 500,  text: '500m!',   col: '#3498db', size: 16 },
+    { d: 1000, text: '1KM!!',   col: '#9b59b6', size: 18 },
+    { d: 2500, text: '2.5KM!',  col: '#e67e22', size: 19 },
+    { d: 5000, text: '5KM!!!',  col: '#e74c3c', size: 22 },
+  ];
+  for (const m of MILESTONES) {
+    if (gs.lastMilestoneD < m.d && gs.distance >= m.d) {
+      gs.lastMilestoneD = m.d;
+      popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 60, m.text, m.col, m.size);
+    }
+  }
 
   // Zone
   const z = Math.floor(gs.distance / 900) % ZONES.length;
@@ -1178,7 +1289,7 @@ function drawParticles() {
 function drawPopups() {
   for (const p of gs.popups) {
     ctx.save(); ctx.globalAlpha = p.life / p.ml;
-    ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 13px Courier New'; ctx.textAlign = 'center';
+    ctx.fillStyle = p.col || '#f1c40f'; ctx.font = `bold ${p.size || 13}px Courier New`; ctx.textAlign = 'center';
     ctx.fillText(p.text, p.x - gs.scrollX, p.y);
     ctx.restore();
   }
@@ -1210,6 +1321,63 @@ function drawRain() {
   ctx.restore();
 }
 
+function drawItems() {
+  if (!gs.items.length) return;
+  const icons = { shield: '🛡', boost: '⚡', magnet: '×3' };
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const item of gs.items) {
+    if (item.collected) continue;
+    const sx = item.x - gs.scrollX;
+    if (sx < -30 || sx > LW + 30) continue;
+    const sy = item.screenY;
+    const col = PU_COLORS[item.type];
+    // glow ring
+    ctx.shadowBlur = 18; ctx.shadowColor = col;
+    ctx.beginPath(); ctx.arc(sx, sy, 15, 0, Math.PI * 2);
+    ctx.fillStyle = col + '44'; ctx.fill();
+    // solid core
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+    // icon
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(icons[item.type], sx, sy + 1);
+  }
+  ctx.restore();
+}
+
+function drawPowerUpHUD() {
+  if (!gs.powerUp || gs.phase !== 'playing') return;
+  const pu  = gs.powerUp;
+  const col = PU_COLORS[pu.type];
+  const icons = { shield: '🛡', boost: '⚡', magnet: '×3' };
+  const frac = Math.max(0, pu.t / pu.maxT);
+  const x = 678, y = 12;
+  const barW = 68, barH = 5;
+  ctx.save();
+  // background pill
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(x - 4, y - 2, 88, 23);
+  // icon
+  ctx.shadowBlur = 8; ctx.shadowColor = col;
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = col;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(icons[pu.type], x, y + 7);
+  // timer bar track
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x + 22, y + 5, barW, barH);
+  // timer bar fill
+  ctx.fillStyle = col;
+  ctx.fillRect(x + 22, y + 5, Math.round(barW * frac), barH);
+  ctx.restore();
+}
+
 function render() {
   ctx.save();
   ctx.scale(scale, scale);
@@ -1223,6 +1391,7 @@ function render() {
   drawGround();
   drawRain();
   drawProps();
+  drawItems();
   drawPlatforms();
   drawHazards();
   drawGhost();
@@ -1238,6 +1407,7 @@ function render() {
   drawParticles();
   drawPopups();
   drawSpeedLines();
+  drawPowerUpHUD();
 
   ctx.restore();
 }
@@ -1255,6 +1425,8 @@ function loop(ts) {
     updateHazards(dt);
     updateCrumble(dt);
     checkCollisions();
+    updateItems(dt);
+    updatePowerUp(dt);
     spawnChunks();
     updateParticles(dt);
     updateParallax(dt);
@@ -1300,6 +1472,7 @@ function showGameOver() {
   gs.phase = 'gameover';
   stopAmbient();
   const s = Math.floor(gs.score);
+  const isNewBest = s > 0 && s > getHS();
   saveScore(s);
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('gameover-screen').classList.remove('hidden');
@@ -1308,6 +1481,8 @@ function showGameOver() {
   document.getElementById('go-highscore').textContent = getHS().toLocaleString();
   document.getElementById('go-dist').textContent = Math.floor(gs.distance) + 'm';
   document.getElementById('go-jumps').textContent = gs.jumpCount;
+  const nb = document.getElementById('go-newbest');
+  if (isNewBest) nb.classList.remove('hidden'); else nb.classList.add('hidden');
 }
 
 function showLeaderboard() {
