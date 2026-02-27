@@ -173,7 +173,8 @@ function resetGS() {
     particles: [],
     popups:    [],
 
-    nextChunkX:  LW + 60,
+    nextChunkX:   LW + 60,
+    lastChunkType: '',
     difficulty:  0,
     deathCause:  '',
     jumpCount:   0,
@@ -327,8 +328,16 @@ const CHUNK_DEFS = [
   { type: 'combo',      min: 3, w: 1 },
 ];
 
-function pickChunk(diff) {
-  const pool = CHUNK_DEFS.filter(c => c.min <= diff);
+// Chunks that force the player into the air (jumping required to clear ground hazards or gaps)
+const AIRBORNE_CHUNKS = new Set(['fans', 'antennas', 'combo', 'gap', 'staircase', 'high_low', 'rooftop_gap', 'crumble']);
+
+function pickChunk(diff, lastType) {
+  let pool = CHUNK_DEFS.filter(c => c.min <= diff);
+  // Never spawn 'pigeons' directly after a jump-forcing chunk — the low pigeon
+  // sits at G-55 and collides with any airborne player, making it undodgeable.
+  if (AIRBORNE_CHUNKS.has(lastType)) {
+    pool = pool.filter(c => c.type !== 'pigeons');
+  }
   const total = pool.reduce((s, c) => s + c.w, 0);
   let r = Math.random() * total;
   for (const c of pool) { r -= c.w; if (r <= 0) return c.type; }
@@ -337,11 +346,12 @@ function pickChunk(diff) {
 
 function spawnChunks() {
   while (gs.nextChunkX < gs.scrollX + LW * 3) {
-    const type = pickChunk(gs.difficulty);
+    const type = pickChunk(gs.difficulty, gs.lastChunkType);
     const chunk = makeChunk(type, gs.nextChunkX);
     gs.platforms.push(...chunk.platforms);
     gs.hazards.push(...chunk.hazards);
     gs.nextChunkX += chunk.width;
+    gs.lastChunkType = type;
   }
   const cutX = gs.scrollX - 300;
   gs.platforms = gs.platforms.filter(p => p.x + p.w > cutX);
@@ -718,16 +728,75 @@ function drawHazards() {
 }
 
 function drawPigeon(cx, cy, t) {
-  const flap = Math.sin(t * 9) * 9;
-  ctx.save(); ctx.translate(cx, cy);
-  ctx.fillStyle = '#7f8c8d';
-  ctx.beginPath(); ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#636e72';
-  ctx.beginPath(); ctx.ellipse(-9, -flap, 10, 5, -0.3, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( 9, -flap, 10, 5,  0.3, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#95a5a6';
-  ctx.beginPath(); ctx.arc(14, -3, 5, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
+  // 3-bird flock with staggered size and phase
+  const flock = [
+    { dx: 0,   dy: 0,  phase: 0,   sz: 1.0  },
+    { dx: -22, dy: -6, phase: 1.1, sz: 0.82 },
+    { dx: 19,  dy: 5,  phase: 2.0, sz: 0.87 },
+  ];
+
+  for (const b of flock) {
+    const flap = Math.sin(t * 8 + b.phase); // -1..1
+    const wY   = flap * 6;
+
+    ctx.save();
+    ctx.translate(cx + b.dx, cy + b.dy);
+    ctx.scale(-b.sz, b.sz); // mirror so bird faces left (direction of travel)
+
+    // Far wing (behind body)
+    ctx.fillStyle = '#526878';
+    ctx.beginPath();
+    ctx.ellipse(-1, -wY * 0.6, 11, 3.5, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = '#8ba8bc';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Near wing (in front of body)
+    ctx.fillStyle = '#7898ae';
+    ctx.beginPath();
+    ctx.ellipse(-1, -wY, 12, 4, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail
+    ctx.fillStyle = '#628090';
+    ctx.beginPath();
+    ctx.moveTo(-12, -3.5); ctx.lineTo(-22, 0); ctx.lineTo(-12, 3.5);
+    ctx.closePath(); ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#9abfd4';
+    ctx.beginPath(); ctx.arc(13, -2.5, 5.5, 0, Math.PI * 2); ctx.fill();
+
+    // Iridescent neck shimmer
+    const shimmer = 0.3 + 0.15 * Math.sin(t * 3 + b.phase);
+    ctx.fillStyle = `rgba(80, 220, 160, ${shimmer})`;
+    ctx.beginPath(); ctx.ellipse(7, -1.5, 3.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Beak — upper mandible
+    ctx.fillStyle = '#354a56';
+    ctx.beginPath();
+    ctx.moveTo(18, -3); ctx.lineTo(23.5, -1.5); ctx.lineTo(18, -0.5);
+    ctx.closePath(); ctx.fill();
+    // Beak — lower mandible
+    ctx.fillStyle = '#415866';
+    ctx.beginPath();
+    ctx.moveTo(18, -0.5); ctx.lineTo(22.5, 0.2); ctx.lineTo(18, 1);
+    ctx.closePath(); ctx.fill();
+
+    // Eye — orange iris, dark pupil, white specular
+    ctx.fillStyle = '#e05010';
+    ctx.beginPath(); ctx.arc(14.5, -3.5, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(14.5, -3.5, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(15.1, -4.1, 0.55, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  }
 }
 
 function rRect(x, y, w, h, r) {
