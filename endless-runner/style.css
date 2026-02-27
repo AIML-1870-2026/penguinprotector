@@ -129,7 +129,7 @@ html, body {
 /* ===== GAME OVER ===== */
 .go-title {
   font-size: clamp(1.8rem, 6vw, 3rem);
-  color: #e74c3c;
+  color: var(--zone-accent, #e74c3c);
   letter-spacing: 0.28em;
   text-shadow: 2px 2px 0 #7a0000;
 }
@@ -138,6 +138,13 @@ html, body {
   font-size: 0.78rem;
   font-style: italic;
   letter-spacing: 0.05em;
+}
+.go-zone {
+  color: #666;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: -0.2rem;
 }
 .go-stats {
   display: flex; flex-direction: column; gap: 0.32rem;

@@ -78,6 +78,7 @@ function sfxLand()      { playTone(110, 0.07, 'triangle', 0.14); }
 function sfxDeath()     { playTone(180, 0.3, 'sawtooth', 0.14); setTimeout(() => playTone(130, 0.4, 'sawtooth', 0.1), 160); }
 function sfxPickup()    { playTone(880, 0.07, 'sine', 0.11); setTimeout(() => playTone(1100, 0.07, 'sine', 0.09), 60); }
 function sfxPowerUp()   { playTone(660, 0.09, 'sine', 0.13); setTimeout(() => playTone(880, 0.09, 'sine', 0.12), 65); setTimeout(() => playTone(1100, 0.14, 'sine', 0.14), 130); }
+function sfxCoin()      { playTone(1040 + Math.random() * 80, 0.06, 'sine', 0.09); }
 
 let ambOsc = null, ambGain = null;
 function startAmbient() {
@@ -173,12 +174,20 @@ function resetGS() {
     hazards:   [],
     props:     [],
     items:     [],
+    coins:     [],
     particles: [],
     popups:    [],
 
     // power-ups
     powerUp:    null,   // { type, t, maxT }
     scoreMulti: 1,
+
+    // coins & combo
+    totalCoins:   0,
+    combo:        0,
+    bestCombo:    0,
+    comboDisplayT: 0,   // timer to keep badge visible after last coin
+    boostTrailT:  0,    // throttle for boost trail particles
 
     nextChunkX:   LW + 60,
     lastChunkType: '',
@@ -392,6 +401,17 @@ function spawnChunks() {
     gs.lastChunkType = type;
     gs.chunkCount++;
 
+    // Spawn 2–4 coins per chunk after grace period
+    if (gs.chunkCount > 4) {
+      const count = 2 + Math.floor(Math.random() * 3);
+      const startX = chunkStartX + chunk.width * 0.15 + Math.random() * chunk.width * 0.15;
+      for (let c = 0; c < count; c++) {
+        const cx = startX + c * 30;
+        const baseY = GROUND_Y - PLAYER_H - 14;
+        gs.coins.push({ x: cx, baseY, screenY: baseY, bT: Math.random() * Math.PI * 2, collected: false });
+      }
+    }
+
     // Spawn a floating power-up after the grace period (~20% chance per chunk)
     if (gs.chunkCount > 6 && Math.random() < 0.22) {
       const puType = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
@@ -405,6 +425,7 @@ function spawnChunks() {
   gs.hazards   = gs.hazards.filter(h => h.x + h.w + 60 > cutX);
   gs.props     = gs.props.filter(p => p.x + 60 > cutX);
   gs.items     = gs.items.filter(i => !i.collected && i.x + 20 > cutX);
+  gs.coins     = gs.coins.filter(c => !c.collected && c.x + 12 > cutX);
 }
 
 // ─── JUMP ──────────────────────────────────────────────────────
@@ -525,6 +546,24 @@ function checkCollisions() {
   const pT = p.y + 5,      pB = p.y + pH - 5;
   const px = p.worldX + PLAYER_W / 2, py = p.y + pH / 2;
 
+  // Coin pickup
+  for (const coin of gs.coins) {
+    if (coin.collected) continue;
+    if (Math.abs(px - coin.x) < 20 && Math.abs(py - coin.screenY) < 20) {
+      coin.collected = true;
+      gs.totalCoins++;
+      gs.combo++;
+      gs.comboDisplayT = 2.0;
+      if (gs.combo > gs.bestCombo) gs.bestCombo = gs.combo;
+      const bonus = coinBonus(gs.combo);
+      gs.score += bonus;
+      popup(coin.x, coin.screenY - 14, '+' + bonus, '#ffd700', 11);
+      sfxCoin();
+      if (gs.combo === 10) popup(coin.x, coin.screenY - 30, 'HOT STREAK!', '#ff9800', 14);
+      if (gs.combo === 25) popup(coin.x, coin.screenY - 30, 'ON FIRE!', '#e74c3c', 16);
+    }
+  }
+
   // Power-up item pickup
   for (const item of gs.items) {
     if (item.collected) continue;
@@ -546,6 +585,7 @@ function checkCollisions() {
     // Shield absorbs one hit
     if (gs.powerUp?.type === 'shield') {
       gs.powerUp = null;
+      gs.combo = 0;
       p.hitFlash = 1.2; p.state = 'hit';
       shake(0.3, 4);
       for (let i = 0; i < 10; i++) {
@@ -566,6 +606,7 @@ function killPlayer(cause) {
   const p = gs.p;
   p.state = 'dead'; p.vy = -10;
   gs.deathCause = cause;
+  gs.combo = 0;
   shake(0.5, 7); sfxDeath();
   for (let i = 0; i < 18; i++) {
     const a = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 5;
@@ -620,6 +661,41 @@ function updatePowerUp(dt) {
     if (gs.powerUp.type === 'magnet') gs.scoreMulti = 1;
     // boost: speed is restored by updateProgression overwriting it next frame
     gs.powerUp = null;
+  }
+}
+
+function coinBonus(combo) {
+  if (combo >= 25) return 500;
+  if (combo >= 10) return 200;
+  if (combo >= 5)  return 100;
+  return 50;
+}
+
+function updateCoins(dt) {
+  for (const c of gs.coins) {
+    c.bT += dt;
+    c.screenY = c.baseY + Math.sin(c.bT * 4) * 4;
+  }
+  // Decay combo display timer
+  if (gs.comboDisplayT > 0) gs.comboDisplayT = Math.max(0, gs.comboDisplayT - dt);
+}
+
+function updateBoostTrail(dt) {
+  if (gs.powerUp?.type !== 'boost') return;
+  gs.boostTrailT += dt;
+  if (gs.boostTrailT < 0.03) return;
+  gs.boostTrailT = 0;
+  const p = gs.p;
+  for (let i = 0; i < 2; i++) {
+    gs.particles.push({
+      x:    p.worldX + PLAYER_W * 0.9,
+      y:    p.y + PLAYER_H * 0.4 + (Math.random() - 0.5) * 10,
+      vx:   -(gs.speed * 0.6 + Math.random() * 2),
+      vy:   (Math.random() - 0.5) * 1.5,
+      life: 0.2, ml: 0.2,
+      col:  Math.random() < 0.5 ? '#ffd740' : '#ff9800',
+      r:    2 + Math.random() * 1.5,
+    });
   }
 }
 
@@ -1259,6 +1335,18 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(sx + PLAYER_W/2, sy + PLAYER_H/2);
   ctx.scale(p.sqX, p.sqY);
+
+  // Shield aura — drawn before the rat so it appears behind
+  if (gs.powerUp?.type === 'shield') {
+    const pulse = 17 + Math.sin(Date.now() * 0.007) * 3;
+    ctx.save();
+    ctx.shadowBlur = 14; ctx.shadowColor = '#4fc3f7';
+    ctx.beginPath(); ctx.arc(0, 0, pulse, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(79,195,247,0.55)'; ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (p.hitFlash > 0 && Math.floor(p.hitFlash * 10) % 2 === 0) {
     ctx.filter = 'brightness(8) sepia(1) saturate(5) hue-rotate(-60deg)';
   }
@@ -1350,6 +1438,39 @@ function drawItems() {
   ctx.restore();
 }
 
+function drawCoins() {
+  if (!gs.coins.length) return;
+  ctx.save();
+  ctx.shadowBlur = 10; ctx.shadowColor = '#ffd700';
+  for (const c of gs.coins) {
+    if (c.collected) continue;
+    const sx = c.x - gs.scrollX;
+    if (sx < -15 || sx > LW + 15) continue;
+    const sy = c.screenY;
+    ctx.beginPath(); ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd700'; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.shadowBlur = 10;
+  }
+  ctx.restore();
+}
+
+function drawComboHUD() {
+  if (gs.phase !== 'playing') return;
+  if (gs.combo < 5 && gs.comboDisplayT <= 0) return;
+  const displayCombo = gs.combo > 0 ? gs.combo : gs.bestCombo;
+  if (displayCombo < 5) return;
+  const col = displayCombo >= 25 ? '#e74c3c' : displayCombo >= 10 ? '#ff9800' : '#ffd740';
+  ctx.save();
+  ctx.shadowBlur = 10; ctx.shadowColor = col;
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = col;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('×' + displayCombo + ' COMBO', 12, LH - 22);
+  ctx.restore();
+}
+
 function drawPowerUpHUD() {
   if (!gs.powerUp || gs.phase !== 'playing') return;
   const pu  = gs.powerUp;
@@ -1392,6 +1513,7 @@ function render() {
   drawRain();
   drawProps();
   drawItems();
+  drawCoins();
   drawPlatforms();
   drawHazards();
   drawGhost();
@@ -1407,6 +1529,7 @@ function render() {
   drawParticles();
   drawPopups();
   drawSpeedLines();
+  drawComboHUD();
   drawPowerUpHUD();
 
   ctx.restore();
@@ -1427,6 +1550,8 @@ function loop(ts) {
     checkCollisions();
     updateItems(dt);
     updatePowerUp(dt);
+    updateBoostTrail(dt);
+    updateCoins(dt);
     spawnChunks();
     updateParticles(dt);
     updateParallax(dt);
@@ -1477,10 +1602,14 @@ function showGameOver() {
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('gameover-screen').classList.remove('hidden');
   document.getElementById('death-cause').textContent = gs.deathCause || 'You fell off the roof!';
+  document.getElementById('go-zone').textContent  = '📍 ' + ZONES[gs.zoneIdx].name;
   document.getElementById('go-score').textContent = s.toLocaleString();
   document.getElementById('go-highscore').textContent = getHS().toLocaleString();
-  document.getElementById('go-dist').textContent = Math.floor(gs.distance) + 'm';
+  document.getElementById('go-dist').textContent  = Math.floor(gs.distance) + 'm';
   document.getElementById('go-jumps').textContent = gs.jumpCount;
+  document.getElementById('go-coins').textContent = gs.totalCoins;
+  document.getElementById('go-combo').textContent = gs.bestCombo >= 5 ? '×' + gs.bestCombo : '—';
+  document.getElementById('gameover-screen').style.setProperty('--zone-accent', ZONES[gs.zoneIdx].accent);
   const nb = document.getElementById('go-newbest');
   if (isNewBest) nb.classList.remove('hidden'); else nb.classList.add('hidden');
 }
