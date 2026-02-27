@@ -175,6 +175,7 @@ function resetGS() {
 
     nextChunkX:   LW + 60,
     lastChunkType: '',
+    chunkCount:  0,
     difficulty:  0,
     deathCause:  '',
     jumpCount:   0,
@@ -315,14 +316,14 @@ function makeChunk(type, sx) {
 }
 
 const CHUNK_DEFS = [
-  { type: 'flat',       min: 0, w: 4 },
-  { type: 'fans',       min: 0, w: 3 },
-  { type: 'antennas',   min: 0, w: 3 },
-  { type: 'pigeons',    min: 0, w: 3 },
+  { type: 'flat',       min: 0, w: 7 },   // heavy weight keeps early runs open
+  { type: 'pigeons',    min: 0, w: 2 },   // low-flying birds only; slideable
+  { type: 'fans',       min: 1, w: 3 },   // moved: requires jump, unlocks at 30s
+  { type: 'antennas',   min: 1, w: 3 },   // moved: requires jump, unlocks at 30s
   { type: 'gap',        min: 1, w: 3 },
   { type: 'staircase',  min: 1, w: 2 },
-  { type: 'high_low',   min: 1, w: 2 },
-  { type: 'rooftop_gap',min: 1, w: 2 },
+  { type: 'high_low',   min: 2, w: 2 },
+  { type: 'rooftop_gap',min: 2, w: 2 },
   { type: 'steam',      min: 1, w: 2 },
   { type: 'crumble',    min: 2, w: 1 },
   { type: 'combo',      min: 3, w: 1 },
@@ -331,7 +332,9 @@ const CHUNK_DEFS = [
 // Chunks that force the player into the air (jumping required to clear ground hazards or gaps)
 const AIRBORNE_CHUNKS = new Set(['fans', 'antennas', 'combo', 'gap', 'staircase', 'high_low', 'rooftop_gap', 'crumble']);
 
-function pickChunk(diff, lastType) {
+function pickChunk(diff, lastType, chunkCount) {
+  // Grace period: guarantee flat ground for the first 4 chunks
+  if (chunkCount < 4) return 'flat';
   let pool = CHUNK_DEFS.filter(c => c.min <= diff);
   // Never spawn 'pigeons' directly after a jump-forcing chunk — the low pigeon
   // sits at G-55 and collides with any airborne player, making it undodgeable.
@@ -346,12 +349,13 @@ function pickChunk(diff, lastType) {
 
 function spawnChunks() {
   while (gs.nextChunkX < gs.scrollX + LW * 3) {
-    const type = pickChunk(gs.difficulty, gs.lastChunkType);
+    const type = pickChunk(gs.difficulty, gs.lastChunkType, gs.chunkCount);
     const chunk = makeChunk(type, gs.nextChunkX);
     gs.platforms.push(...chunk.platforms);
     gs.hazards.push(...chunk.hazards);
     gs.nextChunkX += chunk.width;
     gs.lastChunkType = type;
+    gs.chunkCount++;
   }
   const cutX = gs.scrollX - 300;
   gs.platforms = gs.platforms.filter(p => p.x + p.w > cutX);
