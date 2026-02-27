@@ -197,6 +197,9 @@ function resetGS() {
 
     // screen shake
     shakeX: 0, shakeY: 0, shakeTimer: 0, shakeAmt: 0,
+
+    // menu preview animation
+    menuFrame: 0, menuFrameT: 0,
   };
 }
 
@@ -1023,6 +1026,7 @@ function drawRat(state, frame, sliding) {
 }
 
 function drawPlayer() {
+  if (gs.phase === 'start') return;  // preview rat handles this during the menu
   const p = gs.p;
   const sx = p.worldX - gs.scrollX; // always = PLAYER_SCREEN_X
   const sy = p.y;
@@ -1109,6 +1113,14 @@ function render() {
   drawHazards();
   drawGhost();
   drawPlayer();
+
+  // Preview rat running behind the start-screen menu
+  if (gs.phase === 'start') {
+    ctx.save();
+    ctx.translate(PLAYER_SCREEN_X + PLAYER_W / 2, GROUND_Y - PLAYER_H + PLAYER_H / 2);
+    drawRat('run', gs.menuFrame, false);
+    ctx.restore();
+  }
   drawParticles();
   drawPopups();
   drawSpeedLines();
@@ -1135,9 +1147,17 @@ function loop(ts) {
     updateProgression(dt);
     recordGhostFrame();
     updateGhost();
+  } else if (gs.phase === 'start') {
+    // Animate cityscape behind the menu
+    gs.scrollX  += BASE_SPEED * 0.75 * dt * 60;
+    updateParallax(dt);
+    gs.todT += dt;
+    if (gs.todT >= 60) { gs.todT -= 60; gs.todIdx = (gs.todIdx + 1) % TOD.length; }
+    gs.menuFrameT += dt;
+    if (gs.menuFrameT > 0.12) { gs.menuFrameT = 0; gs.menuFrame = (gs.menuFrame + 1) % 4; }
   }
 
-  if (gs.phase !== 'start') render();
+  render();
 
   requestAnimationFrame(loop);
 }
