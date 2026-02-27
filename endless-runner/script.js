@@ -170,6 +170,7 @@ function resetGS() {
     p:         makePlayer(),
     platforms: [],
     hazards:   [],
+    props:     [],
     particles: [],
     popups:    [],
 
@@ -231,25 +232,41 @@ function genStars(n) {
 }
 
 // ─── CHUNK SYSTEM ──────────────────────────────────────────────
-// Chunks return {width, platforms[], hazards[]}
+// Chunks return {width, platforms[], hazards[], props[]}
+
+// Place decorative props on a ground section, keeping clear of hazard x positions
+function propsFor(sx, w, n, avoidXs = []) {
+  const TYPES = ['ac', 'vent', 'tank', 'chimney', 'dish'];
+  const out = []; let tries = 0;
+  while (out.length < n && tries++ < n * 10) {
+    const x = sx + 30 + Math.random() * (w - 60);
+    if (avoidXs.some(ax => Math.abs(ax - x) < 54)) continue;
+    if (out.some(p => Math.abs(p.x - x) < 54)) continue;
+    out.push({ x, type: TYPES[Math.floor(Math.random() * TYPES.length)] });
+  }
+  return out;
+}
+
 function makeChunk(type, sx) {
   const G = GROUND_Y;
   switch (type) {
     case 'flat':
-      return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [] };
+      return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [],
+        props: propsFor(sx, 380, 2) };
 
     case 'gap':
       return { width: 480, platforms: [
         { x: sx,       y: G, w: 160, h: 20, type: 'ground' },
         { x: sx + 250, y: G, w: 230, h: 20, type: 'ground' },
-      ], hazards: [] };
+      ], hazards: [],
+        props: [...propsFor(sx, 150, 1), ...propsFor(sx + 250, 220, 1)] };
 
     case 'fans':
       return { width: 460, platforms: [{ x: sx, y: G, w: 460, h: 20, type: 'ground' }], hazards: [
         { x: sx + 70,  y: G - 32, w: 28, h: 32, type: 'fan', t: 0 },
         { x: sx + 200, y: G - 32, w: 28, h: 32, type: 'fan', t: 0.6 },
         { x: sx + 340, y: G - 32, w: 28, h: 32, type: 'fan', t: 1.2 },
-      ] };
+      ], props: propsFor(sx, 460, 1, [sx+70, sx+200, sx+340]) };
 
     case 'antennas':
       return { width: 480, platforms: [{ x: sx, y: G, w: 480, h: 20, type: 'ground' }], hazards: [
@@ -257,7 +274,7 @@ function makeChunk(type, sx) {
         { x: sx + 160, y: G - 72, w: 10, h: 72, type: 'antenna' },
         { x: sx + 270, y: G - 48, w: 10, h: 48, type: 'antenna' },
         { x: sx + 390, y: G - 62, w: 10, h: 62, type: 'antenna' },
-      ] };
+      ], props: propsFor(sx, 480, 1, [sx+60, sx+160, sx+270, sx+390]) };
 
     case 'staircase':
       return { width: 540, platforms: [
@@ -266,13 +283,14 @@ function makeChunk(type, sx) {
         { x: sx + 210, y: G - 120, w: 90,  h: 14, type: 'platform' },
         { x: sx + 330, y: G - 60,  w: 80,  h: 14, type: 'platform' },
         { x: sx + 430, y: G,       w: 110, h: 20, type: 'ground' },
-      ], hazards: [] };
+      ], hazards: [],
+        props: [...propsFor(sx, 90, 1), ...propsFor(sx + 430, 100, 1)] };
 
     case 'pigeons':
       return { width: 430, platforms: [{ x: sx, y: G, w: 430, h: 20, type: 'ground' }], hazards: [
         { x: sx + 90,  y: G - 100, w: 55, h: 22, type: 'pigeon', vx: -2.2, t: 0 },
         { x: sx + 260, y: G - 55,  w: 55, h: 22, type: 'pigeon', vx: -1.8, t: 1.0 },
-      ] };
+      ], props: propsFor(sx, 430, 2, [sx+90, sx+260]) };
 
     case 'high_low':
       return { width: 500, platforms: [
@@ -282,7 +300,7 @@ function makeChunk(type, sx) {
         { x: sx + 390, y: G,      w: 110, h: 20, type: 'ground' },
       ], hazards: [
         { x: sx + 155, y: G - 32, w: 28, h: 32, type: 'fan', t: 0 },
-      ] };
+      ], props: [...propsFor(sx, 100, 1), ...propsFor(sx + 390, 100, 1)] };
 
     case 'crumble':
       return { width: 520, platforms: [
@@ -291,30 +309,31 @@ function makeChunk(type, sx) {
         { x: sx + 215, y: G - 42, w: 80,  h: 14, type: 'crumble', crumbling: false, crumbleT: 0 },
         { x: sx + 315, y: G - 42, w: 80,  h: 14, type: 'crumble', crumbling: false, crumbleT: 0 },
         { x: sx + 415, y: G - 42, w: 80,  h: 14, type: 'crumble', crumbling: false, crumbleT: 0 },
-      ], hazards: [] };
+      ], hazards: [], props: propsFor(sx, 90, 1) };
 
     case 'steam':
       return { width: 460, platforms: [{ x: sx, y: G, w: 460, h: 20, type: 'ground' }], hazards: [
         { x: sx + 100, y: G - 58, w: 18, h: 58, type: 'steam', t: 0,   period: 2.2 },
         { x: sx + 280, y: G - 58, w: 18, h: 58, type: 'steam', t: 1.1, period: 2.2 },
-      ] };
+      ], props: propsFor(sx, 460, 1, [sx+100, sx+280]) };
 
     case 'rooftop_gap':
       return { width: 540, platforms: [
         { x: sx,       y: G,      w: 150, h: 20, type: 'ground' },
         { x: sx + 230, y: G - 65, w: 85,  h: 14, type: 'platform' },
         { x: sx + 380, y: G,      w: 160, h: 20, type: 'ground' },
-      ], hazards: [] };
+      ], hazards: [],
+        props: [...propsFor(sx, 140, 1), ...propsFor(sx + 380, 150, 1)] };
 
     case 'combo':
       return { width: 560, platforms: [{ x: sx, y: G, w: 560, h: 20, type: 'ground' }], hazards: [
         { x: sx + 70,  y: G - 32,  w: 28, h: 32, type: 'fan',    t: 0 },
         { x: sx + 220, y: G - 100, w: 55, h: 22, type: 'pigeon', vx: -2, t: 0 },
         { x: sx + 380, y: G - 32,  w: 28, h: 32, type: 'fan',    t: 0.5 },
-      ] };
+      ], props: propsFor(sx, 560, 1, [sx+70, sx+220, sx+380]) };
 
     default:
-      return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [] };
+      return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [], props: [] };
   }
 }
 
@@ -356,6 +375,7 @@ function spawnChunks() {
     const chunk = makeChunk(type, gs.nextChunkX);
     gs.platforms.push(...chunk.platforms);
     gs.hazards.push(...chunk.hazards);
+    gs.props.push(...chunk.props);
     gs.nextChunkX += chunk.width;
     gs.lastChunkType = type;
     gs.chunkCount++;
@@ -363,6 +383,7 @@ function spawnChunks() {
   const cutX = gs.scrollX - 300;
   gs.platforms = gs.platforms.filter(p => p.x + p.w > cutX);
   gs.hazards   = gs.hazards.filter(h => h.x + h.w + 60 > cutX);
+  gs.props     = gs.props.filter(p => p.x + 60 > cutX);
 }
 
 // ─── JUMP ──────────────────────────────────────────────────────
@@ -806,6 +827,98 @@ function drawPigeon(cx, cy, t) {
   }
 }
 
+// ─── ROOFTOP PROPS ─────────────────────────────────────────────
+// All drawn with origin at ground surface (GROUND_Y), growing upward (−y).
+// accent = zone accent color used for small themed highlights.
+
+function drawPropAC(accent) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-15, -1, 30, 3);   // shadow
+  ctx.fillStyle = '#3c3c3c'; ctx.fillRect(-14, -14, 28, 14);            // body
+  ctx.fillStyle = '#505050'; ctx.fillRect(-14, -15, 28, 3);             // top plate
+  ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 1;                       // grill slots
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath(); ctx.moveTo(-11, -12 + i*3); ctx.lineTo(2, -12 + i*3); ctx.stroke();
+  }
+  ctx.fillStyle = '#565656'; ctx.fillRect(4, -13, 9, 11);               // fan housing
+  ctx.fillStyle = '#2c2c2c'; ctx.beginPath(); ctx.arc(8.5, -7.5, 3.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#444';    ctx.beginPath(); ctx.arc(8.5, -7.5, 1.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = accent; ctx.globalAlpha = 0.75;                       // status LED
+  ctx.beginPath(); ctx.arc(-10, -2.5, 1.5, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawPropVent(_accent) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-5, -1, 10, 3);
+  ctx.fillStyle = '#484848'; ctx.fillRect(-4, -22, 8, 22);              // pipe
+  ctx.fillStyle = 'rgba(140,75,15,0.32)'; ctx.fillRect(-4, -15, 8, 7); // rust
+  ctx.fillStyle = '#5e5e5e'; ctx.fillRect(-7, -25, 14, 5);              // cap
+  ctx.fillStyle = '#333';    ctx.fillRect(-7, -25, 14, 2);              // cap shadow
+}
+
+function drawPropTank(_accent) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-13, -1, 26, 4);
+  ctx.strokeStyle = '#585858'; ctx.lineWidth = 2; ctx.lineCap = 'round';// legs
+  ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-6, -18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( 10, 0); ctx.lineTo( 6, -18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo( 6, -18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( 10, 0); ctx.lineTo(-6, -18); ctx.stroke();
+  ctx.fillStyle = '#6b4e2a'; ctx.fillRect(-11, -38, 22, 20);            // tank body
+  ctx.strokeStyle = '#4a3015'; ctx.lineWidth = 1;                        // stave lines
+  for (let x = -8; x <= 8; x += 4) {
+    ctx.beginPath(); ctx.moveTo(x, -38); ctx.lineTo(x, -18); ctx.stroke();
+  }
+  ctx.fillStyle = '#383838';                                             // roof
+  ctx.beginPath(); ctx.moveTo(-13, -38); ctx.lineTo(0, -46); ctx.lineTo(13, -38); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#4a4a4a'; ctx.fillRect(-12, -39, 24, 3);             // tank rim
+}
+
+function drawPropChimney(_accent) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-8, -1, 16, 3);
+  ctx.fillStyle = '#5c2a18'; ctx.fillRect(-6, -32, 12, 32);             // brick base
+  const rows = ['#6a3020', '#7a3828', '#5e2818'];
+  for (let row = 0; row < 5; row++) {
+    ctx.fillStyle = rows[row % rows.length];
+    const bx = (row % 2) ? -6 : -2;
+    for (let cx = bx; cx < 6; cx += 8) { ctx.fillRect(cx, -32 + row*6 + 1, 6, 4); }
+  }
+  ctx.fillStyle = '#3a1a0a'; ctx.fillRect(-8, -35, 16, 5);              // cap
+  ctx.fillStyle = '#2a1008'; ctx.fillRect(-8, -35, 16, 2);              // cap edge
+}
+
+function drawPropDish(accent) {
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-5, -1, 10, 3);
+  ctx.fillStyle = '#484848'; ctx.fillRect(-2, -28, 4, 28);              // pole
+  ctx.fillStyle = '#3a3a3a'; ctx.fillRect(-5, -4, 10, 4);               // base
+  ctx.fillStyle = '#585858'; ctx.fillRect(0, -19, 12, 3);               // arm
+  ctx.fillStyle = '#7a7a7a';                                             // dish
+  ctx.beginPath(); ctx.ellipse(12, -19, 10, 7, -0.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ababab';
+  ctx.beginPath(); ctx.ellipse(12, -19, 8, 5.5, -0.3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#484848';
+  ctx.beginPath(); ctx.arc(16, -13, 2.5, 0, Math.PI*2); ctx.fill();    // LNB
+  ctx.fillStyle = accent; ctx.globalAlpha = 0.65;
+  ctx.beginPath(); ctx.arc(16, -13, 1, 0, Math.PI*2); ctx.fill();      // signal light
+  ctx.globalAlpha = 1;
+}
+
+function drawProps() {
+  const acc = ZONES[gs.zoneIdx].accent;
+  for (const p of gs.props) {
+    const sx = p.x - gs.scrollX;
+    if (sx + 60 < 0 || sx - 60 > LW) continue;
+    ctx.save();
+    ctx.translate(sx, GROUND_Y);
+    switch (p.type) {
+      case 'ac':      drawPropAC(acc);      break;
+      case 'vent':    drawPropVent(acc);    break;
+      case 'tank':    drawPropTank(acc);    break;
+      case 'chimney': drawPropChimney(acc); break;
+      case 'dish':    drawPropDish(acc);    break;
+    }
+    ctx.restore();
+  }
+}
+
 function rRect(x, y, w, h, r) {
   ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y);
   ctx.arcTo(x+w, y, x+w, y+r, r); ctx.lineTo(x+w, y+h-r);
@@ -1109,6 +1222,7 @@ function render() {
   drawBuildings(gs.nearBldgs, gs.pxNear, 1.0);
   drawGround();
   drawRain();
+  drawProps();
   drawPlatforms();
   drawHazards();
   drawGhost();
