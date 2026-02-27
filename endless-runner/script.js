@@ -80,14 +80,185 @@ function sfxPickup()    { playTone(880, 0.07, 'sine', 0.11); setTimeout(() => pl
 function sfxPowerUp()   { playTone(660, 0.09, 'sine', 0.13); setTimeout(() => playTone(880, 0.09, 'sine', 0.12), 65); setTimeout(() => playTone(1100, 0.14, 'sine', 0.14), 130); }
 function sfxCoin()      { playTone(1040 + Math.random() * 80, 0.06, 'sine', 0.09); }
 
-let ambOsc = null, ambGain = null;
-function startAmbient() {
-  if (muted || !audioCtx || ambOsc) return;
-  ambGain = audioCtx.createGain(); ambGain.gain.value = 0.03; ambGain.connect(audioCtx.destination);
-  ambOsc  = audioCtx.createOscillator(); ambOsc.type = 'sine'; ambOsc.frequency.value = 55;
-  ambOsc.connect(ambGain); ambOsc.start();
+// ─── SMOOTH JAZZ ────────────────────────────────────────────────
+// Chord progression: Dm7 → G7 → Cmaj7 → Am7  (ii–V–I–vi in C major)
+// Each entry: walking bass notes [beat0,beat1,beat2,beat3], chord voicing notes
+const JAZZ_CHORDS = [
+  { bass: [73.4, 110.0, 73.4, 98.0],    notes: [146.8, 174.6, 220.0, 261.6] }, // Dm7
+  { bass: [98.0, 146.8, 98.0, 130.8],   notes: [196.0, 246.9, 293.7, 349.2] }, // G7
+  { bass: [130.8, 196.0, 130.8, 110.0], notes: [261.6, 329.6, 392.0, 493.9] }, // Cmaj7
+  { bass: [110.0, 164.8, 110.0,  73.4], notes: [220.0, 261.6, 329.6, 392.0] }, // Am7
+];
+// Melody: 8 eighth-note slots per chord (2 per beat), 0 = rest
+const JAZZ_MEL = [
+  [293.7,     0, 349.2, 392.0, 440.0,     0, 392.0, 349.2], // over Dm7
+  [392.0,     0, 440.0, 493.9, 523.3,     0, 493.9, 440.0], // over G7
+  [523.3, 587.3, 659.3,     0, 587.3, 523.3, 493.9,     0], // over Cmaj7
+  [440.0, 493.9, 523.3,     0, 493.9, 440.0, 392.0,     0], // over Am7
+];
+
+let jazzGain  = null;   // master gain node for all jazz output
+let jazzTimer = null;   // setInterval handle
+let jazzBeat  = 0;      // 0–15, one full 4-bar cycle = 16 beats
+let jazzNext  = 0;      // next scheduled audioCtx time
+
+function jazzIntensity() {
+  if (!gs || gs.phase !== 'playing') return 0;
+  return Math.min(1, (gs.speed - BASE_SPEED) / (BASE_SPEED * 2));
 }
-function stopAmbient()  { if (ambOsc) { try { ambOsc.stop(); } catch(e) {} ambOsc = null; } }
+function jazzBpm()  { return 88 + jazzIntensity() * 28; }  // 88→116 BPM
+
+// Play a pitched note through the jazz master bus
+function jNote(freq, t, dur, vol, type = 'sine') {
+  if (!audioCtx || !jazzGain || freq <= 0) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(jazzGain);
+  o.type = type; o.frequency.value = freq;
+  const att = 0.015, rel = Math.min(0.07, dur * 0.3);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + att);
+  g.gain.setValueAtTime(vol, t + dur - rel);
+  g.gain.linearRampToValueAtTime(0, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+
+// Synthesized kick: freq-swept sine
+function jKick(t) {
+  if (!audioCtx || !jazzGain) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(jazzGain);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+  g.gain.setValueAtTime(0.28, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.start(t); o.stop(t + 0.22);
+}
+
+// Synthesized snare: triangle body + bandpass noise
+function jSnare(t) {
+  if (!audioCtx || !jazzGain) return;
+  const o = audioCtx.createOscillator(), og = audioCtx.createGain();
+  o.connect(og); og.connect(jazzGain);
+  o.type = 'triangle'; o.frequency.value = 190;
+  og.gain.setValueAtTime(0.1, t);
+  og.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+  o.start(t); o.stop(t + 0.11);
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.09);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(), bp = audioCtx.createBiquadFilter(), ng = audioCtx.createGain();
+  src.buffer = buf;
+  bp.type = 'bandpass'; bp.frequency.value = 2800; bp.Q.value = 0.6;
+  src.connect(bp); bp.connect(ng); ng.connect(jazzGain);
+  ng.gain.setValueAtTime(0.055, t);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+  src.start(t); src.stop(t + 0.11);
+}
+
+// Synthesized hi-hat: highpass noise burst
+function jHat(t, vol = 0.022) {
+  if (!audioCtx || !jazzGain) return;
+  const bufLen = Math.floor(audioCtx.sampleRate * 0.04);
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(), hp = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
+  src.buffer = buf;
+  hp.type = 'highpass'; hp.frequency.value = 9000;
+  src.connect(hp); hp.connect(g); g.connect(jazzGain);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+  src.start(t); src.stop(t + 0.06);
+}
+
+// Schedule beats up to LOOKAHEAD seconds ahead
+function scheduleJazz() {
+  if (!audioCtx || !jazzGain) return;
+  const LOOKAHEAD = 0.14;
+  const now       = audioCtx.currentTime;
+  const intensity = jazzIntensity();
+  const beatDur   = 60 / jazzBpm();
+  const half      = beatDur / 2;
+
+  while (jazzNext < now + LOOKAHEAD) {
+    const t        = jazzNext;
+    const barBeat  = jazzBeat % 4;           // 0–3 within current bar
+    const chordIdx = Math.floor(jazzBeat / 4); // which of the 4 chords
+    const chord    = JAZZ_CHORDS[chordIdx];
+
+    // ── Walking bass (always present) ─────────────────────────
+    jNote(chord.bass[barBeat], t, beatDur * 0.72, 0.14 + intensity * 0.07, 'triangle');
+
+    // ── Chord stabs (kick in at intensity > 0.12) ─────────────
+    if (intensity > 0.12 && (barBeat === 0 || (barBeat === 2 && intensity > 0.38))) {
+      const chordVol  = 0.03 + intensity * 0.022;
+      const stabDur   = beatDur * (barBeat === 0 ? 0.88 : 0.55);
+      for (const freq of chord.notes) {
+        jNote(freq * (1 + (Math.random() - 0.5) * 0.003), t, stabDur, chordVol, 'sine');
+      }
+    }
+
+    // ── Kick drum (intensity > 0.22) ──────────────────────────
+    if (intensity > 0.22) {
+      if (barBeat === 0) jKick(t);
+      if (barBeat === 2 && intensity > 0.55) jKick(t);
+    }
+
+    // ── Snare on beats 2 & 4 (barBeat 1 & 3, intensity > 0.3) ─
+    if (intensity > 0.3 && (barBeat === 1 || barBeat === 3)) jSnare(t);
+
+    // ── Hi-hat (intensity > 0.28); 8th-hat at high intensity ──
+    if (intensity > 0.28) {
+      const hatVol = 0.016 + intensity * 0.03;
+      jHat(t, hatVol);
+      if (intensity > 0.65) jHat(t + half, hatVol * 0.55);
+    }
+
+    // ── Melody (intensity > 0.38) ─────────────────────────────
+    if (intensity > 0.38) {
+      const mel    = JAZZ_MEL[chordIdx];
+      const slot   = barBeat * 2;
+      const melVol = 0.055 + intensity * 0.065;
+      if (mel[slot] > 0) {
+        const dur = intensity > 0.62 ? half * 0.82 : beatDur * 0.7;
+        jNote(mel[slot], t, dur, melVol);
+      }
+      // 8th-note passing tone at high intensity
+      if (intensity > 0.62 && mel[slot + 1] > 0) {
+        jNote(mel[slot + 1], t + half, half * 0.78, melVol * 0.72);
+      }
+    }
+
+    jazzBeat = (jazzBeat + 1) % 16;
+    jazzNext += beatDur;
+  }
+}
+
+function startJazz() {
+  if (muted || !audioCtx || jazzGain) return;
+  jazzGain = audioCtx.createGain();
+  jazzGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  jazzGain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 0.6);
+  jazzGain.connect(audioCtx.destination);
+  jazzBeat = 0;
+  jazzNext = audioCtx.currentTime + 0.1;
+  jazzTimer = setInterval(scheduleJazz, 50);
+}
+
+function stopJazz() {
+  if (jazzTimer) { clearInterval(jazzTimer); jazzTimer = null; }
+  if (jazzGain && audioCtx) {
+    const g = jazzGain;
+    jazzGain = null;
+    try {
+      g.gain.setValueAtTime(g.gain.value, audioCtx.currentTime);
+      g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+    } catch(e) {}
+    setTimeout(() => { try { g.disconnect(); } catch(e) {} }, 620);
+  }
+}
 
 // ─── INPUT ─────────────────────────────────────────────────────
 const keys = {};
@@ -1590,12 +1761,12 @@ function startGame() {
   document.getElementById('score-display').textContent = '0';
   document.getElementById('hs-line').textContent = 'Best: ' + getHS().toLocaleString();
   updateTodIcon();
-  startAmbient();
+  startJazz();
 }
 
 function showGameOver() {
   gs.phase = 'gameover';
-  stopAmbient();
+  stopJazz();
   const s = Math.floor(gs.score);
   const isNewBest = s > 0 && s > getHS();
   saveScore(s);
@@ -1628,7 +1799,7 @@ function toggleMute() {
   muted = !muted;
   localStorage.setItem('rr_muted', muted);
   document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
-  if (muted) stopAmbient(); else if (gs.phase === 'playing') startAmbient();
+  if (muted) stopJazz(); else if (gs.phase === 'playing') startJazz();
 }
 
 // ─── EVENT LISTENERS ───────────────────────────────────────────
