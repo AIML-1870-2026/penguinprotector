@@ -2190,7 +2190,7 @@ function startGame() {
 
   // Initial safe ground so player lands immediately
   gs.platforms.push({ x: -50, y: GROUND_Y, w: LW + 100, h: 20, type: 'ground' });
-  gs.nextChunkX = LW + 80;
+  gs.nextChunkX = LW + 50;
 
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
