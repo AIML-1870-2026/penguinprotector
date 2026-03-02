@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Level Editor — Rat Race</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+
+  <!-- TOP TOOLBAR -->
+  <div id="ed-topbar">
+    <a href="index.html" id="ed-back-btn">← Back to Game</a>
+    <span id="ed-title">LEVEL EDITOR</span>
+    <div id="ed-actions">
+      <button id="btn-new">New</button>
+      <button id="btn-save">Save</button>
+      <select id="sel-load"><option value="">Load saved…</option></select>
+      <button id="btn-delete-saved">Delete</button>
+      <button id="btn-export">Export JSON</button>
+      <button id="btn-import">Import JSON</button>
+      <button id="btn-test" class="btn-primary">▶ Test in Game</button>
+    </div>
+  </div>
+
+  <!-- MAIN 3-COLUMN LAYOUT -->
+  <div id="ed-layout">
+
+    <!-- LEFT PALETTE -->
+    <div id="ed-palette">
+      <p class="palette-section">Tools</p>
+      <button class="tool-btn active" data-tool="select">Select  (V)</button>
+      <button class="tool-btn" data-tool="delete">Delete</button>
+
+      <p class="palette-section">Platforms</p>
+      <button class="tool-btn" data-tool="ground">Ground</button>
+      <button class="tool-btn" data-tool="platform">Platform</button>
+      <button class="tool-btn" data-tool="moving">Moving</button>
+      <button class="tool-btn" data-tool="crumble">Crumble</button>
+
+      <p class="palette-section">Hazards</p>
+      <button class="tool-btn" data-tool="fan">Fan</button>
+      <button class="tool-btn" data-tool="antenna">Antenna</button>
+      <button class="tool-btn" data-tool="pigeon">Pigeon</button>
+      <button class="tool-btn" data-tool="steam">Steam</button>
+      <button class="tool-btn" data-tool="clothesline">Clothesline</button>
+
+      <p class="palette-section">Options</p>
+      <label class="toggle-label">
+        <input type="checkbox" id="chk-grid" checked>
+        Grid snap (G)
+      </label>
+      <div id="chunk-width-row">
+        <span>Chunk W:</span>
+        <input type="number" id="inp-chunk-w" value="600" min="300" max="2400" step="10">
+      </div>
+
+      <div class="help-text">
+        <strong>V</strong> Select · <strong>Del</strong> Delete<br>
+        <strong>G</strong> Toggle grid<br>
+        <strong>Scroll</strong> Pan camera<br>
+        <strong>Drag</strong> Set width
+      </div>
+    </div>
+
+    <!-- CANVAS AREA -->
+    <div id="ed-canvas-wrap">
+      <canvas id="ed-canvas"></canvas>
+      <div id="ed-statusbar">
+        <span id="ed-status-tool">Tool: select</span>
+        <span id="ed-status-pos">x: 0  y: 0</span>
+        <span id="ed-status-obj">No selection</span>
+      </div>
+    </div>
+
+    <!-- RIGHT PROPERTIES PANEL -->
+    <div id="ed-props">
+      <p class="palette-section">Properties</p>
+      <div id="ed-props-content">
+        <p id="ed-no-sel">Nothing selected.<br><br>Click an object<br>to select it.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- IMPORT / EXPORT MODAL -->
+  <div id="ed-modal-overlay" class="hidden">
+    <div id="ed-modal">
+      <h3 id="ed-modal-title">Import JSON</h3>
+      <textarea id="ed-import-ta" rows="14" placeholder="Paste chunk JSON here…"></textarea>
+      <div id="ed-modal-btns">
+        <button id="btn-import-confirm">Import</button>
+        <button id="btn-import-cancel">Cancel / Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="editor.js"></script>
+</body>
+</html>

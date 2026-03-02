@@ -595,6 +595,23 @@ function makeChunk(type, sx) {
   }
 }
 
+// ─── CUSTOM CHUNK (from Level Editor) ──────────────────────────
+// data: the JSON exported by editor.js  (platforms[], hazards[], width)
+// sx:   world-x start position for this spawn instance
+function makeChunkFromData(data, sx) {
+  const platforms = (data.platforms || []).map(p => {
+    const obj = { ...p, x: p.x + sx };
+    if (p.type === 'crumble') { obj.crumbling = false; obj.crumbleT = 0; }
+    if (p.type === 'moving')  { obj.moving = true; obj.oy = (p.oy ?? p.y); obj.t = 0; }
+    return obj;
+  });
+  const hazards = (data.hazards || []).map(h => ({
+    ...h, x: h.x + sx, t: 0,
+    ...(h.type === 'pigeon' ? { vx: h.vx ?? -2 } : {}),
+  }));
+  return { width: data.width ?? 600, platforms, hazards, props: [] };
+}
+
 const CHUNK_DEFS = [
   { type: 'flat',       min: 0, w: 7 },   // heavy weight keeps early runs open
   { type: 'pigeons',    min: 0, w: 2 },   // low-flying birds only; slideable
@@ -635,9 +652,15 @@ const POWERUP_TYPES = ['shield', 'boost', 'magnet'];
 
 function spawnChunks() {
   while (gs.nextChunkX < gs.scrollX + LW * 3) {
-    const type = pickChunk(gs.difficulty, gs.lastChunkType, gs.chunkCount);
+    let type, chunk;
     const chunkStartX = gs.nextChunkX;
-    const chunk = makeChunk(type, chunkStartX);
+    if (window.__rr_testChunk) {
+      type  = 'custom';
+      chunk = makeChunkFromData(window.__rr_testChunk, chunkStartX);
+    } else {
+      type  = pickChunk(gs.difficulty, gs.lastChunkType, gs.chunkCount);
+      chunk = makeChunk(type, chunkStartX);
+    }
     gs.platforms.push(...chunk.platforms);
     gs.hazards.push(...chunk.hazards);
     gs.props.push(...chunk.props);
@@ -645,8 +668,8 @@ function spawnChunks() {
     gs.lastChunkType = type;
     gs.chunkCount++;
 
-    // Spawn 2–4 coins per chunk after grace period
-    if (gs.chunkCount > 4) {
+    // Spawn 2–4 coins per chunk after grace period (skipped in test mode)
+    if (!window.__rr_testChunk && gs.chunkCount > 4) {
       const count = 2 + Math.floor(Math.random() * 3);
       const startX = chunkStartX + chunk.width * 0.15 + Math.random() * chunk.width * 0.15;
       for (let c = 0; c < count; c++) {
@@ -657,7 +680,7 @@ function spawnChunks() {
     }
 
     // Spawn a floating power-up after the grace period (~20% chance per chunk)
-    if (gs.chunkCount > 6 && Math.random() < 0.22) {
+    if (!window.__rr_testChunk && gs.chunkCount > 6 && Math.random() < 0.22) {
       const puType = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
       const itemX  = chunkStartX + chunk.width * 0.35 + Math.random() * chunk.width * 0.3;
       const baseY  = GROUND_Y - PLAYER_H - 12;
@@ -2500,8 +2523,28 @@ document.getElementById('menu-btn-go').addEventListener('click', () => {
   document.getElementById('hud').classList.add('hidden');
 });
 document.getElementById('mute-btn').addEventListener('click', toggleMute);
+document.getElementById('editor-btn').addEventListener('click', () => { window.location.href = 'editor.html'; });
 
 canvas.addEventListener('click', () => { ensureAudio(); if (gs.phase === 'start') startGame(); });
+
+// ─── TEST MODE (from Level Editor) ─────────────────────────────
+(function checkTestMode() {
+  if (new URLSearchParams(location.search).get('test') !== '1') return;
+  const raw = localStorage.getItem('rr_test_chunk');
+  if (!raw) return;
+  try {
+    window.__rr_testChunk = JSON.parse(raw);
+    const banner = document.createElement('div');
+    banner.textContent = '✏ TEST MODE — Custom Chunk';
+    banner.style.cssText =
+      'position:fixed;top:8px;left:50%;transform:translateX(-50%);' +
+      'background:rgba(255,107,53,0.85);color:#fff;font:bold 12px monospace;' +
+      'padding:4px 14px;border-radius:4px;z-index:100;pointer-events:none;letter-spacing:0.08em;';
+    document.body.appendChild(banner);
+  } catch (e) {
+    console.warn('Level Editor: invalid rr_test_chunk JSON', e);
+  }
+})();
 
 // ─── INIT ──────────────────────────────────────────────────────
 resetGS();
