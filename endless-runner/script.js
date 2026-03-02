@@ -79,6 +79,11 @@ function sfxDeath()     { playTone(180, 0.3, 'sawtooth', 0.14); setTimeout(() =>
 function sfxPickup()    { playTone(880, 0.07, 'sine', 0.11); setTimeout(() => playTone(1100, 0.07, 'sine', 0.09), 60); }
 function sfxPowerUp()   { playTone(660, 0.09, 'sine', 0.13); setTimeout(() => playTone(880, 0.09, 'sine', 0.12), 65); setTimeout(() => playTone(1100, 0.14, 'sine', 0.14), 130); }
 function sfxCoin()      { playTone(1040 + Math.random() * 80, 0.06, 'sine', 0.09); }
+function sfxThunder()   {
+  playTone(75, 0.5, 'sawtooth', 0.14);
+  setTimeout(() => playTone(50, 0.7, 'sawtooth', 0.09), 200);
+  setTimeout(() => playTone(38, 0.9, 'sawtooth', 0.05), 500);
+}
 
 // ─── SMOOTH JAZZ ────────────────────────────────────────────────
 // Chord progression: Dm7 → G7 → Cmaj7 → Am7  (ii–V–I–vi in C major)
@@ -390,6 +395,18 @@ function resetGS() {
 
     // milestone tracking
     lastMilestoneD: 0,
+
+    // weather
+    weather: {
+      type:       'clear',
+      intensity:  0,
+      t:          0,
+      nextChange: 50,
+      drops:      [],
+      lightning:  0,
+      fog:        0,
+      nextLightning: 12,
+    },
   };
 }
 
@@ -521,6 +538,26 @@ function makeChunk(type, sx) {
         { x: sx + 380, y: G - 32,  w: 28, h: 32, type: 'fan',    t: 0.5 },
       ], props: propsFor(sx, 560, 1, [sx+70, sx+220, sx+380]) };
 
+    case 'elevator':
+      return { width: 500, platforms: [
+        { x: sx,       y: G, w: 130, h: 20, type: 'ground' },
+        { x: sx + 180, y: G - 100, w: 110, h: 14, type: 'moving',
+          oy: G - 100, range: 55, freq: 0.55, t: 0, moving: true },
+        { x: sx + 360, y: G, w: 140, h: 20, type: 'ground' },
+      ], hazards: [],
+        props: [...propsFor(sx, 120, 1), ...propsFor(sx + 360, 130, 1)] };
+
+    case 'bobbing':
+      return { width: 560, platforms: [
+        { x: sx,       y: G, w: 100, h: 20, type: 'ground' },
+        { x: sx + 140, y: G - 80,  w: 80, h: 14, type: 'moving',
+          oy: G - 80,  range: 38, freq: 0.9, t: 0,        moving: true },
+        { x: sx + 300, y: G - 115, w: 80, h: 14, type: 'moving',
+          oy: G - 115, range: 38, freq: 0.9, t: Math.PI,  moving: true },
+        { x: sx + 460, y: G, w: 100, h: 20, type: 'ground' },
+      ], hazards: [],
+        props: [...propsFor(sx, 90, 1), ...propsFor(sx + 460, 90, 1)] };
+
     default:
       return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [], props: [] };
   }
@@ -538,6 +575,8 @@ const CHUNK_DEFS = [
   { type: 'steam',      min: 1, w: 2 },
   { type: 'crumble',    min: 2, w: 1 },
   { type: 'combo',      min: 3, w: 1 },
+  { type: 'elevator',   min: 2, w: 2 },
+  { type: 'bobbing',    min: 3, w: 1 },
 ];
 
 // Chunks that force the player into the air (jumping required to clear ground hazards or gaps)
@@ -699,6 +738,14 @@ function updateCrumble(dt) {
     if (pl.type === 'crumble' && pl.crumbling) pl.crumbleT -= dt;
   }
   gs.platforms = gs.platforms.filter(pl => !(pl.type === 'crumble' && pl.crumbling && pl.crumbleT <= 0));
+}
+
+function updateMovingPlatforms(dt) {
+  for (const pl of gs.platforms) {
+    if (!pl.moving) continue;
+    pl.t += dt;
+    pl.y = pl.oy + Math.sin(pl.t * pl.freq) * pl.range;
+  }
 }
 
 // ─── HAZARDS ───────────────────────────────────────────────────
@@ -892,6 +939,83 @@ function updateParallax(dt) {
   gs.pxNear += gs.speed * 0.78 * dt * 60;
 }
 
+// ─── WEATHER ───────────────────────────────────────────────────
+const WEATHER_DROP_COLS = [
+  'rgba(180,210,255,0.26)',  // Downtown
+  'rgba(155,165,185,0.22)',  // Industrial
+  'rgba(200,80,255,0.28)',   // Neon District
+  'rgba(140,190,255,0.20)',  // Skyline
+];
+const WEATHER_TARGETS = { clear: 0, light: 55, heavy: 120, storm: 180 };
+const WEATHER_FOG     = { clear: 0, light: 0,  heavy: 0.055, storm: 0.13 };
+
+function updateWeather(dt) {
+  const w = gs.weather;
+  w.t += dt;
+
+  // Phase transition
+  if (w.t >= w.nextChange) {
+    w.t = 0;
+    w.nextChange = 30 + Math.random() * 30;
+    const rt = gs.runTime;
+    const r  = Math.random();
+    if      (rt < 60)  w.type = 'clear';
+    else if (rt < 120) w.type = r < 0.40 ? 'light' : 'clear';
+    else if (rt < 180) w.type = r < 0.30 ? 'heavy' : r < 0.70 ? 'light' : 'clear';
+    else               w.type = r < 0.20 ? 'storm' : r < 0.55 ? 'heavy' : r < 0.90 ? 'light' : 'clear';
+    if (w.type !== 'storm') w.nextLightning = 999;
+  }
+
+  // Fog lerp
+  const fogTarget = WEATHER_FOG[w.type];
+  w.fog += (fogTarget - w.fog) * Math.min(1, dt * 0.5);
+
+  // Lightning (storm only)
+  if (w.type === 'storm') {
+    w.nextLightning -= dt;
+    if (w.nextLightning <= 0) {
+      w.lightning = 0.22;
+      w.nextLightning = 8 + Math.random() * 10;
+      setTimeout(sfxThunder, 400 + Math.random() * 600);
+    }
+  }
+  w.lightning = Math.max(0, w.lightning - dt * 3.5);
+
+  // Drop pool: add / trim to target count
+  const target = WEATHER_TARGETS[w.type];
+  while (w.drops.length < target) {
+    w.drops.push({
+      x:     Math.random() * LW,
+      y:     Math.random() * GROUND_Y,
+      len:   7 + Math.random() * 9,
+      speed: 180 + Math.random() * 140,
+    });
+  }
+  if (w.drops.length > target) w.drops.length = target;
+
+  // Move drops
+  const wind = gs.speed / BASE_SPEED * 0.18;
+  for (const d of w.drops) {
+    d.y += d.speed * dt;
+    d.x -= d.speed * wind * dt;
+    if (d.y > GROUND_Y || d.x < -20) {
+      // Splash particle on ground hit
+      if (d.y > GROUND_Y && Math.random() < 0.25) {
+        gs.particles.push({
+          x: gs.scrollX + d.x, y: GROUND_Y,
+          vx: (Math.random() - 0.5) * 2.5,
+          vy: -Math.random() * 1.8,
+          life: 0.22, ml: 0.22,
+          col: WEATHER_DROP_COLS[gs.zoneIdx].replace(/[\d.]+\)$/, '0.5)'),
+          r: 1.2,
+        });
+      }
+      d.x = Math.random() * LW;
+      d.y = -10;
+    }
+  }
+}
+
 // ─── PROGRESSION ───────────────────────────────────────────────
 function updateProgression(dt) {
   gs.runTime += dt;
@@ -1075,6 +1199,21 @@ function drawPlatforms() {
         }
       }
       ctx.globalAlpha = 1;
+    } else if (pl.type === 'moving') {
+      const pulse = 8 + 4 * Math.sin(Date.now() * 0.004);
+      ctx.save();
+      ctx.shadowBlur = pulse; ctx.shadowColor = zone.accent;
+      ctx.fillStyle = '#2a3a50'; ctx.fillRect(sx, pl.y, pl.w, pl.h);
+      ctx.fillStyle = zone.accent; ctx.fillRect(sx, pl.y, pl.w, 3);
+      ctx.shadowBlur = 0;
+      // chevron motion indicators
+      ctx.fillStyle = zone.accent + '88';
+      ctx.font = 'bold 8px monospace';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < Math.floor(pl.w / 18); i++) {
+        ctx.fillText('▲', sx + 6 + i * 18, pl.y + pl.h / 2 + 2);
+      }
+      ctx.restore();
     }
   }
 }
@@ -1566,18 +1705,34 @@ function drawSpeedLines() {
   ctx.restore();
 }
 
-function drawRain() {
-  if (gs.zoneIdx !== 2) return;
-  const isNight = ['Night','Dusk'].includes(TOD[gs.todIdx].name);
+function drawWeather() {
+  const w = gs.weather;
+  if (!w.drops.length) return;
+  const wind = gs.speed / BASE_SPEED * 0.18;
+  const col  = WEATHER_DROP_COLS[gs.zoneIdx];
   ctx.save();
-  ctx.strokeStyle = isNight ? 'rgba(180,80,240,0.28)' : 'rgba(200,220,255,0.22)';
+  ctx.strokeStyle = col;
   ctx.lineWidth = 1;
-  const t = Date.now() * 0.022;
-  for (let i = 0; i < 36; i++) {
-    const x = (i * 25 + t * 1.8) % LW; const y = (i * 37 + t * 5) % LH;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x-2, y+9); ctx.stroke();
+  for (const d of w.drops) {
+    const dx = -d.len * wind, dy = d.len;
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(d.x + dx, d.y + dy);
+    ctx.stroke();
   }
   ctx.restore();
+}
+
+function drawWeatherOverlay() {
+  const w = gs.weather;
+  if (w.fog > 0.002) {
+    ctx.fillStyle = `rgba(10,10,20,${w.fog.toFixed(3)})`;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+  if (w.lightning > 0.005) {
+    ctx.fillStyle = `rgba(230,240,255,${(w.lightning * 0.55).toFixed(3)})`;
+    ctx.fillRect(0, 0, LW, LH);
+  }
 }
 
 function drawItems() {
@@ -1681,7 +1836,7 @@ function render() {
   drawBuildings(gs.midBldgs,  gs.pxMid,  0.68);
   drawBuildings(gs.nearBldgs, gs.pxNear, 1.0);
   drawGround();
-  drawRain();
+  drawWeather();
   drawProps();
   drawItems();
   drawCoins();
@@ -1702,6 +1857,7 @@ function render() {
   drawSpeedLines();
   drawComboHUD();
   drawPowerUpHUD();
+  drawWeatherOverlay();
 
   ctx.restore();
 }
@@ -1715,6 +1871,7 @@ function loop(ts) {
 
   if (gs.phase === 'playing') {
     gs.scrollX += gs.speed * dt * 60;
+    updateMovingPlatforms(dt);
     updatePlayer(dt);
     updateHazards(dt);
     updateCrumble(dt);
@@ -1729,6 +1886,7 @@ function loop(ts) {
     updateProgression(dt);
     recordGhostFrame();
     updateGhost();
+    updateWeather(dt);
   } else if (gs.phase === 'start') {
     // Animate cityscape behind the menu
     gs.scrollX  += BASE_SPEED * 0.75 * dt * 60;
