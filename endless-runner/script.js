@@ -422,6 +422,16 @@ function resetGS() {
     boss:      null,
     nextBossD: 2000,
 
+    // cat pursuer
+    cat:       null,   // { lag, warnedAt200, surgedThisHit }
+
+    // achievements / meta
+    achBannerText: '',
+    achBannerT:    0,
+    hitThisRun:    false,
+    catEscapes:    0,
+    ironHideUsed:  false,
+
     // weather
     weather: {
       type:       'clear',
@@ -655,6 +665,37 @@ function pickChunk(diff, lastType, chunkCount) {
 
 const POWERUP_TYPES = ['shield', 'boost', 'magnet'];
 
+// ─── UPGRADES ──────────────────────────────────────────────────
+const UPGRADES = [
+  { id: 'coyote',    name: 'Springy Legs',  desc: 'Jump timing is more forgiving (+60ms coyote)', cost: 30 },
+  { id: 'magnet',    name: 'Coin Magnet',   desc: 'Collect coins from farther away',               cost: 45 },
+  { id: 'luckystart',name: 'Lucky Start',   desc: 'Begin each run with a random power-up',         cost: 65 },
+  { id: 'ironhide',  name: 'Iron Hide',     desc: 'Absorb the first hazard hit each run',          cost: 90 },
+];
+
+// ─── SKINS ─────────────────────────────────────────────────────
+const SKINS = [
+  { id:'default', name:'Street Rat',  cost:0,   body:'#9a4a18', back:'#6b3010', belly:'#c07030', limb:'#7a3810', snout:'#b86828', earO:'#c87030', earI:'#e87890', nose:'#ff7090' },
+  { id:'albino',  name:'Albino',      cost:50,  body:'#f0e8e0', back:'#d8ccc0', belly:'#ffe8e0', limb:'#e0d0c0', snout:'#eed0c0', earO:'#f0c0b0', earI:'#ffb0c0', nose:'#ff8090' },
+  { id:'shadow',  name:'Shadow',      cost:75,  body:'#252525', back:'#0e0e0e', belly:'#383838', limb:'#1a1a1a', snout:'#2e2e2e', earO:'#303030', earI:'#606080', nose:'#8888aa' },
+  { id:'sewer',   name:'Sewer King',  cost:100, body:'#3a7a18', back:'#204a08', belly:'#7a9a18', limb:'#2a5a10', snout:'#4a8a20', earO:'#5a8a18', earI:'#a8c840', nose:'#ffdd00' },
+  { id:'neon',    name:'Neon Rat',    cost:150, body:'#1a3a6a', back:'#0a1a3a', belly:'#2a4a8a', limb:'#0e2a5a', snout:'#1e4a7a', earO:'#2060a0', earI:'#e91e8c', nose:'#00ffcc' },
+];
+
+// ─── ACHIEVEMENTS ───────────────────────────────────────────────
+const ACHIEVEMENTS = [
+  { id:'double_jump',  name:'Double Trouble',  desc:'Perform a double jump',              icon:'↑↑' },
+  { id:'combo10',      name:'Combo King',       desc:'Reach a 10× coin combo',             icon:'🪙' },
+  { id:'coins50',      name:'Hoarder',          desc:'Collect 50 coins in one run',        icon:'💰' },
+  { id:'zone_neon',    name:'Neon Nights',      desc:'Reach the Neon District',            icon:'🌆' },
+  { id:'zone_sky',     name:'Rooftop Legend',   desc:'Reach the Skyline zone',             icon:'🏙' },
+  { id:'survive_boss', name:'Outlaw',           desc:'Survive an APB boss encounter',      icon:'🚔' },
+  { id:'survive120',   name:'The Long Game',    desc:'Survive for 120 seconds',            icon:'⏱' },
+  { id:'speed_max',    name:'Speed Demon',      desc:'Reach top speed (3× base)',          icon:'⚡' },
+  { id:'no_hits',      name:'Ghost Run',        desc:'Finish a run without getting hit',   icon:'👻' },
+  { id:'outrun_cat',   name:'Nine Lives',       desc:'Escape the alley cat 3 times',      icon:'🐱' },
+];
+
 function spawnChunks() {
   while (gs.nextChunkX < gs.scrollX + LW * 3) {
     let type, chunk;
@@ -719,6 +760,7 @@ function doJump() {
 function doDblJump() {
   const p = gs.p; p.vy = DBL_JUMP_VY; p.jumps = 2; p.state = 'jump';
   p.sqY = 1.2; gs.jumpCount++; sfxDblJump();
+  unlockAchievement('double_jump');
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     gs.particles.push({ x: p.worldX + PLAYER_W/2, y: p.y + PLAYER_H/2, vx: Math.cos(a)*2.5, vy: Math.sin(a)*2.5-1, life: 0.4, ml: 0.4, col: '#f39c12', r: 3 });
@@ -800,7 +842,7 @@ function updatePlayer(dt) {
     const top = pl.y;
     const inX = pR > pl.x + 4 && pL < pl.x + pl.w - 4;
     if (inX && p.vy >= 0 && pBot >= top && pBot - p.vy * dt * 60 <= top + 10) {
-      p.y = top - pH; p.vy = 0; p.grounded = true; p.jumps = 0; p.coyote = COYOTE_MS;
+      p.y = top - pH; p.vy = 0; p.grounded = true; p.jumps = 0; p.coyote = COYOTE_MS + (hasUpgrade('coyote') ? 60 : 0);
       if (!wasGrounded) {
         p.state = 'land'; p.sqY = 1.45; p.sqX = 0.7; p.landTimer = 0.12;
         sfxLand(); dustAt(p.worldX + PLAYER_W/2, p.y + pH);
@@ -863,9 +905,10 @@ function checkCollisions() {
   const px = p.worldX + PLAYER_W / 2, py = p.y + pH / 2;
 
   // Coin pickup
+  const coinR = hasUpgrade('magnet') ? 34 : 20;
   for (const coin of gs.coins) {
     if (coin.collected) continue;
-    if (Math.abs(px - coin.x) < 20 && Math.abs(py - coin.screenY) < 20) {
+    if (Math.abs(px - coin.x) < coinR && Math.abs(py - coin.screenY) < coinR) {
       coin.collected = true;
       gs.totalCoins++;
       gs.combo++;
@@ -876,8 +919,9 @@ function checkCollisions() {
       gs.score += bonus;
       popup(coin.x, coin.screenY - 14, '+' + bonus, '#ffd700', 11);
       sfxCoin();
-      if (gs.combo === 10) popup(coin.x, coin.screenY - 30, 'HOT STREAK!', '#ff9800', 14);
+      if (gs.combo === 10) { popup(coin.x, coin.screenY - 30, 'HOT STREAK!', '#ff9800', 14); unlockAchievement('combo10'); }
       if (gs.combo === 25) popup(coin.x, coin.screenY - 30, 'ON FIRE!', '#e74c3c', 16);
+      if (gs.totalCoins >= 50) unlockAchievement('coins50');
     }
   }
 
@@ -899,16 +943,23 @@ function checkCollisions() {
     const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active) || h.type === 'clothesline';
     if (!lethal) continue;
 
-    // Shield absorbs one hit
-    if (gs.powerUp?.type === 'shield') {
-      gs.powerUp = null;
+    // Shield absorbs one hit (power-up OR Iron Hide upgrade first hit)
+    const hasShield = gs.powerUp?.type === 'shield';
+    const ironHideActive = hasUpgrade('ironhide') && !gs.ironHideUsed;
+    if (hasShield || ironHideActive) {
+      if (hasShield) gs.powerUp = null;
+      if (ironHideActive) { gs.ironHideUsed = true; }
       gs.combo = 0;
+      gs.hitThisRun = true;
       p.hitFlash = 1.2; p.state = 'hit';
       shake(0.3, 4);
+      const col = hasShield ? '#4fc3f7' : '#ff9800';
       for (let i = 0; i < 10; i++) {
         const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 3;
-        gs.particles.push({ x: px, y: py, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, life: 0.55, ml: 0.55, col: '#4fc3f7', r: 3 });
+        gs.particles.push({ x: px, y: py, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1, life: 0.55, ml: 0.55, col, r: 3 });
       }
+      if (ironHideActive && !hasShield) popup(px, py - 20, 'IRON HIDE!', '#ff9800', 13);
+      if (gs.cat) gs.cat.lag -= 60;  // cat surges on hit
       return;
     }
 
@@ -950,8 +1001,10 @@ function updateHeli(dt) {
     if (inBeam && !playerUnderCover() && gs.p.state !== 'dead') {
       if (gs.powerUp?.type === 'shield') {
         gs.powerUp = null; gs.combo = 0;
+        gs.hitThisRun = true;
         gs.p.hitFlash = 1.2; gs.p.state = 'hit';
         shake(0.25, 3);
+        if (gs.cat) gs.cat.lag -= 60;
       } else {
         killPlayer('Caught in the police searchlight!');
       }
@@ -1102,6 +1155,7 @@ function updateBoss(dt) {
     popup(gs.scrollX + PLAYER_SCREEN_X, 50, '🚔 OUTRAN THE FEDS!  +750', '#ff9800', 17);
     shake(0.3, 4);
     boss.phase = 'retreat';
+    unlockAchievement('survive_boss');
   }
 }
 
@@ -1307,6 +1361,7 @@ function activatePowerUp(type, x, y) {
   popup(x, y - 20, PU_LABELS[type], col, 14);
   sfxPowerUp();
   shake(0.25, 3);
+  if (gs.cat) gs.cat.lag = Math.min(gs.cat.lag + 35, 500); // power-up gives breathing room
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * Math.PI * 2, sp = 2 + Math.random() * 3;
     gs.particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 1.5, life: 0.6, ml: 0.6, col, r: 3 });
@@ -1388,6 +1443,7 @@ function updateParticles(dt) {
   for (const p of gs.popups) { p.y -= 28*dt; p.life -= dt; }
   gs.popups = gs.popups.filter(p => p.life > 0);
   if (gs.comboPulseT > 0) gs.comboPulseT = Math.max(0, gs.comboPulseT - dt);
+  if (gs.achBannerT  > 0) gs.achBannerT  = Math.max(0, gs.achBannerT  - dt);
 }
 
 // ─── PARALLAX ──────────────────────────────────────────────────
@@ -1516,12 +1572,19 @@ function updateProgression(dt) {
 
   // Zone
   const z = Math.floor(gs.distance / 900) % ZONES.length;
-  if (z !== gs.zoneIdx) { gs.zoneIdx = z; flashZoneName(ZONES[z].name); }
+  if (z !== gs.zoneIdx) {
+    gs.zoneIdx = z; flashZoneName(ZONES[z].name);
+    if (z === 2) unlockAchievement('zone_neon');
+    if (z === 3) unlockAchievement('zone_sky');
+  }
 
   // Boss encounter
   if (!gs.boss && gs.difficulty >= 2 && gs.distance >= gs.nextBossD) {
     startBoss();
   }
+
+  // Achievement checks (time/speed)
+  checkAchievements();
 
   // Shake decay
   if (gs.shakeTimer > 0) {
@@ -1577,6 +1640,41 @@ function saveScore(s) {
   localStorage.setItem('rr_leaderboard', JSON.stringify(lb));
 }
 function getLB() { return JSON.parse(localStorage.getItem('rr_leaderboard') || '[]'); }
+
+// ─── BANK / UPGRADES / SKINS / ACHIEVEMENTS ─────────────────────
+function getBank()            { return parseInt(localStorage.getItem('rr_bank') || '0', 10); }
+function addToBank(n)         { localStorage.setItem('rr_bank', getBank() + n); }
+function spendFromBank(n)     { localStorage.setItem('rr_bank', Math.max(0, getBank() - n)); }
+
+function getUpgradesOwned()   { return JSON.parse(localStorage.getItem('rr_upgrades') || '[]'); }
+function hasUpgrade(id)       { return getUpgradesOwned().includes(id); }
+function buyUpgradeLS(id)     { const u = getUpgradesOwned(); if (!u.includes(id)) { u.push(id); localStorage.setItem('rr_upgrades', JSON.stringify(u)); } }
+
+function getOwnedSkins()      { return JSON.parse(localStorage.getItem('rr_skins') || '["default"]'); }
+function ownSkin(id)          { const s = getOwnedSkins(); if (!s.includes(id)) { s.push(id); localStorage.setItem('rr_skins', JSON.stringify(s)); } }
+function getActiveSkin()      { return localStorage.getItem('rr_active_skin') || 'default'; }
+function setActiveSkin(id)    { localStorage.setItem('rr_active_skin', id); }
+
+function getAchievements()    { return JSON.parse(localStorage.getItem('rr_achievements') || '[]'); }
+function hasAchievement(id)   { return getAchievements().includes(id); }
+function unlockAchievement(id) {
+  if (hasAchievement(id) || !gs) return;
+  const list = getAchievements(); list.push(id); localStorage.setItem('rr_achievements', JSON.stringify(list));
+  const def = ACHIEVEMENTS.find(a => a.id === id);
+  if (def) showAchievementBanner(def.name);
+}
+function showAchievementBanner(name) {
+  if (!gs) return;
+  gs.achBannerText = name;
+  gs.achBannerT    = 3.2;
+}
+
+function checkAchievements() {
+  if (!gs || gs.phase !== 'playing') return;
+  if (gs.runTime >= 120)        unlockAchievement('survive120');
+  const speedMax = BASE_SPEED * 3;
+  if (gs.speed >= speedMax - 0.05) unlockAchievement('speed_max');
+}
 
 // ─── COLOUR HELPERS ────────────────────────────────────────────
 function hexToRgb(h) {
@@ -1949,14 +2047,15 @@ function rRect(x, y, w, h, r) {
 }
 
 function drawRat(state, frame, sliding) {
-  const C_BACK  = '#6b3010';  // dark dorsal fur
-  const C_BODY  = '#9a4a18';  // main fur
-  const C_BELLY = '#c07030';  // underbelly
-  const C_LIMB  = '#7a3810';  // legs/arms
-  const C_SNOUT = '#b86828';  // snout highlight
-  const C_EAR_O = '#c87030';  // outer ear
-  const C_EAR_I = '#e87890';  // inner ear pink
-  const C_NOSE  = '#ff7090';  // nose
+  const _sk    = SKINS.find(s => s.id === getActiveSkin()) || SKINS[0];
+  const C_BACK  = _sk.back;
+  const C_BODY  = _sk.body;
+  const C_BELLY = _sk.belly;
+  const C_LIMB  = _sk.limb;
+  const C_SNOUT = _sk.snout;
+  const C_EAR_O = _sk.earO;
+  const C_EAR_I = _sk.earI;
+  const C_NOSE  = _sk.nose;
   const f = frame * Math.PI / 2;  // 0, π/2, π, 3π/2
 
   // ── SLIDE ───────────────────────────────────────────────────────
@@ -2198,6 +2297,155 @@ function drawGhost() {
   ctx.restore();
 }
 
+// ─── CAT PURSUER ────────────────────────────────────────────────
+function updateCat(dt) {
+  if (gs.phase !== 'playing') return;
+  const p = gs.p;
+
+  if (!gs.cat) {
+    if (gs.distance >= 400 && gs.difficulty >= 1) {
+      gs.cat = { lag: 500, warnedAt200: false, surgedThisHit: false };
+      popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 80, '🐱 A CAT IS ON YOUR TAIL!', '#ff8888', 14);
+      sfxWarn();
+    }
+    return;
+  }
+
+  const cat = gs.cat;
+
+  // During boss: cat holds back
+  if (gs.boss) {
+    cat.lag = Math.min(cat.lag + dt * 15, 500);
+    return;
+  }
+
+  // Naturally gain on player (~10px/s)
+  cat.lag -= dt * 10;
+
+  // Surge on hit (detect rising edge of hitFlash)
+  if (p.hitFlash > 0.8 && !cat.surgedThisHit) {
+    cat.surgedThisHit = true;
+    cat.lag -= 60;
+  }
+  if (p.hitFlash <= 0) cat.surgedThisHit = false;
+
+  // Warn popup
+  if (cat.lag < 200 && !cat.warnedAt200) {
+    cat.warnedAt200 = true;
+    popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 60, '⚠ CAT CLOSING IN!', '#ff4444', 13);
+    sfxWarn();
+  }
+  // Reset warn so it fires again if cat backs off then returns
+  if (cat.lag > 260) cat.warnedAt200 = false;
+
+  // Cat catches player
+  if (cat.lag <= 0 && p.state !== 'dead') {
+    killPlayer('Caught by the alley cat!');
+  }
+}
+
+function drawCat() {
+  if (!gs.cat) return;
+  const lag = gs.cat.lag;
+  const sx  = PLAYER_SCREEN_X - lag;
+  if (sx < -90 || sx > LW + 20) return;
+
+  const t    = Date.now() * 0.008;
+  const bob  = Math.sin(t * 2) * 1.4;
+  const legs = Math.sin(t * 2);
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(0.9, Math.max(0, 1 - lag / 260));
+  ctx.translate(sx, GROUND_Y);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath(); ctx.ellipse(0, 2, 14, 3.5, 0, 0, Math.PI*2); ctx.fill();
+
+  // Tail (curling up behind body)
+  ctx.strokeStyle = '#151515'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-8, -8 + bob);
+  ctx.bezierCurveTo(-20, -4 + bob, -28, -18 + bob, -22, -30 + bob);
+  ctx.stroke();
+
+  // Back legs
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(-12 - legs*3, -3 + bob, 3, 8, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-6  + legs*3, -3 + bob, 3, 8,  0.2, 0, Math.PI*2); ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(-2, -10 + bob, 13, 8, 0.12, 0, Math.PI*2); ctx.fill();
+
+  // Front legs
+  ctx.beginPath(); ctx.ellipse(-3 + legs*3, -2 + bob, 3, 8,  0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 3 - legs*3, -2 + bob, 3, 8, -0.2, 0, Math.PI*2); ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(10, -17 + bob, 8, 0, Math.PI*2); ctx.fill();
+
+  // Ears (sharp triangles)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.moveTo(5, -23 + bob); ctx.lineTo(7, -32 + bob); ctx.lineTo(12, -23 + bob); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(13, -23 + bob); ctx.lineTo(16, -32 + bob); ctx.lineTo(21, -23 + bob); ctx.closePath(); ctx.fill();
+  // Inner ear
+  ctx.fillStyle = '#553a3a';
+  ctx.beginPath(); ctx.moveTo(7, -23 + bob); ctx.lineTo(8.5, -28 + bob); ctx.lineTo(11, -23 + bob); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(14, -23 + bob); ctx.lineTo(16, -28 + bob); ctx.lineTo(19, -23 + bob); ctx.closePath(); ctx.fill();
+
+  // Eyes (glowing yellow)
+  ctx.shadowBlur = 6; ctx.shadowColor = '#ffcc00';
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath(); ctx.ellipse(7,  -18 + bob, 2.5, 2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(13, -18 + bob, 2.5, 2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0;
+  // Pupils (slit)
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(7.5,  -18 + bob, 0.7, 1.8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(13.5, -18 + bob, 0.7, 1.8, 0, 0, Math.PI*2); ctx.fill();
+
+  // Muzzle
+  ctx.fillStyle = '#2c2c2c';
+  ctx.beginPath(); ctx.ellipse(18, -14 + bob, 4, 3, 0, 0, Math.PI*2); ctx.fill();
+  // Nose
+  ctx.fillStyle = '#cc4488';
+  ctx.beginPath(); ctx.arc(21.5, -13 + bob, 1.4, 0, Math.PI*2); ctx.fill();
+  // Whiskers
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(19, -14 + bob); ctx.lineTo(28, -16 + bob); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(19, -13 + bob); ctx.lineTo(28, -11 + bob); ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawAchievementBanner() {
+  if (!gs || gs.achBannerT <= 0) return;
+  const alpha = Math.min(1, gs.achBannerT > 0.5 ? 1 : gs.achBannerT * 2);
+  const cx = LW / 2;
+  const cy = LH - 52;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // Pill background
+  ctx.fillStyle = 'rgba(20,16,8,0.88)';
+  const tw = 220, th = 26;
+  ctx.beginPath();
+  ctx.roundRect(cx - tw/2, cy - th/2, tw, th, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#f1c40f';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // Text
+  ctx.shadowBlur = 8; ctx.shadowColor = '#f1c40f';
+  ctx.fillStyle = '#f1c40f';
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('★ ACHIEVEMENT: ' + gs.achBannerText.toUpperCase(), cx, cy);
+  ctx.restore();
+}
+
 function drawParticles() {
   for (const p of gs.particles) {
     ctx.save();
@@ -2418,6 +2666,7 @@ function render() {
   drawHeli();
   if (gs.boss) { drawBoss(); drawBossHUD(); }
   drawGhost();
+  drawCat();
   drawPlayer();
 
   // Preview rat running behind the start-screen menu
@@ -2432,6 +2681,7 @@ function render() {
   drawSpeedLines();
   drawComboHUD();
   drawPowerUpHUD();
+  drawAchievementBanner();
   drawCountdown();
   drawWeatherOverlay();
 
@@ -2465,6 +2715,7 @@ function loop(ts) {
     updateWeather(dt);
     updateHeli(dt);
     if (gs.boss) updateBoss(dt);
+    updateCat(dt);
   } else if (gs.phase === 'countdown') {
     gs.scrollX += gs.speed * dt * 60;
     updateMovingPlatforms(dt);
@@ -2522,6 +2773,12 @@ function startGame() {
   document.getElementById('hs-line').textContent = 'Best: ' + getHS().toLocaleString();
   updateTodIcon();
   startJazz();
+
+  // Upgrade: Lucky Start — grant a random power-up at run start
+  if (hasUpgrade('luckystart')) {
+    const t = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+    activatePowerUp(t, PLAYER_SCREEN_X, GROUND_Y - 40);
+  }
 }
 
 function showGameOver() {
@@ -2530,6 +2787,11 @@ function showGameOver() {
   const s = Math.floor(gs.score);
   const isNewBest = s > 0 && s > getHS();
   saveScore(s);
+
+  // Bank coins and check no_hits achievement
+  addToBank(gs.totalCoins);
+  if (!gs.hitThisRun && gs.distance > 50) unlockAchievement('no_hits');
+
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('gameover-screen').classList.remove('hidden');
   document.getElementById('death-cause').textContent = gs.deathCause || 'You fell off the roof!';
@@ -2539,6 +2801,7 @@ function showGameOver() {
   document.getElementById('go-dist').textContent  = Math.floor(gs.distance) + 'm';
   document.getElementById('go-jumps').textContent = gs.jumpCount;
   document.getElementById('go-coins').textContent = gs.totalCoins;
+  document.getElementById('go-banked').textContent = '+' + gs.totalCoins + ' 🪙  (total: ' + getBank().toLocaleString() + ')';
   document.getElementById('go-combo').textContent = gs.bestCombo >= 5 ? '×' + gs.bestCombo : '—';
   document.getElementById('gameover-screen').style.setProperty('--zone-accent', ZONES[gs.zoneIdx].accent);
   const nb = document.getElementById('go-newbest');
@@ -2581,6 +2844,135 @@ document.getElementById('editor-btn').addEventListener('click', () => { window.l
 
 canvas.addEventListener('click', () => { ensureAudio(); if (gs.phase === 'start') startGame(); });
 
+// ─── SHOP ───────────────────────────────────────────────────────
+function openShop() {
+  renderShop();
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('shop-screen').classList.remove('hidden');
+}
+function closeShop() {
+  document.getElementById('shop-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function renderShop() {
+  const bank    = getBank();
+  const owned   = getUpgradesOwned();
+  const skins   = getOwnedSkins();
+  const active  = getActiveSkin();
+  document.getElementById('shop-bank-display').textContent = bank.toLocaleString();
+
+  // Upgrades panel
+  document.getElementById('shop-upgrades-panel').innerHTML = UPGRADES.map(u => {
+    const isOwned = owned.includes(u.id);
+    const canBuy  = !isOwned && bank >= u.cost;
+    const cardCls = isOwned ? 'shop-card owned' : (canBuy ? 'shop-card affordable' : 'shop-card');
+    const btnHtml = isOwned
+      ? `<button class="card-btn owned-btn" disabled>✓ Owned</button>`
+      : `<button class="card-btn" ${canBuy ? '' : 'disabled'} onclick="buyUpgrade('${u.id}')">Buy ${u.cost}🪙</button>`;
+    return `<div class="${cardCls}">
+      <div class="card-name">${u.name}</div>
+      <div class="card-desc">${u.desc}</div>
+      <div class="card-cost">${isOwned ? '' : u.cost + ' 🪙'}</div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
+
+  // Skins panel — show a colour swatch using skin's body colour
+  document.getElementById('shop-skins-panel').innerHTML = SKINS.map(s => {
+    const isOwned  = skins.includes(s.id);
+    const isActive = s.id === active;
+    const canBuy   = !isOwned && bank >= s.cost;
+    const cardCls  = isOwned ? 'shop-card owned' : (canBuy ? 'shop-card affordable' : 'shop-card');
+    let btnHtml;
+    if (!isOwned) {
+      btnHtml = `<button class="card-btn" ${canBuy ? '' : 'disabled'} onclick="buySkin('${s.id}')">Buy ${s.cost}🪙</button>`;
+    } else if (isActive) {
+      btnHtml = `<button class="card-btn select-btn active-skin" disabled>✓ Active</button>`;
+    } else {
+      btnHtml = `<button class="card-btn select-btn" onclick="selectSkin('${s.id}')">Equip</button>`;
+    }
+    return `<div class="${cardCls}">
+      <canvas class="skin-preview" id="skin-prev-${s.id}" width="28" height="28"></canvas>
+      <div class="card-name">${s.name}</div>
+      <div class="card-cost">${s.cost === 0 ? '<span class="free">Free</span>' : (isOwned ? '' : s.cost + ' 🪙')}</div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
+
+  // Draw skin previews on mini canvases
+  SKINS.forEach(s => {
+    const c = document.getElementById('skin-prev-' + s.id);
+    if (!c) return;
+    const cx = c.getContext('2d');
+    cx.fillStyle = s.body;
+    cx.beginPath(); cx.arc(14, 14, 11, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = s.belly;
+    cx.beginPath(); cx.ellipse(15, 16, 7, 6, 0.2, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = s.earO;
+    cx.beginPath(); cx.ellipse(8, 5, 3, 5, -0.3, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = s.nose;
+    cx.beginPath(); cx.arc(23, 15, 2, 0, Math.PI*2); cx.fill();
+  });
+}
+
+function buyUpgrade(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  if (!u || hasUpgrade(id) || getBank() < u.cost) return;
+  spendFromBank(u.cost);
+  buyUpgradeLS(id);
+  renderShop();
+}
+function buySkin(id) {
+  const s = SKINS.find(x => x.id === id);
+  if (!s || getOwnedSkins().includes(id) || getBank() < s.cost) return;
+  spendFromBank(s.cost);
+  ownSkin(id);
+  setActiveSkin(id);
+  renderShop();
+}
+function selectSkin(id) {
+  setActiveSkin(id);
+  renderShop();
+}
+
+// Tab switching
+document.getElementById('tab-upgrades').addEventListener('click', () => {
+  document.getElementById('tab-upgrades').classList.add('active');
+  document.getElementById('tab-skins').classList.remove('active');
+  document.getElementById('shop-upgrades-panel').classList.remove('hidden');
+  document.getElementById('shop-skins-panel').classList.add('hidden');
+});
+document.getElementById('tab-skins').addEventListener('click', () => {
+  document.getElementById('tab-skins').classList.add('active');
+  document.getElementById('tab-upgrades').classList.remove('active');
+  document.getElementById('shop-skins-panel').classList.remove('hidden');
+  document.getElementById('shop-upgrades-panel').classList.add('hidden');
+});
+
+document.getElementById('shop-btn').addEventListener('click', openShop);
+document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+
+// ─── ACHIEVEMENTS SCREEN ────────────────────────────────────────
+function openAchievements() {
+  const unlocked = getAchievements();
+  document.getElementById('ach-grid').innerHTML = ACHIEVEMENTS.map(a => {
+    const done = unlocked.includes(a.id);
+    return `<div class="ach-card ${done ? 'unlocked' : 'locked'}">
+      <div class="ach-icon">${a.icon}</div>
+      <div class="ach-name">${done ? a.name : '???'}</div>
+      <div class="ach-desc">${done ? a.desc : 'Keep playing to unlock'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('achievements-screen').classList.remove('hidden');
+}
+document.getElementById('achievements-btn').addEventListener('click', openAchievements);
+document.getElementById('ach-close-btn').addEventListener('click', () => {
+  document.getElementById('achievements-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+});
+
 // ─── TEST MODE (from Level Editor) ─────────────────────────────
 (function checkTestMode() {
   if (new URLSearchParams(location.search).get('test') !== '1') return;
@@ -2604,6 +2996,6 @@ canvas.addEventListener('click', () => { ensureAudio(); if (gs.phase === 'start'
 resetGS();
 document.getElementById('hud').classList.add('hidden');
 document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
-if (getHS() > 0) document.getElementById('start-best').textContent = 'Best: ' + getHS().toLocaleString();
+if (getHS() > 0) document.getElementById('start-best').textContent = 'Best: ' + getHS().toLocaleString() + '  ·  🪙 ' + getBank().toLocaleString();
 
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });

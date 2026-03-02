@@ -226,3 +226,125 @@ html, body {
   transition: color 0.15s;
 }
 .mute-btn:hover { color: #aaa; }
+
+/* ===== SHOP ===== */
+.shop-bank {
+  font-size: 1rem;
+  color: #ffd700;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.1rem;
+}
+
+.shop-tabs {
+  display: flex; gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.shop-tab {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #888;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  padding: 0.3rem 1.2rem;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: background 0.12s, color 0.12s;
+}
+.shop-tab:hover { color: #ccc; background: rgba(255,255,255,0.1); }
+.shop-tab.active {
+  background: rgba(255,215,0,0.12);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.shop-panel {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+  justify-content: center;
+  max-width: 560px; width: 90%;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.shop-panel.hidden { display: none; }
+
+.shop-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  width: 140px;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  transition: border-color 0.14s;
+}
+.shop-card.affordable { border-color: rgba(255,215,0,0.4); }
+.shop-card.owned { border-color: rgba(100,200,100,0.35); opacity: 0.7; }
+.shop-card .card-name { font-size: 0.75rem; font-weight: 700; color: #ddd; letter-spacing: 0.05em; }
+.shop-card .card-desc { font-size: 0.6rem; color: #666; line-height: 1.35; flex: 1; }
+.shop-card .card-cost { font-size: 0.7rem; color: #ffd700; }
+.shop-card .card-cost.free { color: #4caf50; }
+.shop-card .card-btn {
+  background: rgba(255,215,0,0.14);
+  border: 1px solid rgba(255,215,0,0.4);
+  color: #ffd700;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  padding: 0.22rem 0;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background 0.12s;
+}
+.shop-card .card-btn:hover { background: rgba(255,215,0,0.28); }
+.shop-card .card-btn:disabled {
+  opacity: 0.35; cursor: default;
+  background: none;
+}
+.shop-card .card-btn.owned-btn {
+  background: rgba(100,200,100,0.12);
+  border-color: rgba(100,200,100,0.4);
+  color: #4caf50; cursor: default;
+}
+.shop-card .card-btn.select-btn {
+  background: rgba(79,195,247,0.14);
+  border-color: rgba(79,195,247,0.4);
+  color: #4fc3f7;
+}
+.shop-card .card-btn.select-btn.active-skin {
+  background: rgba(79,195,247,0.32);
+}
+.skin-preview {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  align-self: center;
+}
+
+/* ===== ACHIEVEMENTS ===== */
+.ach-grid {
+  display: flex; flex-wrap: wrap; gap: 0.45rem;
+  justify-content: center;
+  max-width: 560px; width: 90%;
+  max-height: 260px; overflow-y: auto;
+}
+.ach-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  width: 130px;
+  display: flex; flex-direction: column; gap: 0.2rem;
+}
+.ach-card.unlocked {
+  border-color: rgba(241,196,15,0.45);
+  background: rgba(241,196,15,0.07);
+}
+.ach-card .ach-icon { font-size: 1.1rem; text-align: center; }
+.ach-card .ach-name {
+  font-size: 0.68rem; font-weight: 700; color: #ccc;
+  letter-spacing: 0.04em; text-align: center;
+}
+.ach-card .ach-desc {
+  font-size: 0.56rem; color: #555; line-height: 1.3; text-align: center;
+}
+.ach-card.locked .ach-icon { filter: grayscale(1); opacity: 0.3; }
+.ach-card.locked .ach-name { color: #444; }

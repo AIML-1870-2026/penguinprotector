@@ -18,6 +18,8 @@
       <div class="menu-buttons">
         <button class="menu-btn primary" id="play-btn">▶ Play</button>
         <button class="menu-btn" id="leaderboard-btn">🏆 Leaderboard</button>
+        <button class="menu-btn" id="shop-btn">🛒 Shop</button>
+        <button class="menu-btn" id="achievements-btn">★ Achievements</button>
         <button class="menu-btn" id="editor-btn">✏ Level Editor</button>
       </div>
       <p class="controls-hint">
@@ -43,6 +45,7 @@
         <div class="stat-row"><span>Distance</span><strong id="go-dist">0m</strong></div>
         <div class="stat-row"><span>Jumps</span><strong id="go-jumps">0</strong></div>
         <div class="stat-row"><span>Coins</span><strong id="go-coins">0</strong></div>
+        <div class="stat-row"><span>Banked</span><strong id="go-banked">+0 🪙</strong></div>
         <div class="stat-row"><span>Best Combo</span><strong id="go-combo">—</strong></div>
       </div>
       <p class="go-newbest hidden" id="go-newbest">★ NEW BEST ★</p>
@@ -51,6 +54,26 @@
         <button class="menu-btn primary" id="retry-btn">↺ Try Again</button>
         <button class="menu-btn" id="menu-btn-go">⌂ Menu</button>
       </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div class="screen hidden" id="shop-screen">
+      <h2 class="screen-title">Shop</h2>
+      <div class="shop-bank">🪙 <span id="shop-bank-display">0</span> coins saved</div>
+      <div class="shop-tabs">
+        <button class="shop-tab active" id="tab-upgrades">Upgrades</button>
+        <button class="shop-tab" id="tab-skins">Skins</button>
+      </div>
+      <div class="shop-panel" id="shop-upgrades-panel"></div>
+      <div class="shop-panel hidden" id="shop-skins-panel"></div>
+      <button class="menu-btn" id="shop-close-btn">← Back</button>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div class="screen hidden" id="achievements-screen">
+      <h2 class="screen-title">Achievements</h2>
+      <div class="ach-grid" id="ach-grid"></div>
+      <button class="menu-btn" id="ach-close-btn">← Back</button>
     </div>
 
     <!-- HUD (shown during gameplay) -->
