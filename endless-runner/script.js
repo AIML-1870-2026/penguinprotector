@@ -339,6 +339,7 @@ function makePlayer() {
     landTimer:   0,
     slideJumping: false,
     slideJumpT:   0,
+    slideDustT:   0,   // throttle for slide dust particles
   };
 }
 
@@ -397,7 +398,11 @@ function resetGS() {
     stars:     genStars(70),
 
     // screen shake
-    shakeX: 0, shakeY: 0, shakeTimer: 0, shakeAmt: 0,
+    shakeX: 0, shakeY: 0, shakeTimer: 0, shakeAmt: 0, shakeDur: 0,
+
+    // polish
+    speedMilestone: 0,  // last speed tier reached (for one-shot popups)
+    comboPulseT:    0,  // brief pulse scale when combo increments
 
     // menu preview animation
     menuFrame: 0, menuFrameT: 0,
@@ -744,6 +749,27 @@ function updatePlayer(dt) {
   // Sliding (also true while slide-jumping to keep hitbox low)
   p.sliding = (p.wantSlide && p.grounded) || p.slideJumping;
 
+  // Slide dust trail
+  if (p.sliding && p.grounded) {
+    p.slideDustT -= dt;
+    if (p.slideDustT <= 0) {
+      p.slideDustT = 0.07;
+      for (let i = 0; i < 3; i++) {
+        gs.particles.push({
+          x: p.worldX + Math.random() * PLAYER_W,
+          y: p.y + SLIDE_H + Math.random() * 3,
+          vx: -(0.6 + Math.random() * 1.8),
+          vy: -(Math.random() * 1.0),
+          life: 0.22, ml: 0.22,
+          col: Math.random() < 0.5 ? '#b09878' : '#907860',
+          r: 1.5 + Math.random() * 1.5,
+        });
+      }
+    }
+  } else {
+    p.slideDustT = 0;
+  }
+
   // Coyote timer
   if (!p.grounded) p.coyote = Math.max(0, p.coyote - dt * 1000);
 
@@ -844,6 +870,7 @@ function checkCollisions() {
       gs.totalCoins++;
       gs.combo++;
       gs.comboDisplayT = 2.0;
+      gs.comboPulseT   = 0.18;
       if (gs.combo > gs.bestCombo) gs.bestCombo = gs.combo;
       const bonus = coinBonus(gs.combo);
       gs.score += bonus;
@@ -1254,7 +1281,7 @@ function killPlayer(cause) {
   setTimeout(() => { saveGhost(); showGameOver(); }, 1300);
 }
 
-function shake(dur, amt) { gs.shakeTimer = dur; gs.shakeAmt = amt; }
+function shake(dur, amt) { gs.shakeTimer = dur; gs.shakeAmt = amt; gs.shakeDur = dur; }
 
 // ─── POWER-UPS ─────────────────────────────────────────────────
 const PU_COLORS = { shield: '#4fc3f7', boost: '#ffd740', magnet: '#ce93d8' };
@@ -1340,8 +1367,17 @@ function updateBoostTrail(dt) {
 
 // ─── PARTICLES & POPUPS ────────────────────────────────────────
 function dustAt(x, y) {
-  for (let i = 0; i < 5; i++) {
-    gs.particles.push({ x, y, vx: (Math.random()-0.5)*3, vy: -Math.random()*2, life: 0.3, ml: 0.3, col: '#bbb', r: 2+Math.random()*2 });
+  for (let i = 0; i < 9; i++) {
+    const angle = Math.PI + (Math.random() - 0.5) * 1.6; // upward fan spread
+    const speed = 1.2 + Math.random() * 2.8;
+    gs.particles.push({
+      x: x + (Math.random() - 0.5) * 18, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.32, ml: 0.32,
+      col: Math.random() < 0.5 ? '#c0a070' : '#a08858',
+      r: 2 + Math.random() * 3,
+    });
   }
 }
 function popup(x, y, text, col = '#f1c40f', size = 13) { gs.popups.push({ x, y, text, col, size, life: 1.1, ml: 1.1 }); }
@@ -1351,6 +1387,7 @@ function updateParticles(dt) {
   gs.particles = gs.particles.filter(p => p.life > 0);
   for (const p of gs.popups) { p.y -= 28*dt; p.life -= dt; }
   gs.popups = gs.popups.filter(p => p.life > 0);
+  if (gs.comboPulseT > 0) gs.comboPulseT = Math.max(0, gs.comboPulseT - dt);
 }
 
 // ─── PARALLAX ──────────────────────────────────────────────────
@@ -1443,7 +1480,17 @@ function updateProgression(dt) {
   gs.distance += gs.speed * dt * 60 / 10;
   // Only advance natural speed when boost isn't active (boost holds gs.speed elevated)
   if (!gs.powerUp || gs.powerUp.type !== 'boost') {
-    gs.speed = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime / 28 * 0.22);
+    gs.speed = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime * 0.02);
+  }
+  // Speed milestone popups — fire once per tier (~every 100s of survival)
+  const speedTier = Math.floor((gs.speed - BASE_SPEED) / (BASE_SPEED * 0.5));
+  if (speedTier > gs.speedMilestone && gs.runTime > 15) {
+    gs.speedMilestone = speedTier;
+    const msgs = ['PICKING UP SPEED', 'MOVING FAST', 'BLAZING', 'WARP SPEED'];
+    const cols = ['#3498db', '#e67e22', '#e74c3c', '#9b59b6'];
+    const idx  = Math.min(speedTier - 1, msgs.length - 1);
+    popup(gs.scrollX + LW / 2, GROUND_Y - 110, msgs[idx] + '!', cols[idx], 16);
+    shake(0.12, 3);
   }
   gs.difficulty = Math.min(4, Math.floor(gs.runTime / 30));
   gs.score += Math.ceil((gs.speed / BASE_SPEED) * 2 * gs.scoreMulti * dt * 60);
@@ -1479,7 +1526,7 @@ function updateProgression(dt) {
   // Shake decay
   if (gs.shakeTimer > 0) {
     gs.shakeTimer -= dt;
-    const a = gs.shakeAmt * (gs.shakeTimer / 0.5);
+    const a = gs.shakeAmt * (gs.shakeTimer / (gs.shakeDur || 0.5));
     gs.shakeX = (Math.random()-0.5)*a; gs.shakeY = (Math.random()-0.5)*a;
   } else { gs.shakeX = gs.shakeY = 0; }
 
@@ -2303,15 +2350,22 @@ function drawCoins() {
 
 function drawComboHUD() {
   if (gs.phase !== 'playing') return;
-  if (gs.combo < 5 && gs.comboDisplayT <= 0) return;
+  if (gs.combo < 2 && gs.comboDisplayT <= 0) return;
   const displayCombo = gs.combo > 0 ? gs.combo : gs.bestCombo;
-  if (displayCombo < 5) return;
-  const col = displayCombo >= 25 ? '#e74c3c' : displayCombo >= 10 ? '#ff9800' : '#ffd740';
+  if (displayCombo < 2) return;
+  const pulse    = gs.comboPulseT / 0.18;          // 0→1 on fresh pickup
+  const baseSize = 13 + Math.min(displayCombo, 30) * 0.18;
+  const size     = Math.round(baseSize + pulse * 5);
+  const glow     = 8 + pulse * 14;
+  const col      = displayCombo >= 25 ? '#e74c3c' : displayCombo >= 10 ? '#ff9800' : '#ffd740';
   ctx.save();
-  ctx.shadowBlur = 10; ctx.shadowColor = col;
-  ctx.font = 'bold 13px monospace';
-  ctx.fillStyle = col;
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.shadowBlur  = glow;
+  ctx.shadowColor = col;
+  ctx.font        = `bold ${size}px monospace`;
+  ctx.fillStyle   = col;
+  ctx.textAlign   = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = gs.comboDisplayT > 0 ? 1 : Math.max(0.4, gs.combo > 0 ? 1 : 0);
   ctx.fillText('×' + displayCombo + ' COMBO', 12, LH - 22);
   ctx.restore();
 }
