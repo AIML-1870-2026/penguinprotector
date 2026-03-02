@@ -30,6 +30,7 @@ const PLAYER_W = 24, PLAYER_H = 28;
 const SLIDE_H  = 14;
 const JUMP_VY       = -14.5;
 const DBL_JUMP_VY   = -12;
+const SLIDE_JUMP_VY = -8.5;
 const GRAV_UP       = 0.55;
 const GRAV_DOWN     = 0.9;
 const COYOTE_MS     = 80;
@@ -83,6 +84,12 @@ function sfxThunder()   {
   playTone(75, 0.5, 'sawtooth', 0.14);
   setTimeout(() => playTone(50, 0.7, 'sawtooth', 0.09), 200);
   setTimeout(() => playTone(38, 0.9, 'sawtooth', 0.05), 500);
+}
+function sfxSlideJump() { playTone(300, 0.08, 'sine', 0.10); setTimeout(() => playTone(450, 0.07, 'sine', 0.08), 40); }
+function sfxWarn()      {
+  playTone(880, 0.07, 'square', 0.06);
+  setTimeout(() => playTone(880, 0.07, 'square', 0.06), 180);
+  setTimeout(() => playTone(1100, 0.09, 'square', 0.07), 360);
 }
 
 // ─── SMOOTH JAZZ ────────────────────────────────────────────────
@@ -329,7 +336,9 @@ function makePlayer() {
     hitFlash: 0,
     sqY:      1,
     sqX:      1,
-    landTimer: 0,
+    landTimer:   0,
+    slideJumping: false,
+    slideJumpT:   0,
   };
 }
 
@@ -395,6 +404,10 @@ function resetGS() {
 
     // milestone tracking
     lastMilestoneD: 0,
+
+    // helicopter
+    heli:      null,
+    heliTimer: 35,
 
     // weather
     weather: {
@@ -642,7 +655,8 @@ function spawnChunks() {
 function handleJumpInput() {
   const p = gs.p;
   p.holdJump = true;
-  if (p.grounded || p.coyote > 0) { doJump(); }
+  if (p.sliding)                  { doSlideJump(); }
+  else if (p.grounded || p.coyote > 0) { doJump(); }
   else if (p.jumps < 2)           { doDblJump(); }
   else                            { p.jumpBuf = JUMP_BUF_MS; }
 }
@@ -661,6 +675,14 @@ function doDblJump() {
     gs.particles.push({ x: p.worldX + PLAYER_W/2, y: p.y + PLAYER_H/2, vx: Math.cos(a)*2.5, vy: Math.sin(a)*2.5-1, life: 0.4, ml: 0.4, col: '#f39c12', r: 3 });
   }
 }
+function doSlideJump() {
+  const p = gs.p;
+  p.vy = SLIDE_JUMP_VY; p.grounded = false; p.coyote = 0; p.jumps = 1;
+  p.state = 'jump'; p.slideJumping = true; p.slideJumpT = 0.5;
+  p.sqY = 1.1; p.sqX = 0.85;
+  gs.jumpCount++; sfxSlideJump();
+  dustAt(p.worldX + PLAYER_W / 2, p.y + PLAYER_H);
+}
 
 // ─── PLAYER UPDATE ─────────────────────────────────────────────
 function updatePlayer(dt) {
@@ -669,8 +691,14 @@ function updatePlayer(dt) {
 
   p.worldX = gs.scrollX + PLAYER_SCREEN_X;
 
-  // Sliding
-  p.sliding = p.wantSlide && p.grounded;
+  // Slide-jump timer
+  if (p.slideJumping) {
+    p.slideJumpT -= dt;
+    if (p.slideJumpT <= 0 || p.grounded) p.slideJumping = false;
+  }
+
+  // Sliding (also true while slide-jumping to keep hitbox low)
+  p.sliding = (p.wantSlide && p.grounded) || p.slideJumping;
 
   // Coyote timer
   if (!p.grounded) p.coyote = Math.max(0, p.coyote - dt * 1000);
@@ -818,6 +846,113 @@ function checkCollisions() {
     if (h.type === 'pigeon')  killPlayer('Smacked by a pigeon flock!');
     if (h.type === 'steam' && h.active) killPlayer('Scalded by a steam pipe!');
   }
+}
+
+function playerUnderCover() {
+  const p = gs.p;
+  return gs.platforms.some(pl =>
+    pl.y < p.y &&
+    pl.x < p.worldX + PLAYER_W - 2 &&
+    pl.x + pl.w > p.worldX + 2
+  );
+}
+
+// ─── HELICOPTER ────────────────────────────────────────────────
+function updateHeli(dt) {
+  if (!gs.heli) {
+    if (gs.difficulty < 2) return;
+    gs.heliTimer -= dt;
+    if (gs.heliTimer > 0) return;
+    gs.heliTimer = 30 + Math.random() * 20;
+    gs.heli = { x: LW + 80, vx: -115, y: 48 + Math.random() * 20 };
+    popup(gs.scrollX + PLAYER_SCREEN_X, 70, '🚁 SEARCHLIGHT!', '#ff4444', 14);
+    sfxWarn();
+    return;
+  }
+
+  gs.heli.x += gs.heli.vx * dt;
+
+  // Beam hit check — only when heli is on screen
+  if (gs.heli.x > -30 && gs.heli.x < LW + 30) {
+    const inBeam = Math.abs(PLAYER_SCREEN_X - gs.heli.x) < 55;
+    if (inBeam && !playerUnderCover() && gs.p.state !== 'dead') {
+      if (gs.powerUp?.type === 'shield') {
+        gs.powerUp = null; gs.combo = 0;
+        gs.p.hitFlash = 1.2; gs.p.state = 'hit';
+        shake(0.25, 3);
+      } else {
+        killPlayer('Caught in the police searchlight!');
+      }
+    }
+  }
+
+  if (gs.heli.x < -200) gs.heli = null;
+}
+
+function drawHeli() {
+  if (!gs.heli) return;
+  const sx = gs.heli.x, hy = gs.heli.y;
+
+  // Spotlight cone (trapezoid gradient)
+  const grad = ctx.createLinearGradient(sx, hy + 10, sx, GROUND_Y + 20);
+  grad.addColorStop(0, 'rgba(255,255,210,0.34)');
+  grad.addColorStop(1, 'rgba(255,255,180,0)');
+  ctx.save();
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(sx - 5,  hy + 10);
+  ctx.lineTo(sx + 5,  hy + 10);
+  ctx.lineTo(sx + 55, GROUND_Y + 20);
+  ctx.lineTo(sx - 55, GROUND_Y + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Helicopter body
+  ctx.save();
+  ctx.translate(sx, hy);
+
+  // Fuselage
+  ctx.fillStyle = '#2e2e2e';
+  ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Cockpit window
+  ctx.fillStyle = '#3a7090';
+  ctx.beginPath(); ctx.ellipse(-8, -2, 9, 6, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(140,210,255,0.3)';
+  ctx.beginPath(); ctx.ellipse(-9, -3, 6, 4, -0.2, 0, Math.PI * 2); ctx.fill();
+
+  // Rotor
+  ctx.save();
+  ctx.rotate(Date.now() * 0.018);
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
+  ctx.rotate(Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
+  ctx.restore();
+
+  // Tail boom + fin
+  ctx.fillStyle = '#222';
+  ctx.fillRect(18, -3, 20, 3);
+  ctx.fillRect(36, -8, 3, 8);
+
+  // Tail rotor
+  ctx.save();
+  ctx.translate(38, -4);
+  ctx.rotate(Date.now() * 0.025);
+  ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.stroke();
+  ctx.rotate(Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.stroke();
+  ctx.restore();
+
+  // Searchlight lamp
+  ctx.shadowBlur = 12; ctx.shadowColor = '#ffff88';
+  ctx.fillStyle = '#ffff88';
+  ctx.beginPath(); ctx.arc(2, 9, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
 }
 
 function killPlayer(cause) {
@@ -1842,6 +1977,7 @@ function render() {
   drawCoins();
   drawPlatforms();
   drawHazards();
+  drawHeli();
   drawGhost();
   drawPlayer();
 
@@ -1887,6 +2023,7 @@ function loop(ts) {
     recordGhostFrame();
     updateGhost();
     updateWeather(dt);
+    updateHeli(dt);
   } else if (gs.phase === 'start') {
     // Animate cityscape behind the menu
     gs.scrollX  += BASE_SPEED * 0.75 * dt * 60;
