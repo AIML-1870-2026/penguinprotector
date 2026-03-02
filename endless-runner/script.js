@@ -413,6 +413,10 @@ function resetGS() {
     heli:      null,
     heliTimer: 35,
 
+    // boss encounter
+    boss:      null,
+    nextBossD: 2000,
+
     // weather
     weather: {
       type:       'clear',
@@ -973,6 +977,227 @@ function drawHeli() {
   ctx.restore();
 }
 
+// ─── BOSS ENCOUNTER ────────────────────────────────────────────
+function startBoss() {
+  gs.heli      = null;
+  gs.heliTimer = 999;
+  gs.boss = {
+    phase:      'approach',
+    t:          0,
+    x:          LW + 100,
+    y:          52,
+    vx:         -260,
+    beamT:      0,
+    survivedT:  0,
+    surviveDur: 12,
+  };
+  shake(0.5, 7);
+  sfxWarn();
+  setTimeout(sfxWarn, 220);
+  popup(gs.scrollX + PLAYER_SCREEN_X, 55, '🚨 APB ISSUED!', '#ff3333', 17);
+}
+
+function updateBoss(dt) {
+  const boss = gs.boss;
+  const p    = gs.p;
+
+  if (boss.phase === 'approach') {
+    boss.x += boss.vx * dt;
+    if (boss.x <= 85) {
+      boss.x    = 85;
+      boss.phase = 'pursue';
+      boss.t     = 0;
+      sfxWarn();
+      popup(gs.scrollX + PLAYER_SCREEN_X, 70, '⚠ JUMP TO DODGE!', '#ffcc00', 13);
+    }
+    return;
+  }
+
+  if (boss.phase === 'retreat') {
+    boss.x -= 300 * dt;
+    if (boss.x < -220) {
+      gs.boss      = null;
+      gs.heliTimer = 25;
+    }
+    return;
+  }
+
+  // ── pursue ──────────────────────────────────────────────────
+  boss.beamT     += dt;
+  boss.survivedT += dt;
+  boss.y          = 52 + Math.sin(boss.beamT * 1.1) * 3;
+
+  const b1      = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
+  const b2      = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
+  const useTwo  = boss.survivedT > 6;
+
+  // Beam only hits near-ground player — jumping clears it
+  if (p.state !== 'dead' && p.state !== 'hit' && !playerUnderCover() && p.y > GROUND_Y - 50) {
+    const inB1 = Math.abs(PLAYER_SCREEN_X - b1) < 28;
+    const inB2 = useTwo && Math.abs(PLAYER_SCREEN_X - b2) < 28;
+    if (inB1 || inB2) {
+      if (gs.powerUp?.type === 'shield') {
+        gs.powerUp = null; gs.combo = 0;
+        gs.p.hitFlash = 1.2; gs.p.state = 'hit';
+        shake(0.25, 3);
+      } else {
+        killPlayer('Caught in the APB spotlight!');
+      }
+    }
+  }
+
+  if (boss.survivedT >= boss.surviveDur) {
+    gs.score     += 750;
+    gs.nextBossD  = gs.distance + 2500 + Math.random() * 1000;
+    popup(gs.scrollX + PLAYER_SCREEN_X, 50, '🚔 OUTRAN THE FEDS!  +750', '#ff9800', 17);
+    shake(0.3, 4);
+    boss.phase = 'retreat';
+  }
+}
+
+function drawBoss() {
+  if (!gs.boss) return;
+  const boss = gs.boss;
+  const bx = boss.x, by = boss.y;
+
+  // ── Sweeping beam cones ──────────────────────────────────────
+  if (boss.phase === 'pursue') {
+    const b1     = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
+    const b2     = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
+    const useTwo = boss.survivedT > 6;
+
+    const drawBeam = (groundX) => {
+      const grad = ctx.createLinearGradient(bx, by + 14, groundX, GROUND_Y + 20);
+      grad.addColorStop(0, 'rgba(255,60,60,0.42)');
+      grad.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.save();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(bx - 5,       by + 14);
+      ctx.lineTo(bx + 5,       by + 14);
+      ctx.lineTo(groundX + 42, GROUND_Y + 20);
+      ctx.lineTo(groundX - 42, GROUND_Y + 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    drawBeam(b1);
+    if (useTwo) drawBeam(b2);
+  }
+
+  // ── Boss helicopter body (larger, red-tinted) ────────────────
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.scale(1.35, 1.35);
+
+  // Fuselage
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Red warning stripe
+  ctx.fillStyle = '#bb2020';
+  ctx.fillRect(-14, -2, 28, 3);
+
+  // Cockpit (dark, menacing)
+  ctx.fillStyle = '#182030';
+  ctx.beginPath(); ctx.ellipse(-8, -2, 9, 6, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,50,50,0.18)';
+  ctx.beginPath(); ctx.ellipse(-9, -3, 6, 4, -0.2, 0, Math.PI * 2); ctx.fill();
+
+  // Main rotor (red)
+  ctx.save();
+  ctx.rotate(Date.now() * 0.025);
+  ctx.strokeStyle = '#cc3333'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
+  ctx.rotate(Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
+  ctx.restore();
+
+  // Tail boom + fin
+  ctx.fillStyle = '#111';
+  ctx.fillRect(18, -3, 20, 3);
+  ctx.fillRect(36, -8, 3, 8);
+
+  // Tail rotor
+  ctx.save();
+  ctx.translate(38, -4);
+  ctx.rotate(Date.now() * 0.038);
+  ctx.strokeStyle = '#aa2222'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.stroke();
+  ctx.rotate(Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.stroke();
+  ctx.restore();
+
+  // Red searchlight lamp
+  const blink = 0.7 + 0.3 * Math.sin(Date.now() * 0.014);
+  ctx.shadowBlur = 14; ctx.shadowColor = `rgba(255,40,40,${blink})`;
+  ctx.fillStyle = `rgba(255,70,70,${blink})`;
+  ctx.beginPath(); ctx.arc(2, 10, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Blinking warning lights
+  const warn = 0.5 + 0.5 * Math.sin(Date.now() * 0.009);
+  ctx.fillStyle = `rgba(255,30,30,${warn})`;
+  ctx.beginPath(); ctx.arc(-18, 1, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(14, 1, 2.5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBossHUD() {
+  if (!gs.boss || gs.boss.phase !== 'pursue') return;
+  const boss = gs.boss;
+  const barW = 160, barH = 12;
+  const bx   = LW / 2 - barW / 2;
+  const by   = 8;
+  const fill = Math.min(1, boss.survivedT / boss.surviveDur);
+  const remaining = Math.max(0, boss.surviveDur - boss.survivedT).toFixed(1);
+
+  // Pulsing red vignette on screen edges
+  const pulse = 0.05 + 0.04 * Math.sin(performance.now() / 200);
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  const vig = ctx.createRadialGradient(LW / 2, LH / 2, LH * 0.25, LW / 2, LH / 2, LH * 0.85);
+  vig.addColorStop(0, 'rgba(255,0,0,0)');
+  vig.addColorStop(1, 'rgba(255,0,0,1)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, LW, LH);
+  ctx.restore();
+
+  // Background bar
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = '#1a0000';
+  ctx.fillRect(bx - 10, by - 4, barW + 20, barH + 22);
+  ctx.globalAlpha = 1;
+
+  // Label
+  const labelPulse = 0.75 + 0.25 * Math.sin(performance.now() / 250);
+  ctx.fillStyle = `rgba(255,50,50,${labelPulse})`;
+  ctx.font = 'bold 9px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚠ APB MODE', LW / 2, by + 8);
+
+  // Progress bar track
+  ctx.fillStyle = '#330000';
+  ctx.fillRect(bx, by + 12, barW, barH);
+
+  // Progress bar fill (red → orange)
+  const barGrad = ctx.createLinearGradient(bx, 0, bx + barW, 0);
+  barGrad.addColorStop(0, '#ff2222');
+  barGrad.addColorStop(1, '#ff8800');
+  ctx.fillStyle = barGrad;
+  ctx.fillRect(bx, by + 12, barW * fill, barH);
+
+  // Timer text
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 8px monospace';
+  ctx.fillText('SURVIVE: ' + remaining + 's', LW / 2, by + 21);
+
+  ctx.restore();
+}
+
 function spawnConfetti() {
   const CONF_COLS = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
   const cx = PLAYER_SCREEN_X + PLAYER_W / 2;
@@ -1223,6 +1448,11 @@ function updateProgression(dt) {
   const z = Math.floor(gs.distance / 900) % ZONES.length;
   if (z !== gs.zoneIdx) { gs.zoneIdx = z; flashZoneName(ZONES[z].name); }
 
+  // Boss encounter
+  if (!gs.boss && gs.difficulty >= 2 && gs.distance >= gs.nextBossD) {
+    startBoss();
+  }
+
   // Shake decay
   if (gs.shakeTimer > 0) {
     gs.shakeTimer -= dt;
@@ -1396,6 +1626,20 @@ function drawHazards() {
     const sx = h.x - gs.scrollX;
     if (sx + h.w < -30 || sx > LW + 30) continue;
     const sy = h.y;
+
+    // Pulsing danger glow behind all hazards
+    {
+      const isSteamActive = h.type === 'steam' && (h.t % h.period) < (h.period * 0.42);
+      const isSteamWarm   = h.type === 'steam' && !isSteamActive;
+      const glowCol = isSteamWarm ? '#ff8800' : '#ff2222';
+      const pulse = 0.10 + 0.08 * Math.sin(performance.now() / 320);
+      ctx.save();
+      ctx.globalAlpha = isSteamWarm ? pulse * 0.6 : pulse;
+      ctx.fillStyle = glowCol;
+      ctx.fillRect(sx - 5, sy - 5, h.w + 10, h.h + 10);
+      ctx.restore();
+    }
+
     if (h.type === 'fan') {
       ctx.fillStyle = '#555'; ctx.fillRect(sx + 4, sy + 22, 20, 10);
       ctx.save(); ctx.translate(sx + 14, sy + 14); ctx.rotate(h.t * 9);
@@ -2095,6 +2339,7 @@ function render() {
   drawPlatforms();
   drawHazards();
   drawHeli();
+  if (gs.boss) { drawBoss(); drawBossHUD(); }
   drawGhost();
   drawPlayer();
 
@@ -2142,6 +2387,7 @@ function loop(ts) {
     updateGhost();
     updateWeather(dt);
     updateHeli(dt);
+    if (gs.boss) updateBoss(dt);
   } else if (gs.phase === 'countdown') {
     gs.scrollX += gs.speed * dt * 60;
     updateMovingPlatforms(dt);
