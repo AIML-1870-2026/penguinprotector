@@ -405,6 +405,10 @@ function resetGS() {
     // milestone tracking
     lastMilestoneD: 0,
 
+    // countdown
+    countdownT: 0,
+    lastCountdownTick: 4,
+
     // helicopter
     heli:      null,
     heliTimer: 35,
@@ -551,6 +555,17 @@ function makeChunk(type, sx) {
         { x: sx + 380, y: G - 32,  w: 28, h: 32, type: 'fan',    t: 0.5 },
       ], props: propsFor(sx, 560, 1, [sx+70, sx+220, sx+380]) };
 
+    case 'clothesline':
+      return { width: 440, platforms: [{ x: sx, y: G, w: 440, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 80, y: G - 40, w: 260, h: 25, type: 'clothesline' },
+      ], props: propsFor(sx, 440, 1, [sx + 80, sx + 340]) };
+
+    case 'clothesline2':
+      return { width: 540, platforms: [{ x: sx, y: G, w: 540, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 60,  y: G - 40, w: 160, h: 25, type: 'clothesline' },
+        { x: sx + 310, y: G - 40, w: 160, h: 25, type: 'clothesline' },
+      ], props: propsFor(sx, 540, 1, [sx + 60, sx + 310]) };
+
     case 'elevator':
       return { width: 500, platforms: [
         { x: sx,       y: G, w: 130, h: 20, type: 'ground' },
@@ -588,8 +603,10 @@ const CHUNK_DEFS = [
   { type: 'steam',      min: 1, w: 2 },
   { type: 'crumble',    min: 2, w: 1 },
   { type: 'combo',      min: 3, w: 1 },
-  { type: 'elevator',   min: 2, w: 2 },
-  { type: 'bobbing',    min: 3, w: 1 },
+  { type: 'elevator',    min: 2, w: 2 },
+  { type: 'bobbing',     min: 3, w: 1 },
+  { type: 'clothesline', min: 1, w: 3 },
+  { type: 'clothesline2',min: 2, w: 2 },
 ];
 
 // Chunks that force the player into the air (jumping required to clear ground hazards or gaps)
@@ -825,7 +842,7 @@ function checkCollisions() {
     const yOvlp = pB > hT && pT < hB;
     if (!xOvlp || !yOvlp) continue;
 
-    const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active);
+    const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active) || h.type === 'clothesline';
     if (!lethal) continue;
 
     // Shield absorbs one hit
@@ -841,10 +858,11 @@ function checkCollisions() {
       return;
     }
 
-    if (h.type === 'fan')     killPlayer('Sliced by a ventilation fan!');
-    if (h.type === 'antenna') killPlayer('Impaled on an antenna!');
-    if (h.type === 'pigeon')  killPlayer('Smacked by a pigeon flock!');
+    if (h.type === 'fan')        killPlayer('Sliced by a ventilation fan!');
+    if (h.type === 'antenna')    killPlayer('Impaled on an antenna!');
+    if (h.type === 'pigeon')     killPlayer('Smacked by a pigeon flock!');
     if (h.type === 'steam' && h.active) killPlayer('Scalded by a steam pipe!');
+    if (h.type === 'clothesline') killPlayer('Clotheslined by laundry!');
   }
 }
 
@@ -955,8 +973,27 @@ function drawHeli() {
   ctx.restore();
 }
 
+function spawnConfetti() {
+  const CONF_COLS = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
+  const cx = PLAYER_SCREEN_X + PLAYER_W / 2;
+  const cy = gs.p.y + PLAYER_H / 2;
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 3 + Math.random() * 7;
+    gs.particles.push({
+      x: cx + gs.scrollX, y: cy,
+      vx: Math.cos(a) * sp - gs.speed,
+      vy: Math.sin(a) * sp - 4 - Math.random() * 3,
+      life: 1.2 + Math.random() * 0.6, ml: 1.8,
+      col: CONF_COLS[Math.floor(Math.random() * CONF_COLS.length)],
+      r: 3 + Math.random() * 3
+    });
+  }
+}
+
 function killPlayer(cause) {
   const p = gs.p;
+  const isNewBest = Math.floor(gs.score) > getHS();
   p.state = 'dead'; p.vy = -10;
   gs.deathCause = cause;
   gs.combo = 0;
@@ -965,6 +1002,7 @@ function killPlayer(cause) {
     const a = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 5;
     gs.particles.push({ x: p.worldX + PLAYER_W/2, y: p.y + PLAYER_H/2, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp - 2, life: 0.9, ml: 0.9, col: '#c0392b', r: 4 });
   }
+  if (isNewBest) spawnConfetti();
   setTimeout(() => { saveGhost(); showGameOver(); }, 1300);
 }
 
@@ -1382,6 +1420,43 @@ function drawHazards() {
         const grad = ctx.createLinearGradient(sx, sy, sx, sy + h.h);
         grad.addColorStop(0, 'rgba(210,220,230,0.82)'); grad.addColorStop(1, 'rgba(210,220,230,0)');
         ctx.fillStyle = grad; ctx.fillRect(sx, sy, h.w, h.h);
+      }
+    }
+    if (h.type === 'clothesline') {
+      const wireY = sy;
+      // Wooden poles
+      ctx.fillStyle = '#6b4226';
+      ctx.fillRect(sx - 3, wireY, 6, GROUND_Y + 20 - wireY);
+      ctx.fillRect(sx + h.w - 3, wireY, 6, GROUND_Y + 20 - wireY);
+      // Wire with subtle sag
+      ctx.strokeStyle = '#c0c0c0'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, wireY + 2);
+      ctx.quadraticCurveTo(sx + h.w / 2, wireY + 7, sx + h.w, wireY + 2);
+      ctx.stroke();
+      // Hanging laundry
+      const CLOTH_COLS = ['#e74c3c', '#3498db', '#f39c12', '#9b59b6', '#1abc9c'];
+      const count = Math.max(2, Math.floor(h.w / 65));
+      for (let i = 0; i < count; i++) {
+        const cx = sx + h.w * (i + 0.5) / count;
+        const clothY = wireY + 7;
+        const col = CLOTH_COLS[i % CLOTH_COLS.length];
+        // Hanger strings
+        ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(cx - 4, clothY); ctx.lineTo(cx - 4, clothY + 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx + 4, clothY); ctx.lineTo(cx + 4, clothY + 4); ctx.stroke();
+        // Shirt body
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cx - 10, clothY + 4);
+        ctx.lineTo(cx - 5,  clothY + 4);
+        ctx.lineTo(cx - 3,  clothY + 7);
+        ctx.lineTo(cx + 3,  clothY + 7);
+        ctx.lineTo(cx + 5,  clothY + 4);
+        ctx.lineTo(cx + 10, clothY + 4);
+        ctx.lineTo(cx + 8,  clothY + 17);
+        ctx.lineTo(cx - 8,  clothY + 17);
+        ctx.closePath(); ctx.fill();
       }
     }
   }
@@ -1858,6 +1933,48 @@ function drawWeather() {
   ctx.restore();
 }
 
+function drawCountdown() {
+  if (gs.phase !== 'countdown') return;
+  const t = gs.countdownT;
+  const tick = Math.ceil(t);
+  // frac goes 1→0 within each second (1 = just ticked, 0 = about to tick again)
+  const frac = t > 0 ? (t - Math.floor(t)) : (t + 0.45) / 0.45;
+  const pop = 1 + Math.max(0, 1 - frac) * 0.45;
+
+  let label, col;
+  if (t <= 0)         { label = 'GO!'; col = '#3498db'; }
+  else if (tick >= 3) { label = '3'; col = '#e74c3c'; }
+  else if (tick >= 2) { label = '2'; col = '#f39c12'; }
+  else                { label = '1'; col = '#2ecc71'; }
+
+  const cx = LW / 2, cy = LH / 2 - 30;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(pop, pop);
+
+  // Drop shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.font = `bold 88px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, 3, 3);
+
+  // Main text
+  ctx.fillStyle = col;
+  ctx.fillText(label, 0, 0);
+
+  // Dim background pill
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = '#000';
+  const tw = ctx.measureText(label).width;
+  ctx.beginPath();
+  ctx.roundRect(-tw / 2 - 18, -52, tw + 36, 100, 16);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
 function drawWeatherOverlay() {
   const w = gs.weather;
   if (w.fog > 0.002) {
@@ -1993,6 +2110,7 @@ function render() {
   drawSpeedLines();
   drawComboHUD();
   drawPowerUpHUD();
+  drawCountdown();
   drawWeatherOverlay();
 
   ctx.restore();
@@ -2024,6 +2142,28 @@ function loop(ts) {
     updateGhost();
     updateWeather(dt);
     updateHeli(dt);
+  } else if (gs.phase === 'countdown') {
+    gs.scrollX += gs.speed * dt * 60;
+    updateMovingPlatforms(dt);
+    updatePlayer(dt);
+    spawnChunks();
+    updateParticles(dt);
+    updateParallax(dt);
+    updateWeather(dt);
+    gs.countdownT -= dt;
+    const tick = Math.ceil(gs.countdownT);
+    if (tick < gs.lastCountdownTick && tick >= 1) {
+      gs.lastCountdownTick = tick;
+      playTone(tick === 1 ? 660 : 440, 0.18, 'sine', 0.12);
+    }
+    if (gs.countdownT <= 0 && gs.lastCountdownTick > 0) {
+      gs.lastCountdownTick = 0;
+      playTone(880, 0.22, 'sine', 0.14);
+      setTimeout(() => playTone(1100, 0.18, 'sine', 0.12), 80);
+    }
+    if (gs.countdownT <= -0.45) {
+      gs.phase = 'playing';
+    }
   } else if (gs.phase === 'start') {
     // Animate cityscape behind the menu
     gs.scrollX  += BASE_SPEED * 0.75 * dt * 60;
@@ -2043,7 +2183,9 @@ function loop(ts) {
 function startGame() {
   ensureAudio();
   resetGS();
-  gs.phase = 'playing';
+  gs.phase = 'countdown';
+  gs.countdownT = 3.0;
+  gs.lastCountdownTick = 4;
   loadGhost();
 
   // Initial safe ground so player lands immediately
