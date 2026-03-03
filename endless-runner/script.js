@@ -123,6 +123,13 @@ function sfxZap() {
   playTone(240,  0.18, 'sawtooth', 0.05);
   setTimeout(() => playTone(800, 0.05, 'square', 0.06), 25);
 }
+function sfxMilestone(tier) {
+  const freqs = [880, 1047, 1319, 1568, 2093]; // A5 C6 E6 G6 C7
+  const f = freqs[Math.min(tier, freqs.length - 1)];
+  playTone(f,       0.12, 'sine', 0.14);
+  setTimeout(() => playTone(f * 1.25, 0.10, 'sine', 0.10), 80);
+  setTimeout(() => playTone(f * 1.5,  0.12, 'sine', 0.08), 160);
+}
 
 // ─── SMOOTH JAZZ ────────────────────────────────────────────────
 // Chord progression: Dm7 → G7 → Cmaj7 → Am7  (ii–V–I–vi in C major)
@@ -773,6 +780,16 @@ const SKINS = [
   { id:'cheshire', name:'Cheshire', cost:0, unlock:'outrun_cat',   body:'#8b14c8', back:'#5a0e88', belly:'#c040e8', limb:'#6a1098', snout:'#a020d8', earO:'#a018d0', earI:'#e070ff', nose:'#ff00cc' },
 ];
 
+// ─── HATS ───────────────────────────────────────────────────────
+const HATS = [
+  { id:'none',    name:'No Hat',       cost:0  },
+  { id:'beanie',  name:'Beanie',       cost:30 },
+  { id:'tophat',  name:'Top Hat',      cost:60 },
+  { id:'hardhat', name:'Hard Hat',     cost:40 },
+  { id:'crown',   name:'Crown',        cost:80 },
+  { id:'cap',     name:'Baseball Cap', cost:35 },
+];
+
 // ─── ACHIEVEMENTS ───────────────────────────────────────────────
 const ACHIEVEMENTS = [
   { id:'double_jump',  name:'Double Trouble',  desc:'Perform a double jump',              icon:'↑↑' },
@@ -842,7 +859,8 @@ function handleJumpInput() {
   else                            { p.jumpBuf = JUMP_BUF_MS; }
 }
 function doJump() {
-  const p = gs.p; p.vy = JUMP_VY; p.grounded = false;
+  const wet = gs.weather && (gs.weather.type === 'heavy' || gs.weather.type === 'storm');
+  const p = gs.p; p.vy = JUMP_VY * (wet ? 0.85 : 1.0); p.grounded = false;
   p.coyote = 0; p.jumps = 1; p.state = 'jump';
   p.sqY = 1.35; p.sqX = 0.72;
   gs.jumpCount++; sfxJump();
@@ -1541,6 +1559,22 @@ function dustAt(x, y) {
     });
   }
 }
+function spawnTrail() {
+  const p = gs.p;
+  const sk = SKINS.find(s => s.id === getActiveSkin()) || SKINS[0];
+  const rx = p.worldX - 10, ry = p.y + (p.sliding ? 8 : PLAYER_H * 0.65);
+  for (let i = 0; i < 2; i++) {
+    gs.particles.push({
+      x: rx + (Math.random() - 0.5) * 4,
+      y: ry + (Math.random() - 0.5) * 3,
+      vx: -0.8 - Math.random() * 0.8,
+      vy: -0.3 + Math.random() * 0.6,
+      life: 0.28, ml: 0.28,
+      col: sk.body,
+      r: 1.5 + Math.random() * 1.5,
+    });
+  }
+}
 function popup(x, y, text, col = '#f1c40f', size = 13) { gs.popups.push({ x, y, text, col, size, life: 1.1, ml: 1.1 }); }
 
 function updateParticles(dt) {
@@ -1574,6 +1608,7 @@ function updateWeather(dt) {
   w.t += dt;
 
   // Phase transition
+  const prevType = w.type;
   if (w.t >= w.nextChange) {
     w.t = 0;
     w.nextChange = 30 + Math.random() * 30;
@@ -1584,6 +1619,12 @@ function updateWeather(dt) {
     else if (rt < 180) w.type = r < 0.30 ? 'heavy' : r < 0.70 ? 'light' : 'clear';
     else               w.type = r < 0.20 ? 'storm' : r < 0.55 ? 'heavy' : r < 0.90 ? 'light' : 'clear';
     if (w.type !== 'storm') w.nextLightning = 999;
+    if (w.type === 'storm' && prevType !== 'storm') {
+      popup(gs.scrollX + LW / 2, GROUND_Y - 100, '\u26C8 STORM INCOMING!', '#aaccff', 16);
+    }
+    const WEATHER_ICONS = { clear: '', light: '\uD83C\uDF27', heavy: '\uD83C\uDF27', storm: '\u26C8' };
+    const wEl = document.getElementById('weather-icon');
+    if (wEl) wEl.textContent = WEATHER_ICONS[w.type] || '';
   }
 
   // Fog lerp
@@ -1595,6 +1636,7 @@ function updateWeather(dt) {
     w.nextLightning -= dt;
     if (w.nextLightning <= 0) {
       w.lightning = 0.22;
+      shake(0.35, 6);
       w.nextLightning = 8 + Math.random() * 10;
       setTimeout(sfxThunder, 400 + Math.random() * 600);
     }
@@ -1682,6 +1724,7 @@ function updateProgression(dt) {
     if (gs.lastMilestoneD < m.d && gs.distance >= m.d) {
       gs.lastMilestoneD = m.d;
       popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 60, m.text, m.col, m.size);
+      sfxMilestone(MILESTONES.indexOf(m));
     }
   }
 
@@ -1771,6 +1814,12 @@ function getOwnedSkins()      { return JSON.parse(localStorage.getItem('rr_skins
 function ownSkin(id)          { const s = getOwnedSkins(); if (!s.includes(id)) { s.push(id); localStorage.setItem('rr_skins', JSON.stringify(s)); } }
 function getActiveSkin()      { return localStorage.getItem('rr_active_skin') || 'default'; }
 function setActiveSkin(id)    { localStorage.setItem('rr_active_skin', id); }
+function getOwnedHats()       { return JSON.parse(localStorage.getItem('rr_hats') || '["none"]'); }
+function ownHat(id)           { const h = getOwnedHats(); if (!h.includes(id)) { h.push(id); localStorage.setItem('rr_hats', JSON.stringify(h)); } }
+function getActiveHat()       { return localStorage.getItem('rr_active_hat') || 'none'; }
+function setActiveHat(id)     { localStorage.setItem('rr_active_hat', id); }
+function buyHat(id)           { const h = HATS.find(x=>x.id===id); if (!h||getOwnedHats().includes(id)||getBank()<h.cost) return; spendFromBank(h.cost); ownHat(id); renderShop(); }
+function selectHat(id)        { setActiveHat(id); renderShop(); }
 
 function getAchievements()    { return JSON.parse(localStorage.getItem('rr_achievements') || '[]'); }
 function hasAchievement(id)   { return getAchievements().includes(id); }
@@ -2272,6 +2321,46 @@ function rRect(x, y, w, h, r) {
   ctx.arcTo(x, y, x+r, y, r);
 }
 
+function drawHat(hatId, bob, sliding) {
+  if (!hatId || hatId === 'none') return;
+  const hx = sliding ? 11 : 10.5;
+  const hy = sliding ? -7  : bob - 17;
+  ctx.save();
+  if (hatId === 'beanie') {
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.arc(hx, hy + 4, 7, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#922b21'; ctx.fillRect(hx - 7, hy + 3, 14, 3);
+    ctx.fillStyle = '#f0f0f0'; ctx.beginPath(); ctx.arc(hx + 4, hy - 1, 2, 0, Math.PI*2); ctx.fill();
+  } else if (hatId === 'tophat') {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(hx - 4, hy - 8, 9, 10);
+    ctx.fillRect(hx - 7, hy + 1, 15, 2.5);
+    ctx.fillStyle = '#e74c3c'; ctx.fillRect(hx - 4, hy + 0.5, 9, 1.5);
+  } else if (hatId === 'hardhat') {
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath(); ctx.arc(hx, hy + 2, 8, Math.PI, 0); ctx.fill();
+    ctx.fillRect(hx - 9, hy + 1.5, 18, 2.5);
+    ctx.fillStyle = '#f39c12'; ctx.fillRect(hx - 3, hy - 4, 6, 2);
+  } else if (hatId === 'crown') {
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.moveTo(hx-6,hy+2); ctx.lineTo(hx-6,hy-6); ctx.lineTo(hx-2,hy-2);
+    ctx.lineTo(hx,  hy-8); ctx.lineTo(hx+2,hy-2); ctx.lineTo(hx+6,hy-6);
+    ctx.lineTo(hx+6,hy+2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(hx, hy-5, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3498db';
+    ctx.beginPath(); ctx.arc(hx-4,hy-1,1.2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx+4,hy-1,1.2,0,Math.PI*2); ctx.fill();
+  } else if (hatId === 'cap') {
+    ctx.fillStyle = '#2980b9';
+    ctx.beginPath(); ctx.arc(hx-1, hy+3, 7, Math.PI, 0); ctx.fill();
+    ctx.fillRect(hx-7, hy+2, 13, 2.5);
+    ctx.fillStyle = '#1a5276';
+    ctx.beginPath(); ctx.moveTo(hx+5,hy+2); ctx.lineTo(hx+12,hy+4); ctx.lineTo(hx+5,hy+4.5); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawRat(state, frame, sliding) {
   const _sk    = SKINS.find(s => s.id === getActiveSkin()) || SKINS[0];
   const C_BACK  = _sk.back;
@@ -2342,6 +2431,7 @@ function drawRat(state, frame, sliding) {
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(18, -0.5); ctx.lineTo(25, -3);  ctx.stroke();
     ctx.beginPath(); ctx.moveTo(18,  0.8); ctx.lineTo(25,  2.5); ctx.stroke();
+    drawHat(getActiveHat(), 0, true);
     return;
   }
 
@@ -2482,6 +2572,7 @@ function drawRat(state, frame, sliding) {
   ctx.beginPath(); ctx.moveTo(18.5, bob-6);   ctx.lineTo(26, bob-9);   ctx.stroke();
   ctx.beginPath(); ctx.moveTo(18.5, bob-5);   ctx.lineTo(26, bob-4.5); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(18.5, bob-5.5); ctx.lineTo(25.5, bob-1.5); ctx.stroke();
+  drawHat(getActiveHat(), bob, false);
 }
 
 function drawPlayer() {
@@ -2928,6 +3019,7 @@ function loop(ts) {
     gs.scrollX += gs.speed * dt * 60;
     updateMovingPlatforms(dt);
     updatePlayer(dt);
+    spawnTrail();
     updateHazards(dt);
     updateCrumble(dt);
     checkCollisions();
@@ -3047,6 +3139,68 @@ function showGameOver() {
     document.getElementById('retry-btn').classList.remove('hidden');
     document.getElementById('daily-go-msg').classList.add('hidden');
   }
+}
+
+function generateRunCard() {
+  const c = document.createElement('canvas');
+  c.width = 600; c.height = 300;
+  const cx = c.getContext('2d');
+  const zone = ZONES[gs.zoneIdx];
+  const [ar,ag,ab] = hexToRgb(zone.accent);
+
+  // Background gradient
+  const bg = cx.createLinearGradient(0, 0, 0, 300);
+  bg.addColorStop(0, zone.c1); bg.addColorStop(1, zone.c2);
+  cx.fillStyle = bg; cx.fillRect(0, 0, 600, 300);
+  cx.strokeStyle = zone.accent; cx.lineWidth = 3;
+  cx.strokeRect(6, 6, 588, 288);
+
+  // Title + zone
+  cx.fillStyle = '#ffffff'; cx.font = 'bold 13px Courier New'; cx.textAlign = 'left';
+  cx.fillText('RAT RACE', 24, 36);
+  cx.fillStyle = zone.accent; cx.font = '11px Courier New';
+  cx.fillText(zone.name.toUpperCase(), 24, 52);
+
+  // Score
+  cx.fillStyle = '#ffffff'; cx.font = 'bold 58px Courier New'; cx.textAlign = 'center';
+  cx.fillText(Math.floor(gs.score).toLocaleString(), 300, 130);
+  cx.fillStyle = `rgba(${ar},${ag},${ab},0.7)`; cx.font = '11px Courier New';
+  cx.fillText('SCORE', 300, 148);
+
+  // Stats row
+  const stats = [
+    ['DIST',  Math.floor(gs.distance) + 'm'],
+    ['JUMPS', gs.jumpCount],
+    ['COINS', gs.totalCoins],
+    ['COMBO', gs.bestCombo >= 5 ? '\xD7' + gs.bestCombo : '\u2014'],
+  ];
+  stats.forEach(([label, val], i) => {
+    const x = 110 + i * 130;
+    cx.fillStyle = '#ffffff'; cx.font = 'bold 18px Courier New'; cx.textAlign = 'center';
+    cx.fillText(val, x, 200);
+    cx.fillStyle = `rgba(${ar},${ag},${ab},0.8)`; cx.font = '10px Courier New';
+    cx.fillText(label, x, 216);
+  });
+
+  // Skin dot + name
+  const sk = SKINS.find(s => s.id === getActiveSkin()) || SKINS[0];
+  cx.fillStyle = sk.body; cx.beginPath(); cx.arc(300, 252, 11, 0, Math.PI*2); cx.fill();
+  cx.fillStyle = sk.belly; cx.beginPath(); cx.ellipse(302, 255, 7, 5, 0.2, 0, Math.PI*2); cx.fill();
+  const hatName = getActiveHat() !== 'none' ? ' + ' + (HATS.find(h=>h.id===getActiveHat())?.name||'') : '';
+  cx.fillStyle = '#ccc'; cx.font = '10px Courier New'; cx.textAlign = 'center';
+  cx.fillText(sk.name + hatName, 300, 278);
+
+  // URL watermark
+  cx.fillStyle = `rgba(${ar},${ag},${ab},0.4)`; cx.font = '9px Courier New'; cx.textAlign = 'right';
+  cx.fillText('aiml-1870-2026.github.io/penguinprotector/endless-runner/', 582, 292);
+
+  return c.toDataURL('image/png');
+}
+function shareRunCard() {
+  const url = generateRunCard();
+  const a = document.createElement('a');
+  a.download = 'rat-race-' + getDailyDateKey() + '.png';
+  a.href = url; a.click();
 }
 
 function showLeaderboard() {
@@ -3182,6 +3336,33 @@ function renderShop() {
     cx.fillStyle = s.nose;
     cx.beginPath(); cx.arc(23, 15, 2, 0, Math.PI*2); cx.fill();
   });
+
+  // Hats panel
+  const ownedHats = getOwnedHats();
+  const activeHat = getActiveHat();
+  document.getElementById('shop-hats-panel').innerHTML = HATS.map(h => {
+    const isOwned  = ownedHats.includes(h.id);
+    const isActive = h.id === activeHat;
+    const canBuy   = !isOwned && bank >= h.cost && h.cost > 0;
+    const cardCls  = isOwned ? 'shop-card owned' : (canBuy ? 'shop-card affordable' : 'shop-card');
+    let btnHtml;
+    if (h.id === 'none') {
+      btnHtml = isActive
+        ? `<button class="card-btn select-btn active-skin" disabled>✓ Active</button>`
+        : `<button class="card-btn select-btn" onclick="selectHat('none')">Equip</button>`;
+    } else if (!isOwned) {
+      btnHtml = `<button class="card-btn" ${canBuy ? '' : 'disabled'} onclick="buyHat('${h.id}')">Buy ${h.cost}\uD83E\uDE99</button>`;
+    } else if (isActive) {
+      btnHtml = `<button class="card-btn select-btn active-skin" disabled>✓ Active</button>`;
+    } else {
+      btnHtml = `<button class="card-btn select-btn" onclick="selectHat('${h.id}')">Equip</button>`;
+    }
+    return `<div class="${cardCls}">
+      <div class="card-name">${h.name}</div>
+      <div class="card-cost">${h.cost === 0 ? '<span class="free">Free</span>' : (isOwned ? '' : h.cost + ' \uD83E\uDE99')}</div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
 }
 
 function buyUpgrade(id) {
@@ -3205,18 +3386,16 @@ function selectSkin(id) {
 }
 
 // Tab switching
-document.getElementById('tab-upgrades').addEventListener('click', () => {
-  document.getElementById('tab-upgrades').classList.add('active');
-  document.getElementById('tab-skins').classList.remove('active');
-  document.getElementById('shop-upgrades-panel').classList.remove('hidden');
-  document.getElementById('shop-skins-panel').classList.add('hidden');
-});
-document.getElementById('tab-skins').addEventListener('click', () => {
-  document.getElementById('tab-skins').classList.add('active');
-  document.getElementById('tab-upgrades').classList.remove('active');
-  document.getElementById('shop-skins-panel').classList.remove('hidden');
-  document.getElementById('shop-upgrades-panel').classList.add('hidden');
-});
+function shopTab(activeId) {
+  document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.shop-panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById(activeId).classList.add('active');
+  const panelMap = { 'tab-upgrades': 'shop-upgrades-panel', 'tab-skins': 'shop-skins-panel', 'tab-hats': 'shop-hats-panel' };
+  document.getElementById(panelMap[activeId]).classList.remove('hidden');
+}
+document.getElementById('tab-upgrades').addEventListener('click', () => shopTab('tab-upgrades'));
+document.getElementById('tab-skins').addEventListener('click',    () => shopTab('tab-skins'));
+document.getElementById('tab-hats').addEventListener('click',     () => shopTab('tab-hats'));
 
 document.getElementById('shop-btn').addEventListener('click', openShop);
 document.getElementById('shop-close-btn').addEventListener('click', closeShop);

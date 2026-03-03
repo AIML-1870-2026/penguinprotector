@@ -365,3 +365,8 @@ html, body {
 .shop-card .card-btn.locked-btn { background: rgba(80,60,120,0.1);
   border-color: rgba(180,80,255,0.25); color: #7a5090;
   font-size: 0.58rem; letter-spacing: 0.04em; }
+
+/* ===== WEATHER + SHARE ===== */
+.weather-icon { font-size: 0.75rem; margin-right: 0.3rem; }
+#share-btn { border-color: rgba(100,180,255,0.4); color: #7ec8e3; }
+#share-btn:hover { background: rgba(100,180,255,0.1); }
