@@ -91,6 +91,22 @@ function sfxWarn()      {
   setTimeout(() => playTone(880, 0.07, 'square', 0.06), 180);
   setTimeout(() => playTone(1100, 0.09, 'square', 0.07), 360);
 }
+function sfxCatHiss() {
+  playTone(90,  0.38, 'sawtooth', 0.07);
+  playTone(180, 0.28, 'sawtooth', 0.04);
+  setTimeout(() => playTone(1300, 0.05, 'square', 0.05), 60);
+  setTimeout(() => playTone(1100, 0.07, 'square', 0.04), 180);
+}
+function sfxCatMeow() {
+  playTone(520, 0.12, 'sine', 0.09);
+  setTimeout(() => playTone(740, 0.14, 'sine', 0.10), 85);
+  setTimeout(() => playTone(420, 0.20, 'sine', 0.07), 210);
+}
+function sfxZap() {
+  playTone(1900, 0.04, 'square', 0.08);
+  playTone(240,  0.18, 'sawtooth', 0.05);
+  setTimeout(() => playTone(800, 0.05, 'square', 0.06), 25);
+}
 
 // ─── SMOOTH JAZZ ────────────────────────────────────────────────
 // Chord progression: Dm7 → G7 → Cmaj7 → Am7  (ii–V–I–vi in C major)
@@ -605,6 +621,36 @@ function makeChunk(type, sx) {
       ], hazards: [],
         props: [...propsFor(sx, 90, 1), ...propsFor(sx + 460, 90, 1)] };
 
+    case 'zappers':
+      // y: G-24, h:10 → wire sits at head height; sliding players (pT=G-9) clear it
+      return { width: 480, platforms: [{ x: sx, y: G, w: 480, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 80,  y: G - 24, w: 160, h: 10, type: 'zapper', t: 0,   period: 2.6, active: false },
+        { x: sx + 300, y: G - 24, w: 160, h: 10, type: 'zapper', t: 1.3, period: 2.6, active: false },
+      ], props: propsFor(sx, 480, 1, [sx + 80, sx + 300]) };
+
+    case 'crates':
+      // Stacked wooden crates at varying heights; player must jump over each
+      return { width: 460, platforms: [{ x: sx, y: G, w: 460, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 80,  y: G - 28, w: 28, h: 28, type: 'crate' },   // single
+        { x: sx + 220, y: G - 56, w: 28, h: 56, type: 'crate' },   // double stack
+        { x: sx + 360, y: G - 28, w: 28, h: 28, type: 'crate' },   // single
+      ], props: propsFor(sx, 460, 1, [sx + 80, sx + 220, sx + 360]) };
+
+    case 'tripwire':
+      // Ankle-height wire (y: G-14, h:14) — must jump any amount to clear
+      return { width: 420, platforms: [{ x: sx, y: G, w: 420, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 70,  y: G - 14, w: 80, h: 14, type: 'tripwire', t: 0 },
+        { x: sx + 220, y: G - 14, w: 80, h: 14, type: 'tripwire', t: 0 },
+        { x: sx + 340, y: G - 14, w: 80, h: 14, type: 'tripwire', t: 0 },
+      ], props: propsFor(sx, 420, 1, [sx + 70, sx + 220, sx + 340]) };
+
+    case 'neon_sign':
+      // Low-hanging neon sign (y: G-34, h:20) — standing players hit it, sliding clears
+      return { width: 440, platforms: [{ x: sx, y: G, w: 440, h: 20, type: 'ground' }], hazards: [
+        { x: sx + 70,  y: G - 34, w: 130, h: 20, type: 'neon_sign', col: '#ff3af8', t: 0 },
+        { x: sx + 270, y: G - 34, w: 130, h: 20, type: 'neon_sign', col: '#00e5ff', t: 0 },
+      ], props: propsFor(sx, 440, 1, [sx + 70, sx + 270]) };
+
     default:
       return { width: 380, platforms: [{ x: sx, y: G, w: 380, h: 20, type: 'ground' }], hazards: [], props: [] };
   }
@@ -643,10 +689,14 @@ const CHUNK_DEFS = [
   { type: 'bobbing',     min: 3, w: 1 },
   { type: 'clothesline', min: 1, w: 3 },
   { type: 'clothesline2',min: 2, w: 2 },
+  { type: 'zappers',     min: 2, w: 2 },
+  { type: 'crates',     min: 1, w: 3 },
+  { type: 'tripwire',   min: 0, w: 2 },
+  { type: 'neon_sign',  min: 2, w: 2 },
 ];
 
 // Chunks that force the player into the air (jumping required to clear ground hazards or gaps)
-const AIRBORNE_CHUNKS = new Set(['fans', 'antennas', 'combo', 'gap', 'staircase', 'high_low', 'rooftop_gap', 'crumble']);
+const AIRBORNE_CHUNKS = new Set(['fans', 'antennas', 'combo', 'gap', 'staircase', 'high_low', 'rooftop_gap', 'crumble', 'crates', 'tripwire']);
 
 function pickChunk(diff, lastType, chunkCount) {
   // Grace period: guarantee flat ground for the first 4 chunks
@@ -663,7 +713,24 @@ function pickChunk(diff, lastType, chunkCount) {
   return 'flat';
 }
 
-const POWERUP_TYPES = ['shield', 'boost', 'magnet'];
+const DEATH_MSGS = {
+  fan:         ['Sliced by a ventilation fan!', 'Diced by the rooftop fan!', 'The fan had other plans.', 'Should have ducked.'],
+  antenna:     ['Impaled on an antenna!', 'Antenna to the face!', 'Radio silence — permanently.', 'Spiked.'],
+  pigeon:      ['Smacked by a pigeon flock!', 'Absolute bird chaos!', 'Ambushed by pigeons!', 'Should have packed birdseed.', 'The birds won.'],
+  steam:       ['Scalded by a steam pipe!', 'Boiled alive on a rooftop!', 'HOT HOT HOT!', 'Steam: 1, Rat: 0.'],
+  clothesline: ['Clotheslined by laundry!', "Taken out by someone's pants!", 'Stopped by dry cleaning.', 'Laundry day claims another victim.'],
+  zapper:      ['Zapped by the wire!', 'Electrocuted in style.', 'Short-circuited!', 'Bzzt! Game over.', 'Conducted poorly.'],
+  spotlight:   ['Caught in the searchlight!', 'The feds had a bead on you.', 'Nowhere to hide from the light.', 'Lights out.'],
+  boss:        ['Caught in the APB spotlight!', 'The law caught up with you.', "Can't outrun justice.", 'Busted!'],
+  cat:         ['Caught by the alley cat!', 'The cat always wins.', 'Nine lives — you had one.', 'Pounced!', 'Should have gone left.'],
+  fall:        ['Fell off the roof!', 'Misjudged that jump.', 'The ground said no.', 'Gravity wins again.'],
+  crate:       ['Tripped over a crate!', 'The cargo wins.', "Shouldn't have skipped leg day.", 'Crate expectations unmet.'],
+  tripwire:    ['Caught the tripwire!', 'Watch your step.', 'Face-first into the wire.', 'Should have hopped.'],
+  neon_sign:   ['Walked into a neon sign!', 'The sign said EXIT — you exited.', 'Neon to the face.', 'Ducking is an option, y\'know.'],
+};
+function randMsg(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+const POWERUP_TYPES = ['shield', 'boost', 'magnet', 'umbrella'];
 
 // ─── UPGRADES ──────────────────────────────────────────────────
 const UPGRADES = [
@@ -821,8 +888,12 @@ function updatePlayer(dt) {
     if (p.grounded && p.jumpBuf > 0) { p.jumpBuf = 0; doJump(); }
   }
 
-  // Gravity: variable height
-  const grav = (!p.holdJump && p.vy < 0) ? GRAV_DOWN * 1.6 : (p.vy < 0 ? GRAV_UP : GRAV_DOWN);
+  // Gravity: variable height; umbrella slows descent
+  let grav = (!p.holdJump && p.vy < 0) ? GRAV_DOWN * 1.6 : (p.vy < 0 ? GRAV_UP : GRAV_DOWN);
+  if (gs.powerUp?.type === 'umbrella' && p.vy > 0) {
+    grav = GRAV_DOWN * 0.15;
+    if (p.vy > 2.4) p.vy = 2.4;
+  }
   p.vy += grav * dt * 60;
   p.y  += p.vy * dt * 60;
 
@@ -852,7 +923,7 @@ function updatePlayer(dt) {
   }
 
   // Fall below = death
-  if (p.y > LH + 80) { killPlayer('Fell off the roof!'); return; }
+  if (p.y > LH + 80) { killPlayer(randMsg(DEATH_MSGS.fall)); return; }
 
   // Land timer
   if (p.landTimer > 0) { p.landTimer -= dt; if (p.landTimer <= 0 && p.state === 'land') p.state = 'run'; }
@@ -893,6 +964,11 @@ function updateHazards(dt) {
   for (const h of gs.hazards) {
     h.t += dt;
     if (h.type === 'pigeon') h.x += (h.vx || -2) * (gs.speed / BASE_SPEED) * dt * 60;
+    if (h.type === 'zapper') {
+      const nowActive = (h.t % h.period) < (h.period * 0.5);
+      if (nowActive && !h.active) sfxZap();
+      h.active = nowActive;
+    }
   }
 }
 
@@ -940,7 +1016,7 @@ function checkCollisions() {
     const yOvlp = pB > hT && pT < hB;
     if (!xOvlp || !yOvlp) continue;
 
-    const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active) || h.type === 'clothesline';
+    const lethal = h.type === 'fan' || h.type === 'antenna' || h.type === 'pigeon' || (h.type === 'steam' && h.active) || h.type === 'clothesline' || (h.type === 'zapper' && h.active) || h.type === 'crate' || h.type === 'tripwire' || h.type === 'neon_sign';
     if (!lethal) continue;
 
     // Shield absorbs one hit (power-up OR Iron Hide upgrade first hit)
@@ -963,11 +1039,15 @@ function checkCollisions() {
       return;
     }
 
-    if (h.type === 'fan')        killPlayer('Sliced by a ventilation fan!');
-    if (h.type === 'antenna')    killPlayer('Impaled on an antenna!');
-    if (h.type === 'pigeon')     killPlayer('Smacked by a pigeon flock!');
-    if (h.type === 'steam' && h.active) killPlayer('Scalded by a steam pipe!');
-    if (h.type === 'clothesline') killPlayer('Clotheslined by laundry!');
+    if (h.type === 'fan')        killPlayer(randMsg(DEATH_MSGS.fan));
+    if (h.type === 'antenna')    killPlayer(randMsg(DEATH_MSGS.antenna));
+    if (h.type === 'pigeon')     killPlayer(randMsg(DEATH_MSGS.pigeon));
+    if (h.type === 'steam' && h.active) killPlayer(randMsg(DEATH_MSGS.steam));
+    if (h.type === 'clothesline') killPlayer(randMsg(DEATH_MSGS.clothesline));
+    if (h.type === 'zapper' && h.active) killPlayer(randMsg(DEATH_MSGS.zapper));
+    if (h.type === 'crate')      killPlayer(randMsg(DEATH_MSGS.crate));
+    if (h.type === 'tripwire')   killPlayer(randMsg(DEATH_MSGS.tripwire));
+    if (h.type === 'neon_sign')  killPlayer(randMsg(DEATH_MSGS.neon_sign));
   }
 }
 
@@ -1006,7 +1086,7 @@ function updateHeli(dt) {
         shake(0.25, 3);
         if (gs.cat) gs.cat.lag -= 60;
       } else {
-        killPlayer('Caught in the police searchlight!');
+        killPlayer(randMsg(DEATH_MSGS.spotlight));
       }
     }
   }
@@ -1144,7 +1224,7 @@ function updateBoss(dt) {
         gs.p.hitFlash = 1.2; gs.p.state = 'hit';
         shake(0.25, 3);
       } else {
-        killPlayer('Caught in the APB spotlight!');
+        killPlayer(randMsg(DEATH_MSGS.boss));
       }
     }
   }
@@ -1338,8 +1418,8 @@ function killPlayer(cause) {
 function shake(dur, amt) { gs.shakeTimer = dur; gs.shakeAmt = amt; gs.shakeDur = dur; }
 
 // ─── POWER-UPS ─────────────────────────────────────────────────
-const PU_COLORS = { shield: '#4fc3f7', boost: '#ffd740', magnet: '#ce93d8' };
-const PU_LABELS = { shield: 'SHIELD!', boost: 'SPEED BOOST!', magnet: 'SCORE ×3!' };
+const PU_COLORS = { shield: '#4fc3f7', boost: '#ffd740', magnet: '#ce93d8', umbrella: '#81d4fa' };
+const PU_LABELS = { shield: 'SHIELD!', boost: 'SPEED BOOST!', magnet: 'SCORE ×3!', umbrella: 'FLOAT!' };
 
 function activatePowerUp(type, x, y) {
   // Cancel any existing power-up cleanly
@@ -1357,6 +1437,8 @@ function activatePowerUp(type, x, y) {
   } else if (type === 'magnet') {
     gs.scoreMulti = 3;
     gs.powerUp = { type, t: 8.0, maxT: 8.0 };
+  } else if (type === 'umbrella') {
+    gs.powerUp = { type, t: 6.0, maxT: 6.0 };
   }
   popup(x, y - 20, PU_LABELS[type], col, 14);
   sfxPowerUp();
@@ -1795,17 +1877,30 @@ function drawHazards() {
     if (sx + h.w < -30 || sx > LW + 30) continue;
     const sy = h.y;
 
-    // Pulsing danger glow behind all hazards
+    // Pulsing danger glow — radial gradient centered on hazard
     {
       const isSteamActive = h.type === 'steam' && (h.t % h.period) < (h.period * 0.42);
       const isSteamWarm   = h.type === 'steam' && !isSteamActive;
-      const glowCol = isSteamWarm ? '#ff8800' : '#ff2222';
-      const pulse = 0.10 + 0.08 * Math.sin(performance.now() / 320);
-      ctx.save();
-      ctx.globalAlpha = isSteamWarm ? pulse * 0.6 : pulse;
-      ctx.fillStyle = glowCol;
-      ctx.fillRect(sx - 5, sy - 5, h.w + 10, h.h + 10);
-      ctx.restore();
+      const isZapActive   = h.type === 'zapper' && h.active;
+      const isZapInactive = h.type === 'zapper' && !h.active;
+      if (!isZapInactive) {
+        // Pick color (full rgb strings for gradient transparency)
+        const [gr, gg, gb] = isSteamWarm ? [255,136,0] : isZapActive ? [0,229,255] : [255,34,34];
+        const pulse = 0.18 + 0.10 * Math.sin(performance.now() / 320);
+        const alpha = isSteamWarm ? pulse * 0.55 : isZapActive ? pulse * 1.1 : pulse;
+        const cx = sx + h.w / 2;
+        const cy = sy + h.h / 2;
+        // Radius proportional to geometric mean of dims, capped so wide hazards stay tidy
+        const r = Math.min(Math.sqrt(h.w * h.h), 68) * 0.95 + 18;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0,   `rgba(${gr},${gg},${gb},${alpha.toFixed(3)})`);
+        grad.addColorStop(0.5, `rgba(${gr},${gg},${gb},${(alpha * 0.45).toFixed(3)})`);
+        grad.addColorStop(1,   `rgba(${gr},${gg},${gb},0)`);
+        ctx.save();
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
     }
 
     if (h.type === 'fan') {
@@ -1832,6 +1927,88 @@ function drawHazards() {
         const grad = ctx.createLinearGradient(sx, sy, sx, sy + h.h);
         grad.addColorStop(0, 'rgba(210,220,230,0.82)'); grad.addColorStop(1, 'rgba(210,220,230,0)');
         ctx.fillStyle = grad; ctx.fillRect(sx, sy, h.w, h.h);
+      }
+    }
+    if (h.type === 'crate') {
+      const crateH = 28;
+      const numCrates = Math.round(h.h / crateH);
+      for (let i = 0; i < numCrates; i++) {
+        const cy = sy + h.h - crateH * (i + 1);
+        ctx.fillStyle = '#8b5e3c'; ctx.fillRect(sx, cy, h.w, crateH);
+        ctx.fillStyle = '#a87040'; ctx.fillRect(sx, cy, h.w, 4);
+        ctx.fillStyle = '#6b4220'; ctx.fillRect(sx, cy + crateH / 2 - 1, h.w, 2);
+        ctx.strokeStyle = '#6b4220'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(sx + 2, cy + 3);    ctx.lineTo(sx + h.w - 2, cy + crateH - 3);
+        ctx.moveTo(sx + h.w - 2, cy + 3); ctx.lineTo(sx + 2, cy + crateH - 3);
+        ctx.stroke();
+        ctx.strokeStyle = '#3e2008'; ctx.lineWidth = 1.2;
+        ctx.strokeRect(sx, cy, h.w, crateH);
+      }
+    }
+    if (h.type === 'tripwire') {
+      const wireY = sy + h.h / 2;
+      ctx.fillStyle = '#5a5a5a';
+      ctx.fillRect(sx - 2, sy - 2, 4, h.h + 6);
+      ctx.fillRect(sx + h.w - 2, sy - 2, 4, h.h + 6);
+      ctx.fillStyle = '#888';
+      ctx.beginPath(); ctx.arc(sx, sy - 2, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + h.w, sy - 2, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(sx, wireY); ctx.lineTo(sx + h.w, wireY); ctx.stroke();
+      const blink = 0.5 + 0.5 * Math.sin(h.t * 5.5);
+      ctx.fillStyle = `rgba(255,50,50,${blink.toFixed(2)})`;
+      ctx.beginPath(); ctx.arc(sx, sy - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + h.w, sy - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+    if (h.type === 'neon_sign') {
+      const col = h.col || '#ff3af8';
+      const flicker = 0.8 + 0.2 * Math.sin(h.t * 8.1 + 0.6);
+      ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx + 18, sy); ctx.lineTo(sx + 18, sy - 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx + h.w - 18, sy); ctx.lineTo(sx + h.w - 18, sy - 22); ctx.stroke();
+      ctx.fillStyle = '#111'; ctx.fillRect(sx, sy, h.w, h.h);
+      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1; ctx.strokeRect(sx, sy, h.w, h.h);
+      ctx.save();
+      ctx.shadowBlur = 14; ctx.shadowColor = col;
+      ctx.fillStyle = col;
+      ctx.globalAlpha = flicker;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const SIGN_WORDS = ['EXIT', 'OPEN', 'DELI', 'ROOF'];
+      ctx.fillText(SIGN_WORDS[Math.floor(Math.abs(h.x) / 130) % SIGN_WORDS.length], sx + h.w / 2, sy + h.h / 2 + 1);
+      ctx.restore();
+    }
+    if (h.type === 'zapper') {
+      const wireY = sy + h.h / 2;
+      const poleTop = GROUND_Y - 55;
+      // Poles (decorative, from ground to above wire)
+      ctx.fillStyle = '#5a5a5a';
+      ctx.fillRect(sx - 3, poleTop, 6, GROUND_Y + 20 - poleTop);
+      ctx.fillRect(sx + h.w - 3, poleTop, 6, GROUND_Y + 20 - poleTop);
+      // Insulators at wire height
+      ctx.fillStyle = '#888';
+      ctx.beginPath(); ctx.arc(sx, wireY, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(sx + h.w, wireY, 4, 0, Math.PI * 2); ctx.fill();
+      if (h.active) {
+        // Jagged electric arc
+        const segs = 9;
+        ctx.save();
+        ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2;
+        ctx.shadowBlur = 16; ctx.shadowColor = '#00e5ff';
+        ctx.beginPath(); ctx.moveTo(sx, wireY);
+        for (let i = 1; i < segs; i++) ctx.lineTo(sx + (h.w / segs) * i, wireY + (Math.random() - 0.5) * 14);
+        ctx.lineTo(sx + h.w, wireY); ctx.stroke();
+        // Bright core arc
+        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 0.8; ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.moveTo(sx, wireY);
+        for (let i = 1; i < segs; i++) ctx.lineTo(sx + (h.w / segs) * i, wireY + (Math.random() - 0.5) * 8);
+        ctx.lineTo(sx + h.w, wireY); ctx.stroke();
+        ctx.restore();
+      } else {
+        // Inactive — dim wire
+        ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(sx, wireY); ctx.lineTo(sx + h.w, wireY); ctx.stroke();
       }
     }
     if (h.type === 'clothesline') {
@@ -2306,7 +2483,7 @@ function updateCat(dt) {
     if (gs.distance >= 400 && gs.difficulty >= 1) {
       gs.cat = { lag: 500, warnedAt200: false, surgedThisHit: false };
       popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 80, '🐱 A CAT IS ON YOUR TAIL!', '#ff8888', 14);
-      sfxWarn();
+      sfxCatHiss();
     }
     return;
   }
@@ -2326,6 +2503,7 @@ function updateCat(dt) {
   if (p.hitFlash > 0.8 && !cat.surgedThisHit) {
     cat.surgedThisHit = true;
     cat.lag -= 60;
+    sfxCatMeow();
   }
   if (p.hitFlash <= 0) cat.surgedThisHit = false;
 
@@ -2340,7 +2518,7 @@ function updateCat(dt) {
 
   // Cat catches player
   if (cat.lag <= 0 && p.state !== 'dead') {
-    killPlayer('Caught by the alley cat!');
+    killPlayer(randMsg(DEATH_MSGS.cat));
   }
 }
 
@@ -2551,7 +2729,7 @@ function drawWeatherOverlay() {
 
 function drawItems() {
   if (!gs.items.length) return;
-  const icons = { shield: '🛡', boost: '⚡', magnet: '×3' };
+  const icons = { shield: '🛡', boost: '⚡', magnet: '×3', umbrella: '☂' };
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -2622,7 +2800,7 @@ function drawPowerUpHUD() {
   if (!gs.powerUp || gs.phase !== 'playing') return;
   const pu  = gs.powerUp;
   const col = PU_COLORS[pu.type];
-  const icons = { shield: '🛡', boost: '⚡', magnet: '×3' };
+  const icons = { shield: '🛡', boost: '⚡', magnet: '×3', umbrella: '☂' };
   const frac = Math.max(0, pu.t / pu.maxT);
   const x = 678, y = 12;
   const barW = 68, barH = 5;
