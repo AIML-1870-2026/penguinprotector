@@ -36,6 +36,22 @@ const GRAV_DOWN     = 0.9;
 const COYOTE_MS     = 80;
 const JUMP_BUF_MS   = 110;
 
+// ─── SEEDED PRNG ────────────────────────────────────────────────
+function sfc32(a, b, c, d) {
+  return function() {
+    a |= 0; b |= 0; c |= 0; d |= 0;
+    let t = (a + b | 0) + d | 0; d = d + 1 | 0;
+    a = b ^ b >>> 9; b = c + (c << 3) | 0;
+    c = (c << 21 | c >>> 11); c = c + t | 0;
+    return (t >>> 0) / 4294967296;
+  };
+}
+function makeDailySeed(dateStr) {
+  let h = 2166136261;
+  for (let i = 0; i < dateStr.length; i++) { h ^= dateStr.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return sfc32(h, h ^ 0xdeadbeef, h ^ 0x12345678, h ^ 0xabcdef01);
+}
+
 // ─── ZONES ─────────────────────────────────────────────────────
 const ZONES = [
   { name: 'Downtown',      c1: '#12080a', c2: '#3b1a08', accent: '#c97a3a', floor: '#2a1208' },
@@ -333,6 +349,7 @@ canvas.addEventListener('touchmove', e => {
 
 // ─── STATE ─────────────────────────────────────────────────────
 let gs = {};
+let dailyRNG = null;  // sfc32 generator when daily mode active, else null
 
 function makePlayer() {
   return {
@@ -395,6 +412,8 @@ function resetGS() {
     lastChunkType: '',
     chunkCount:  0,
     difficulty:  0,
+    lap:         0,
+    isDaily:     false,
     deathCause:  '',
     jumpCount:   0,
 
@@ -701,15 +720,16 @@ const AIRBORNE_CHUNKS = new Set(['fans', 'antennas', 'combo', 'gap', 'staircase'
 function pickChunk(diff, lastType, chunkCount) {
   // Grace period: guarantee flat ground for the first 4 chunks
   if (chunkCount < 4) return 'flat';
-  let pool = CHUNK_DEFS.filter(c => c.min <= diff);
+  const rng = dailyRNG || Math.random;
+  // Reduce flat weight per lap so obstacles get denser over time
+  const pool = CHUNK_DEFS.filter(c => c.min <= diff)
+    .map(c => c.type === 'flat' ? { ...c, w: Math.max(2, 7 - gs.lap * 2) } : c);
   // Never spawn 'pigeons' directly after a jump-forcing chunk — the low pigeon
   // sits at G-55 and collides with any airborne player, making it undodgeable.
-  if (AIRBORNE_CHUNKS.has(lastType)) {
-    pool = pool.filter(c => c.type !== 'pigeons');
-  }
-  const total = pool.reduce((s, c) => s + c.w, 0);
-  let r = Math.random() * total;
-  for (const c of pool) { r -= c.w; if (r <= 0) return c.type; }
+  const runPool = AIRBORNE_CHUNKS.has(lastType) ? pool.filter(c => c.type !== 'pigeons') : pool;
+  const total = runPool.reduce((s, c) => s + c.w, 0);
+  let r = rng() * total;
+  for (const c of runPool) { r -= c.w; if (r <= 0) return c.type; }
   return 'flat';
 }
 
@@ -747,6 +767,10 @@ const SKINS = [
   { id:'shadow',  name:'Shadow',      cost:75,  body:'#252525', back:'#0e0e0e', belly:'#383838', limb:'#1a1a1a', snout:'#2e2e2e', earO:'#303030', earI:'#606080', nose:'#8888aa' },
   { id:'sewer',   name:'Sewer King',  cost:100, body:'#3a7a18', back:'#204a08', belly:'#7a9a18', limb:'#2a5a10', snout:'#4a8a20', earO:'#5a8a18', earI:'#a8c840', nose:'#ffdd00' },
   { id:'neon',    name:'Neon Rat',    cost:150, body:'#1a3a6a', back:'#0a1a3a', belly:'#2a4a8a', limb:'#0e2a5a', snout:'#1e4a7a', earO:'#2060a0', earI:'#e91e8c', nose:'#00ffcc' },
+  { id:'ghost',    name:'Ghost',    cost:0, unlock:'no_hits',      body:'#e8e8f0', back:'#d0d0e0', belly:'#f4f4ff', limb:'#dcdce8', snout:'#e4e4f0', earO:'#dcdcf0', earI:'#c8c8f0', nose:'#b0b0d0' },
+  { id:'golden',   name:'Golden',   cost:0, unlock:'speed_max',    body:'#d4a017', back:'#b8860b', belly:'#f5c842', limb:'#c8960f', snout:'#e8b820', earO:'#e0a818', earI:'#ffe066', nose:'#ff9900' },
+  { id:'outlaw',   name:'Outlaw',   cost:0, unlock:'survive_boss', body:'#6b1010', back:'#3d0808', belly:'#8b2020', limb:'#520e0e', snout:'#7a1414', earO:'#7a1414', earI:'#b04040', nose:'#ff4444' },
+  { id:'cheshire', name:'Cheshire', cost:0, unlock:'outrun_cat',   body:'#8b14c8', back:'#5a0e88', belly:'#c040e8', limb:'#6a1098', snout:'#a020d8', earO:'#a018d0', earI:'#e070ff', nose:'#ff00cc' },
 ];
 
 // ─── ACHIEVEMENTS ───────────────────────────────────────────────
@@ -1616,16 +1640,25 @@ function updateWeather(dt) {
 function updateProgression(dt) {
   gs.runTime += dt;
   gs.distance += gs.speed * dt * 60 / 10;
+  // Lap detection — fires once per 3600m cycle
+  const newLap = Math.floor(gs.distance / 3600);
+  if (newLap > gs.lap) {
+    gs.lap = newLap;
+    popup(gs.scrollX + LW / 2, GROUND_Y - 130, 'LAP ' + gs.lap + ' \u2014 ESCALATING!', '#e74c3c', 20);
+    shake(0.6, 8); sfxThunder();
+  }
   // Only advance natural speed when boost isn't active (boost holds gs.speed elevated)
   if (!gs.powerUp || gs.powerUp.type !== 'boost') {
-    gs.speed = Math.min(BASE_SPEED * 3, BASE_SPEED + gs.runTime * 0.02);
+    const speedCap  = BASE_SPEED * (3 + gs.lap * 0.5);  // 12 → 14 → 16 → ...
+    const speedRamp = 0.02 + gs.lap * 0.01;
+    gs.speed = Math.min(speedCap, BASE_SPEED + gs.runTime * speedRamp);
   }
   // Speed milestone popups — fire once per tier (~every 100s of survival)
   const speedTier = Math.floor((gs.speed - BASE_SPEED) / (BASE_SPEED * 0.5));
   if (speedTier > gs.speedMilestone && gs.runTime > 15) {
     gs.speedMilestone = speedTier;
-    const msgs = ['PICKING UP SPEED', 'MOVING FAST', 'BLAZING', 'WARP SPEED'];
-    const cols = ['#3498db', '#e67e22', '#e74c3c', '#9b59b6'];
+    const msgs = ['PICKING UP SPEED', 'MOVING FAST', 'BLAZING', 'WARP SPEED', 'MACH RAT', 'BEYOND PHYSICS'];
+    const cols = ['#3498db', '#e67e22', '#e74c3c', '#9b59b6', '#e91e8c', '#00ffcc'];
     const idx  = Math.min(speedTier - 1, msgs.length - 1);
     popup(gs.scrollX + LW / 2, GROUND_Y - 110, msgs[idx] + '!', cols[idx], 16);
     shake(0.12, 3);
@@ -1655,7 +1688,9 @@ function updateProgression(dt) {
   // Zone
   const z = Math.floor(gs.distance / 900) % ZONES.length;
   if (z !== gs.zoneIdx) {
-    gs.zoneIdx = z; flashZoneName(ZONES[z].name);
+    gs.zoneIdx = z;
+    const lapSuffix = gs.lap >= 1 ? ' \xD7' + (gs.lap + 1) : '';
+    flashZoneName(ZONES[z].name + lapSuffix);
     if (z === 2) unlockAchievement('zone_neon');
     if (z === 3) unlockAchievement('zone_sky');
   }
@@ -1744,6 +1779,11 @@ function unlockAchievement(id) {
   const list = getAchievements(); list.push(id); localStorage.setItem('rr_achievements', JSON.stringify(list));
   const def = ACHIEVEMENTS.find(a => a.id === id);
   if (def) showAchievementBanner(def.name);
+  const skin = SKINS.find(s => s.unlock === id);
+  if (skin && !getOwnedSkins().includes(skin.id)) {
+    ownSkin(skin.id);
+    setTimeout(() => { if (gs) { gs.achBannerText = 'SKIN UNLOCKED: ' + skin.name.toUpperCase(); gs.achBannerT = 3.2; } }, 3400);
+  }
 }
 function showAchievementBanner(name) {
   if (!gs) return;
@@ -1756,6 +1796,15 @@ function checkAchievements() {
   if (gs.runTime >= 120)        unlockAchievement('survive120');
   const speedMax = BASE_SPEED * 3;
   if (gs.speed >= speedMax - 0.05) unlockAchievement('speed_max');
+}
+
+// ─── DAILY CHALLENGE HELPERS ────────────────────────────────────
+function getDailyDateKey() { return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD stable
+function hasPlayedToday()  { return localStorage.getItem('rr_daily_date') === getDailyDateKey(); }
+function getDailyScore()   { return parseInt(localStorage.getItem('rr_daily_score') || '0', 10); }
+function saveDailyResult(s) {
+  localStorage.setItem('rr_daily_date', getDailyDateKey());
+  if (s > getDailyScore()) localStorage.setItem('rr_daily_score', s);
 }
 
 // ─── COLOUR HELPERS ────────────────────────────────────────────
@@ -2480,8 +2529,10 @@ function updateCat(dt) {
   const p = gs.p;
 
   if (!gs.cat) {
-    if (gs.distance >= 400 && gs.difficulty >= 1) {
-      gs.cat = { lag: 500, warnedAt200: false, surgedThisHit: false };
+    const catSpawnD  = Math.max(50,  400 - gs.lap * 150);
+    const catInitLag = Math.max(150, 500 - gs.lap * 100);
+    if (gs.distance >= catSpawnD && gs.difficulty >= 1) {
+      gs.cat = { lag: catInitLag, warnedAt200: false, surgedThisHit: false };
       popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 80, '🐱 A CAT IS ON YOUR TAIL!', '#ff8888', 14);
       sfxCatHiss();
     }
@@ -2947,6 +2998,7 @@ function startGame() {
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('daily-hud-badge').classList.add('hidden');
   document.getElementById('score-display').textContent = '0';
   document.getElementById('hs-line').textContent = 'Best: ' + getHS().toLocaleString();
   updateTodIcon();
@@ -2984,6 +3036,17 @@ function showGameOver() {
   document.getElementById('gameover-screen').style.setProperty('--zone-accent', ZONES[gs.zoneIdx].accent);
   const nb = document.getElementById('go-newbest');
   if (isNewBest) nb.classList.remove('hidden'); else nb.classList.add('hidden');
+  if (gs.isDaily) {
+    saveDailyResult(s);
+    dailyRNG = null;
+    document.getElementById('retry-btn').classList.add('hidden');
+    document.getElementById('daily-go-msg').textContent =
+      '\uD83D\uDCC5 Daily Score: ' + s.toLocaleString() + ' \u2014 Come back tomorrow!';
+    document.getElementById('daily-go-msg').classList.remove('hidden');
+  } else {
+    document.getElementById('retry-btn').classList.remove('hidden');
+    document.getElementById('daily-go-msg').classList.add('hidden');
+  }
 }
 
 function showLeaderboard() {
@@ -3003,8 +3066,28 @@ function toggleMute() {
   if (muted) stopJazz(); else if (gs.phase === 'playing') startJazz();
 }
 
+function startDailyGame() {
+  if (hasPlayedToday()) return;
+  dailyRNG = makeDailySeed(getDailyDateKey());
+  startGame();
+  gs.isDaily = true;
+  document.getElementById('daily-hud-badge').classList.remove('hidden');
+}
+
+function refreshDailyBtn() {
+  const btn = document.getElementById('daily-btn');
+  if (hasPlayedToday()) {
+    btn.textContent = '\u2713 Played \u2014 ' + getDailyScore().toLocaleString();
+    btn.disabled = true;
+  } else {
+    btn.textContent = '\uD83D\uDCC5 Daily Challenge';
+    btn.disabled = false;
+  }
+}
+
 // ─── EVENT LISTENERS ───────────────────────────────────────────
 document.getElementById('play-btn').addEventListener('click', () => { ensureAudio(); startGame(); });
+document.getElementById('daily-btn').addEventListener('click', () => { ensureAudio(); startDailyGame(); });
 document.getElementById('leaderboard-btn').addEventListener('click', showLeaderboard);
 document.getElementById('lb-close-btn').addEventListener('click', () => {
   document.getElementById('leaderboard-screen').classList.add('hidden');
@@ -3062,18 +3145,25 @@ function renderShop() {
     const isActive = s.id === active;
     const canBuy   = !isOwned && bank >= s.cost;
     const cardCls  = isOwned ? 'shop-card owned' : (canBuy ? 'shop-card affordable' : 'shop-card');
-    let btnHtml;
-    if (!isOwned) {
-      btnHtml = `<button class="card-btn" ${canBuy ? '' : 'disabled'} onclick="buySkin('${s.id}')">Buy ${s.cost}🪙</button>`;
+    let btnHtml, costHtml;
+    if (!isOwned && s.unlock) {
+      const achName = ACHIEVEMENTS.find(a => a.id === s.unlock)?.name || s.unlock;
+      btnHtml  = `<button class="card-btn locked-btn" disabled>🔒 ${achName}</button>`;
+      costHtml = `<div class="card-cost"><span class="free">Achievement</span></div>`;
+    } else if (!isOwned) {
+      btnHtml  = `<button class="card-btn" ${canBuy ? '' : 'disabled'} onclick="buySkin('${s.id}')">Buy ${s.cost}🪙</button>`;
+      costHtml = `<div class="card-cost">${s.cost === 0 ? '<span class="free">Free</span>' : s.cost + ' 🪙'}</div>`;
     } else if (isActive) {
-      btnHtml = `<button class="card-btn select-btn active-skin" disabled>✓ Active</button>`;
+      btnHtml  = `<button class="card-btn select-btn active-skin" disabled>✓ Active</button>`;
+      costHtml = `<div class="card-cost"></div>`;
     } else {
-      btnHtml = `<button class="card-btn select-btn" onclick="selectSkin('${s.id}')">Equip</button>`;
+      btnHtml  = `<button class="card-btn select-btn" onclick="selectSkin('${s.id}')">Equip</button>`;
+      costHtml = `<div class="card-cost"></div>`;
     }
     return `<div class="${cardCls}">
       <canvas class="skin-preview" id="skin-prev-${s.id}" width="28" height="28"></canvas>
       <div class="card-name">${s.name}</div>
-      <div class="card-cost">${s.cost === 0 ? '<span class="free">Free</span>' : (isOwned ? '' : s.cost + ' 🪙')}</div>
+      ${costHtml}
       ${btnHtml}
     </div>`;
   }).join('');
@@ -3175,5 +3265,6 @@ resetGS();
 document.getElementById('hud').classList.add('hidden');
 document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
 if (getHS() > 0) document.getElementById('start-best').textContent = 'Best: ' + getHS().toLocaleString() + '  ·  🪙 ' + getBank().toLocaleString();
+refreshDailyBtn();
 
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });

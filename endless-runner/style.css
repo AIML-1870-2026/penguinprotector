@@ -348,3 +348,20 @@ html, body {
 }
 .ach-card.locked .ach-icon { filter: grayscale(1); opacity: 0.3; }
 .ach-card.locked .ach-name { color: #444; }
+
+/* ===== DAILY CHALLENGE ===== */
+.daily-badge { font-size: 0.55rem; color: #f39c12; letter-spacing: 0.14em;
+  text-transform: uppercase; font-weight: 700;
+  text-shadow: 0 0 6px rgba(243,156,18,0.6); margin-top: 0.1rem; }
+.daily-badge.hidden { display: none; }
+
+.daily-go-msg { color: #f39c12; font-size: 0.82rem; letter-spacing: 0.08em;
+  text-align: center; font-style: italic; }
+.daily-go-msg.hidden { display: none; }
+
+#daily-btn:disabled { opacity: 0.55; cursor: default;
+  color: #4caf50; border-color: rgba(76,175,80,0.4); }
+
+.shop-card .card-btn.locked-btn { background: rgba(80,60,120,0.1);
+  border-color: rgba(180,80,255,0.25); color: #7a5090;
+  font-size: 0.58rem; letter-spacing: 0.04em; }
