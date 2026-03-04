@@ -366,6 +366,87 @@ html, body {
   border-color: rgba(180,80,255,0.25); color: #7a5090;
   font-size: 0.58rem; letter-spacing: 0.04em; }
 
+/* ===== SOUND PANEL ===== */
+.sound-rows {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1.2rem 2rem;
+  min-width: 280px;
+}
+.sound-row {
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.sound-label {
+  width: 52px; font-size: 0.78rem; color: #aaa; letter-spacing: 0.08em;
+}
+.sound-slider {
+  flex: 1;
+  -webkit-appearance: none; appearance: none;
+  height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  outline: none; cursor: pointer;
+}
+.sound-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #ff6b35; cursor: pointer;
+  box-shadow: 0 0 6px rgba(255,107,53,0.5);
+}
+.sound-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: none;
+  background: #ff6b35; cursor: pointer;
+}
+.sound-pct {
+  width: 36px; text-align: right; font-size: 0.72rem; color: #666;
+}
+
+/* ===== STORY SCREEN ===== */
+.story-grid {
+  display: flex; flex-wrap: wrap; gap: 0.55rem;
+  justify-content: center;
+  max-width: 560px; width: 90%;
+  max-height: 260px; overflow-y: auto;
+}
+.story-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  width: 155px;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  cursor: pointer; transition: border-color 0.14s, background 0.14s;
+}
+.story-card:hover:not(.locked) {
+  border-color: rgba(255,107,53,0.5);
+  background: rgba(255,107,53,0.08);
+}
+.story-card.locked { opacity: 0.45; cursor: default; }
+.story-card.done { border-color: rgba(100,200,100,0.4); }
+.story-card .sc-num { font-size: 0.58rem; color: #666; letter-spacing: 0.12em; text-transform: uppercase; }
+.story-card .sc-title { font-size: 0.72rem; font-weight: 700; color: #ddd; letter-spacing: 0.04em; }
+.story-card .sc-score { font-size: 0.62rem; color: #f39c12; }
+.story-card .sc-lock { font-size: 0.9rem; text-align: center; }
+
+/* ===== CUTSCENE ===== */
+.cutscene-box {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 1.2rem;
+  max-width: 480px; width: 90%;
+  text-align: center;
+}
+.cutscene-chapter {
+  font-size: 0.65rem; color: #f39c12;
+  letter-spacing: 0.22em; text-transform: uppercase;
+}
+.cutscene-text {
+  font-size: 1.05rem; color: #ccc;
+  line-height: 1.7; letter-spacing: 0.04em;
+  font-style: italic;
+  text-shadow: 0 0 20px rgba(255,200,100,0.15);
+}
+
 /* ===== WEATHER + SHARE ===== */
 .weather-icon { font-size: 0.75rem; margin-right: 0.3rem; }
 #share-btn { border-color: rgba(100,180,255,0.4); color: #7ec8e3; }

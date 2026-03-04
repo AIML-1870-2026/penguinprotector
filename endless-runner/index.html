@@ -21,6 +21,8 @@
         <button class="menu-btn" id="leaderboard-btn">🏆 Leaderboard</button>
         <button class="menu-btn" id="shop-btn">🛒 Shop</button>
         <button class="menu-btn" id="achievements-btn">★ Achievements</button>
+        <button class="menu-btn" id="story-btn">📖 Story Mode</button>
+        <button class="menu-btn" id="sound-btn">🔊 Sound</button>
         <button class="menu-btn" id="editor-btn">✏ Level Editor</button>
       </div>
       <p class="controls-hint">
@@ -81,6 +83,40 @@
       <button class="menu-btn" id="ach-close-btn">← Back</button>
     </div>
 
+    <!-- Sound Panel -->
+    <div class="screen hidden" id="sound-panel">
+      <h2 class="screen-title">Sound</h2>
+      <div class="sound-rows">
+        <div class="sound-row">
+          <span class="sound-label">Music</span>
+          <input type="range" id="music-slider" class="sound-slider" min="0" max="100" step="5" value="80" oninput="onMusicSlider(this.value)">
+          <span class="sound-pct" id="music-pct">80%</span>
+        </div>
+        <div class="sound-row">
+          <span class="sound-label">SFX</span>
+          <input type="range" id="sfx-slider" class="sound-slider" min="0" max="100" step="5" value="100" oninput="onSfxSlider(this.value)">
+          <span class="sound-pct" id="sfx-pct">100%</span>
+        </div>
+      </div>
+      <button class="menu-btn" id="sound-close-btn">← Back</button>
+    </div>
+
+    <!-- Story Screen -->
+    <div class="screen hidden" id="story-screen">
+      <h2 class="screen-title">Story Mode</h2>
+      <div class="story-grid" id="story-grid"></div>
+      <button class="menu-btn" id="story-close-btn">← Back</button>
+    </div>
+
+    <!-- Cutscene Screen -->
+    <div class="screen hidden" id="cutscene-screen">
+      <div class="cutscene-box">
+        <div class="cutscene-chapter" id="cutscene-chapter"></div>
+        <p class="cutscene-text" id="cutscene-text"></p>
+        <button class="menu-btn primary" id="cutscene-continue-btn">Continue →</button>
+      </div>
+    </div>
+
     <!-- HUD (shown during gameplay) -->
     <div class="hud hidden" id="hud">
       <div class="hud-left">
@@ -89,6 +125,7 @@
       <div class="hud-center">
         <div class="score-display" id="score-display">0</div>
         <div class="daily-badge hidden" id="daily-hud-badge">📅 DAILY</div>
+        <div class="daily-badge hidden" id="outfit-hud-badge">👑 +5% OUTFIT</div>
       </div>
       <div class="hud-right">
         <div class="hs-line" id="hs-line"></div>

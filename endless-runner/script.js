@@ -52,6 +52,45 @@ function makeDailySeed(dateStr) {
   return sfc32(h, h ^ 0xdeadbeef, h ^ 0x12345678, h ^ 0xabcdef01);
 }
 
+function sfc32FromSeed(seed) {
+  return sfc32(seed, seed ^ 0xdeadbeef, seed ^ 0x12345678, seed ^ 0xabcdef01);
+}
+
+// ─── STORY MODE ─────────────────────────────────────────────────
+const STORY_SEEDS = [0xA1B2C3D4, 0x5E6F7A8B, 0x9C0D1E2F, 0x3A4B5C6D, 0xF1E2D3C4];
+const STORY_CHAPTERS = [
+  { title: 'Ch.1 — The Escape',
+    before: 'Rats don\'t retire.\nThey run.',
+    after:  'You crossed the rooftop.\nThey noticed.' },
+  { title: 'Ch.2 — The Pursuit',
+    before: 'The cat works for the mob.\nRun.',
+    after:  'Close call.\nThe boss wants answers.' },
+  { title: 'Ch.3 — The Network',
+    before: 'The pigeons are informants.\nTrust no one.',
+    after:  'The whole block is compromised.\nKeep moving.' },
+  { title: 'Ch.4 — The Price',
+    before: 'A bounty\'s on your head.\nEvery rooftop is a trap.',
+    after:  'Almost there.\nOne final run.' },
+  { title: 'Ch.5 — The Reckoning',
+    before: 'This ends here.\nRun like your life depends on it.',
+    after:  'You outran the whole city.\nThe rat lives free.' },
+];
+
+function getStoryProgress() {
+  return parseInt(localStorage.getItem('rr_story_ch') ?? '0');
+}
+function setStoryProgress(ch) {
+  localStorage.setItem('rr_story_ch', ch);
+}
+function getStoryScores() {
+  try { return JSON.parse(localStorage.getItem('rr_story_scores') || '[]'); } catch { return []; }
+}
+function saveStoryScore(ch, score) {
+  const scores = getStoryScores();
+  if (!scores[ch] || score > scores[ch]) scores[ch] = score;
+  localStorage.setItem('rr_story_scores', JSON.stringify(scores));
+}
+
 // ─── ZONES ─────────────────────────────────────────────────────
 const ZONES = [
   { name: 'Downtown',      c1: '#12080a', c2: '#3b1a08', accent: '#c97a3a', floor: '#2a1208' },
@@ -74,18 +113,20 @@ const TOD = [
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let   audioCtx = null;
 let   muted    = localStorage.getItem('rr_muted') === 'true';
+let   musicVol = parseFloat(localStorage.getItem('rr_music_vol') ?? '0.8');
+let   sfxVol   = parseFloat(localStorage.getItem('rr_sfx_vol')   ?? '1.0');
 
 function ensureAudio() {
   if (!audioCtx) audioCtx = new AudioCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 function playTone(freq, dur, type = 'sine', vol = 0.13) {
-  if (muted || !audioCtx) return;
+  if (muted || !audioCtx || sfxVol <= 0) return;
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   o.connect(g); g.connect(audioCtx.destination);
   o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.setValueAtTime(vol * sfxVol, audioCtx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
   o.start(); o.stop(audioCtx.currentTime + dur);
 }
@@ -288,10 +329,10 @@ function scheduleJazz() {
 }
 
 function startJazz() {
-  if (muted || !audioCtx || jazzGain) return;
+  if (muted || musicVol <= 0 || !audioCtx || jazzGain) return;
   jazzGain = audioCtx.createGain();
   jazzGain.gain.setValueAtTime(0, audioCtx.currentTime);
-  jazzGain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 0.6);
+  jazzGain.gain.linearRampToValueAtTime(0.55 * musicVol, audioCtx.currentTime + 0.6);
   jazzGain.connect(audioCtx.destination);
   jazzBeat = 0;
   jazzNext = audioCtx.currentTime + 0.1;
@@ -421,6 +462,10 @@ function resetGS() {
     difficulty:  0,
     lap:         0,
     isDaily:     false,
+    isStory:     false,
+    storyChapter: 0,
+    isFinalBoss: false,
+    outfitBonus: 1.0,
     deathCause:  '',
     jumpCount:   0,
 
@@ -790,6 +835,17 @@ const HATS = [
   { id:'cap',     name:'Baseball Cap', cost:35 },
 ];
 
+// ─── OUTFIT PAIRS ───────────────────────────────────────────────
+const OUTFIT_PAIRS = [
+  { skin:'golden',  hat:'crown',   name:'Royalty'       },
+  { skin:'sewer',   hat:'hardhat', name:'Worker Rat'    },
+  { skin:'cheshire',hat:'tophat',  name:'High Society'  },
+  { skin:'shadow',  hat:'beanie',  name:'Street Rat'    },
+  { skin:'outlaw',  hat:'cap',     name:'The Outlaw'    },
+  { skin:'neon',    hat:'cap',     name:'Cyberpunk'     },
+  { skin:'albino',  hat:'tophat',  name:'Fancy Rat'     },
+];
+
 // ─── ACHIEVEMENTS ───────────────────────────────────────────────
 const ACHIEVEMENTS = [
   { id:'double_jump',  name:'Double Trouble',  desc:'Perform a double jump',              icon:'↑↑' },
@@ -816,7 +872,7 @@ function spawnChunks() {
       chunk = makeChunk(type, chunkStartX);
     }
     gs.platforms.push(...chunk.platforms);
-    gs.hazards.push(...chunk.hazards);
+    gs.hazards.push(...chunk.hazards.map(h => ({ ...h, nearMissed: false })));
     gs.props.push(...chunk.props);
     gs.nextChunkX += chunk.width;
     gs.lastChunkType = type;
@@ -1093,6 +1149,31 @@ function checkCollisions() {
   }
 }
 
+function checkNearMiss() {
+  if (!gs || gs.phase !== 'playing' || gs.p.state === 'dead') return;
+  const p = gs.p;
+  const pH = p.sliding ? SLIDE_H : PLAYER_H;
+  const pL = p.worldX + 5, pR = p.worldX + PLAYER_W - 5;
+  const pT = p.y + 5,      pB = p.y + pH - 5;
+  const PAD = 8;
+  for (const h of gs.hazards) {
+    if (h.nearMissed) continue;
+    // Only trigger once the hazard's right edge has passed the player's left edge
+    if (h.x + h.w >= pL - 1) continue;
+    h.nearMissed = true;
+    // Skip inactive periodic hazards (not dangerous right now)
+    if (h.type === 'zapper' && !h.active) continue;
+    if (h.type === 'steam'  && !h.active) continue;
+    // Check if near-miss zone (expanded hitbox) overlaps the hazard
+    if (h.x + h.w >= pL - PAD && h.x <= pR + PAD &&
+        h.y + h.h >= pT - PAD && h.y <= pB + PAD) {
+      gs.score += 50;
+      popup(p.worldX + PLAYER_W / 2, p.y - 22, 'NEAR MISS! +50', '#ffd740', 11);
+      sfxPickup();
+    }
+  }
+}
+
 function playerUnderCover() {
   const p = gs.p;
   return gs.platforms.some(pl =>
@@ -1206,6 +1287,7 @@ function drawHeli() {
 function startBoss() {
   gs.heli      = null;
   gs.heliTimer = 999;
+  const isFinal = gs.isFinalBoss;
   gs.boss = {
     phase:      'approach',
     t:          0,
@@ -1214,12 +1296,14 @@ function startBoss() {
     vx:         -260,
     beamT:      0,
     survivedT:  0,
-    surviveDur: 12,
+    surviveDur: isFinal ? 18 : 12,
+    isFinal,
   };
   shake(0.5, 7);
   sfxWarn();
   setTimeout(sfxWarn, 220);
-  popup(gs.scrollX + PLAYER_SCREEN_X, 55, '🚨 APB ISSUED!', '#ff3333', 17);
+  const label = isFinal ? '👑 THE MOB BOSS ARRIVES!' : '🚨 APB ISSUED!';
+  popup(gs.scrollX + PLAYER_SCREEN_X, 55, label, '#ffd700', 17);
 }
 
 function updateBoss(dt) {
@@ -1252,15 +1336,18 @@ function updateBoss(dt) {
   boss.survivedT += dt;
   boss.y          = 52 + Math.sin(boss.beamT * 1.1) * 3;
 
-  const b1      = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
-  const b2      = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
-  const useTwo  = boss.survivedT > 6;
+  const b1       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
+  const b2       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
+  const b3       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 0.9 + 3.8) * 120;
+  const useTwo   = boss.survivedT > 6;
+  const useThree = boss.isFinal && boss.survivedT > 8;
 
   // Beam only hits near-ground player — jumping clears it
   if (p.state !== 'dead' && p.state !== 'hit' && !playerUnderCover() && p.y > GROUND_Y - 50) {
     const inB1 = Math.abs(PLAYER_SCREEN_X - b1) < 28;
-    const inB2 = useTwo && Math.abs(PLAYER_SCREEN_X - b2) < 28;
-    if (inB1 || inB2) {
+    const inB2 = useTwo  && Math.abs(PLAYER_SCREEN_X - b2) < 28;
+    const inB3 = useThree && Math.abs(PLAYER_SCREEN_X - b3) < 28;
+    if (inB1 || inB2 || inB3) {
       if (gs.powerUp?.type === 'shield') {
         gs.powerUp = null; gs.combo = 0;
         gs.p.hitFlash = 1.2; gs.p.state = 'hit';
@@ -1272,9 +1359,11 @@ function updateBoss(dt) {
   }
 
   if (boss.survivedT >= boss.surviveDur) {
-    gs.score     += 750;
+    gs.score     += boss.isFinal ? 2000 : 750;
     gs.nextBossD  = gs.distance + 2500 + Math.random() * 1000;
-    popup(gs.scrollX + PLAYER_SCREEN_X, 50, '🚔 OUTRAN THE FEDS!  +750', '#ff9800', 17);
+    const msg = boss.isFinal ? '👑 MOB BOSS DEFEATED!  +2000' : '🚔 OUTRAN THE FEDS!  +750';
+    const col = boss.isFinal ? '#ffd700' : '#ff9800';
+    popup(gs.scrollX + PLAYER_SCREEN_X, 50, msg, col, 17);
     shake(0.3, 4);
     boss.phase = 'retreat';
     unlockAchievement('survive_boss');
@@ -1288,14 +1377,17 @@ function drawBoss() {
 
   // ── Sweeping beam cones ──────────────────────────────────────
   if (boss.phase === 'pursue') {
-    const b1     = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
-    const b2     = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
-    const useTwo = boss.survivedT > 6;
+    const b1       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 1.5) * 140;
+    const b2       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 2.2 + 2.0) * 140;
+    const b3       = PLAYER_SCREEN_X + Math.sin(boss.beamT * 0.9 + 3.8) * 120;
+    const useTwo   = boss.survivedT > 6;
+    const useThree = boss.isFinal && boss.survivedT > 8;
+    const beamCol  = boss.isFinal ? 'rgba(255,215,0,' : 'rgba(255,60,60,';
 
     const drawBeam = (groundX) => {
       const grad = ctx.createLinearGradient(bx, by + 14, groundX, GROUND_Y + 20);
-      grad.addColorStop(0, 'rgba(255,60,60,0.42)');
-      grad.addColorStop(1, 'rgba(255,60,60,0)');
+      grad.addColorStop(0, beamCol + '0.45)');
+      grad.addColorStop(1, beamCol + '0)');
       ctx.save();
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -1309,7 +1401,8 @@ function drawBoss() {
     };
 
     drawBeam(b1);
-    if (useTwo) drawBeam(b2);
+    if (useTwo)   drawBeam(b2);
+    if (useThree) drawBeam(b3);
   }
 
   // ── Boss helicopter body (larger, red-tinted) ────────────────
@@ -1318,12 +1411,20 @@ function drawBoss() {
   ctx.scale(1.35, 1.35);
 
   // Fuselage
-  ctx.fillStyle = '#1a1a1a';
+  ctx.fillStyle = boss.isFinal ? '#2a1800' : '#1a1a1a';
   ctx.beginPath(); ctx.ellipse(0, 0, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Red warning stripe
-  ctx.fillStyle = '#bb2020';
+  // Warning stripe (gold for final boss)
+  ctx.fillStyle = boss.isFinal ? '#c8960f' : '#bb2020';
   ctx.fillRect(-14, -2, 28, 3);
+
+  // "MOB BOSS" label on final boss fuselage
+  if (boss.isFinal) {
+    ctx.fillStyle = '#ffd700';
+    ctx.font = 'bold 5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('MOB BOSS', 0, 2);
+  }
 
   // Cockpit (dark, menacing)
   ctx.fillStyle = '#182030';
@@ -1331,10 +1432,10 @@ function drawBoss() {
   ctx.fillStyle = 'rgba(255,50,50,0.18)';
   ctx.beginPath(); ctx.ellipse(-9, -3, 6, 4, -0.2, 0, Math.PI * 2); ctx.fill();
 
-  // Main rotor (red)
+  // Main rotor
   ctx.save();
   ctx.rotate(Date.now() * 0.025);
-  ctx.strokeStyle = '#cc3333'; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = boss.isFinal ? '#d4a017' : '#cc3333'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
   ctx.rotate(Math.PI / 2);
   ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(26, 0); ctx.stroke();
@@ -1400,10 +1501,10 @@ function drawBossHUD() {
 
   // Label
   const labelPulse = 0.75 + 0.25 * Math.sin(performance.now() / 250);
-  ctx.fillStyle = `rgba(255,50,50,${labelPulse})`;
+  ctx.fillStyle = boss.isFinal ? `rgba(255,215,0,${labelPulse})` : `rgba(255,50,50,${labelPulse})`;
   ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('⚠ APB MODE', LW / 2, by + 8);
+  ctx.fillText(boss.isFinal ? '👑 MOB BOSS' : '⚠ APB MODE', LW / 2, by + 8);
 
   // Progress bar track
   ctx.fillStyle = '#330000';
@@ -1706,7 +1807,7 @@ function updateProgression(dt) {
     shake(0.12, 3);
   }
   gs.difficulty = Math.min(4, Math.floor(gs.runTime / 30));
-  gs.score += Math.ceil((gs.speed / BASE_SPEED) * 2 * gs.scoreMulti * dt * 60);
+  gs.score += Math.ceil((gs.speed / BASE_SPEED) * 2 * gs.scoreMulti * gs.outfitBonus * dt * 60);
 
   // ToD
   gs.todT += dt;
@@ -1739,7 +1840,7 @@ function updateProgression(dt) {
   }
 
   // Boss encounter
-  if (!gs.boss && gs.difficulty >= 2 && gs.distance >= gs.nextBossD) {
+  if (!gs.boss && (gs.isFinalBoss ? gs.difficulty >= 1 : gs.difficulty >= 2) && gs.distance >= gs.nextBossD) {
     startBoss();
   }
 
@@ -3023,6 +3124,7 @@ function loop(ts) {
     updateHazards(dt);
     updateCrumble(dt);
     checkCollisions();
+    checkNearMiss();
     updateItems(dt);
     updatePowerUp(dt);
     updateBoostTrail(dt);
@@ -3096,6 +3198,18 @@ function startGame() {
   updateTodIcon();
   startJazz();
 
+  // Outfit bonus check
+  const activePair = OUTFIT_PAIRS.find(p => p.skin === getActiveSkin() && p.hat === getActiveHat());
+  if (activePair) {
+    gs.outfitBonus = 1.05;
+    document.getElementById('outfit-hud-badge').classList.remove('hidden');
+    setTimeout(() => {
+      if (gs && gs.phase === 'playing') popup(gs.scrollX + PLAYER_SCREEN_X, GROUND_Y - 60, activePair.name.toUpperCase() + ' SET! +5%', '#ffd700', 12);
+    }, 900);
+  } else {
+    document.getElementById('outfit-hud-badge').classList.add('hidden');
+  }
+
   // Upgrade: Lucky Start — grant a random power-up at run start
   if (hasUpgrade('luckystart')) {
     const t = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
@@ -3128,7 +3242,14 @@ function showGameOver() {
   document.getElementById('gameover-screen').style.setProperty('--zone-accent', ZONES[gs.zoneIdx].accent);
   const nb = document.getElementById('go-newbest');
   if (isNewBest) nb.classList.remove('hidden'); else nb.classList.add('hidden');
-  if (gs.isDaily) {
+  if (gs.isStory) {
+    dailyRNG = null;
+    document.getElementById('retry-btn').classList.add('hidden');
+    document.getElementById('daily-go-msg').textContent = '📖 ' + STORY_CHAPTERS[gs.storyChapter].title;
+    document.getElementById('daily-go-msg').classList.remove('hidden');
+    // Advance story after a brief pause so stats are visible
+    setTimeout(advanceStory, 2200);
+  } else if (gs.isDaily) {
     saveDailyResult(s);
     dailyRNG = null;
     document.getElementById('retry-btn').classList.add('hidden');
@@ -3220,6 +3341,32 @@ function toggleMute() {
   if (muted) stopJazz(); else if (gs.phase === 'playing') startJazz();
 }
 
+function openSoundPanel() {
+  document.getElementById('music-slider').value = Math.round(musicVol * 100);
+  document.getElementById('sfx-slider').value   = Math.round(sfxVol   * 100);
+  document.getElementById('music-pct').textContent = Math.round(musicVol * 100) + '%';
+  document.getElementById('sfx-pct').textContent   = Math.round(sfxVol   * 100) + '%';
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('sound-panel').classList.remove('hidden');
+}
+function closeSoundPanel() {
+  document.getElementById('sound-panel').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+function onMusicSlider(val) {
+  musicVol = parseInt(val) / 100;
+  localStorage.setItem('rr_music_vol', musicVol);
+  document.getElementById('music-pct').textContent = val + '%';
+  if (jazzGain && audioCtx) {
+    jazzGain.gain.linearRampToValueAtTime(0.55 * musicVol, audioCtx.currentTime + 0.08);
+  }
+}
+function onSfxSlider(val) {
+  sfxVol = parseInt(val) / 100;
+  localStorage.setItem('rr_sfx_vol', sfxVol);
+  document.getElementById('sfx-pct').textContent = val + '%';
+}
+
 function startDailyGame() {
   if (hasPlayedToday()) return;
   dailyRNG = makeDailySeed(getDailyDateKey());
@@ -3239,6 +3386,75 @@ function refreshDailyBtn() {
   }
 }
 
+// ─── STORY MODE FUNCTIONS ───────────────────────────────────────
+function openStoryScreen() {
+  const unlocked = getStoryProgress();
+  const scores   = getStoryScores();
+  document.getElementById('story-grid').innerHTML = STORY_CHAPTERS.map((ch, i) => {
+    const isLocked  = i > unlocked;
+    const cardCls   = isLocked ? 'story-card locked' : (scores[i] ? 'story-card done' : 'story-card');
+    const scoreStr  = scores[i] ? `<div class="sc-score">Best: ${scores[i].toLocaleString()}</div>` : '';
+    const lockIcon  = isLocked ? `<div class="sc-lock">🔒</div>` : '';
+    const click     = isLocked ? '' : `onclick="startStoryChapter(${i})"`;
+    return `<div class="${cardCls}" ${click}>
+      <div class="sc-num">Chapter ${i + 1}</div>
+      <div class="sc-title">${ch.title.replace(/^Ch\.\d+ — /, '')}</div>
+      ${scoreStr}
+      ${lockIcon}
+    </div>`;
+  }).join('');
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('story-screen').classList.remove('hidden');
+}
+
+function closeStoryScreen() {
+  document.getElementById('story-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function showStoryCutscene(chIdx, type, onContinue) {
+  const ch = STORY_CHAPTERS[chIdx];
+  document.getElementById('cutscene-chapter').textContent = ch.title;
+  document.getElementById('cutscene-text').innerHTML = (type === 'before' ? ch.before : ch.after).replace(/\n/g, '<br>');
+  const btn = document.getElementById('cutscene-continue-btn');
+  btn.onclick = () => {
+    document.getElementById('cutscene-screen').classList.add('hidden');
+    onContinue();
+  };
+  document.getElementById('cutscene-screen').classList.remove('hidden');
+}
+
+function startStoryChapter(idx) {
+  document.getElementById('story-screen').classList.add('hidden');
+  showStoryCutscene(idx, 'before', () => {
+    dailyRNG = sfc32FromSeed(STORY_SEEDS[idx]);
+    startGame();
+    gs.isStory      = true;
+    gs.storyChapter = idx;
+    if (idx === 4) {
+      gs.isFinalBoss = true;
+      gs.nextBossD   = 800;
+    }
+  });
+}
+
+function advanceStory() {
+  if (!gs || gs.phase !== 'gameover' || !gs.isStory) return;
+  const ch    = gs.storyChapter;
+  const score = Math.floor(gs.score);
+  saveStoryScore(ch, score);
+  // Unlock next chapter if not already unlocked
+  const prev = getStoryProgress();
+  if (ch >= prev && ch < STORY_CHAPTERS.length - 1) setStoryProgress(ch + 1);
+  else if (ch === STORY_CHAPTERS.length - 1) localStorage.setItem('rr_story_done', 'true');
+
+  // Show after-cutscene, then go to story screen
+  document.getElementById('gameover-screen').classList.add('hidden');
+  showStoryCutscene(ch, 'after', () => {
+    openStoryScreen();
+  });
+}
+
 // ─── EVENT LISTENERS ───────────────────────────────────────────
 document.getElementById('play-btn').addEventListener('click', () => { ensureAudio(); startGame(); });
 document.getElementById('daily-btn').addEventListener('click', () => { ensureAudio(); startDailyGame(); });
@@ -3253,9 +3469,14 @@ document.getElementById('menu-btn-go').addEventListener('click', () => {
   document.getElementById('gameover-screen').classList.add('hidden');
   document.getElementById('start-screen').classList.remove('hidden');
   document.getElementById('hud').classList.add('hidden');
+  document.getElementById('outfit-hud-badge').classList.add('hidden');
 });
 document.getElementById('mute-btn').addEventListener('click', toggleMute);
 document.getElementById('editor-btn').addEventListener('click', () => { window.location.href = 'editor.html'; });
+document.getElementById('sound-btn').addEventListener('click', openSoundPanel);
+document.getElementById('sound-close-btn').addEventListener('click', closeSoundPanel);
+document.getElementById('story-btn').addEventListener('click', openStoryScreen);
+document.getElementById('story-close-btn').addEventListener('click', closeStoryScreen);
 
 canvas.addEventListener('click', () => { ensureAudio(); if (gs.phase === 'start') startGame(); });
 
@@ -3314,10 +3535,13 @@ function renderShop() {
       btnHtml  = `<button class="card-btn select-btn" onclick="selectSkin('${s.id}')">Equip</button>`;
       costHtml = `<div class="card-cost"></div>`;
     }
+    const skinPair = OUTFIT_PAIRS.find(p => p.skin === s.id);
+    const pairHint = skinPair ? `<div class="card-desc" style="color:#ffd700">👑 +5% w/ ${HATS.find(h=>h.id===skinPair.hat)?.name}</div>` : '';
     return `<div class="${cardCls}">
       <canvas class="skin-preview" id="skin-prev-${s.id}" width="28" height="28"></canvas>
       <div class="card-name">${s.name}</div>
       ${costHtml}
+      ${pairHint}
       ${btnHtml}
     </div>`;
   }).join('');
@@ -3357,9 +3581,12 @@ function renderShop() {
     } else {
       btnHtml = `<button class="card-btn select-btn" onclick="selectHat('${h.id}')">Equip</button>`;
     }
+    const hatPairs = OUTFIT_PAIRS.filter(p => p.hat === h.id);
+    const hatPairHint = hatPairs.length ? `<div class="card-desc" style="color:#ffd700">👑 +5% w/ ${hatPairs.map(p => SKINS.find(s=>s.id===p.skin)?.name).join(' / ')}</div>` : '';
     return `<div class="${cardCls}">
       <div class="card-name">${h.name}</div>
       <div class="card-cost">${h.cost === 0 ? '<span class="free">Free</span>' : (isOwned ? '' : h.cost + ' \uD83E\uDE99')}</div>
+      ${hatPairHint}
       ${btnHtml}
     </div>`;
   }).join('');
