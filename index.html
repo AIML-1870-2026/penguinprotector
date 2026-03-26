@@ -169,20 +169,20 @@
             transform: translateY(-4px);
         }
 
-        /* Rat Race is now first */
-        .project-card:nth-child(1)  { --glow: 255, 80, 120; }
-        .project-card:nth-child(2)  { --glow: 0, 255, 100; }
-        .project-card:nth-child(3)  { --glow: 180, 0, 255; }
-        .project-card:nth-child(4)  { --glow: 0, 180, 255; }
-        .project-card:nth-child(5)  { --glow: 255, 200, 0; }
-        .project-card:nth-child(6)  { --glow: 255, 0, 150; }
-        .project-card:nth-child(7)  { --glow: 0, 255, 200; }
-        .project-card:nth-child(8)  { --glow: 255, 100, 50; }
-        .project-card:nth-child(9)  { --glow: 99, 102, 241; }
-        .project-card:nth-child(10) { --glow: 255, 100, 200; }
-        .project-card:nth-child(11) { --glow: 150, 255, 50; }
-        .project-card:nth-child(12) { --glow: 212, 175, 55; }
-        .project-card:nth-child(13) { --glow: 0, 200, 255; }
+        /* Weather Dashboard is now featured (1), Rat Race at 2 */
+        .project-card:nth-child(1)  { --glow: 0, 200, 255; }
+        .project-card:nth-child(2)  { --glow: 255, 80, 120; }
+        .project-card:nth-child(3)  { --glow: 0, 255, 100; }
+        .project-card:nth-child(4)  { --glow: 180, 0, 255; }
+        .project-card:nth-child(5)  { --glow: 0, 180, 255; }
+        .project-card:nth-child(6)  { --glow: 255, 200, 0; }
+        .project-card:nth-child(7)  { --glow: 255, 0, 150; }
+        .project-card:nth-child(8)  { --glow: 0, 255, 200; }
+        .project-card:nth-child(9)  { --glow: 255, 100, 50; }
+        .project-card:nth-child(10) { --glow: 99, 102, 241; }
+        .project-card:nth-child(11) { --glow: 255, 100, 200; }
+        .project-card:nth-child(12) { --glow: 150, 255, 50; }
+        .project-card:nth-child(13) { --glow: 212, 175, 55; }
 
         .project-card h2 {
             font-size: 18px;
@@ -406,39 +406,45 @@
     <div class="projects">
 
         <!-- ★ Featured: latest project -->
-        <a href="endless-runner/" class="project-card featured">
+        <a href="weather-dashboard/" class="project-card featured">
             <div class="featured-inner">
                 <div class="featured-text">
                     <div class="featured-label">★ Latest Project</div>
-                    <h2>🐀 Rat Race</h2>
-                    <p>City rooftop endless runner — sprint, jump, and slide across urban skylines with ghost racing, time-of-day cycles, zone progression, a full upgrade shop, and an APB boss encounter.</p>
+                    <h2>🌦️ Weather Dashboard</h2>
+                    <p>Real-time weather dashboard powered by OpenWeatherMap — search any city, use geolocation, toggle °C/°F, and view current conditions alongside a full 5-day forecast with search history.</p>
                     <div class="featured-pills">
-                        <span class="tag">GAME</span>
-                        <span class="feat-pill">Ghost Racing</span>
-                        <span class="feat-pill">APB Boss Mode</span>
-                        <span class="feat-pill">Upgrade Shop</span>
-                        <span class="feat-pill">Achievements</span>
+                        <span class="tag">API / DATA</span>
+                        <span class="feat-pill">Geolocation</span>
+                        <span class="feat-pill">5-Day Forecast</span>
+                        <span class="feat-pill">Search History</span>
+                        <span class="feat-pill">C/F Toggle</span>
                     </div>
                 </div>
                 <div class="featured-stats">
                     <div class="feat-stat">
-                        <span class="feat-num">15</span>
-                        <div class="feat-lbl">Chunk Types</div>
-                    </div>
-                    <div class="feat-stat">
-                        <span class="feat-num">10</span>
-                        <div class="feat-lbl">Achievements</div>
+                        <span class="feat-num">2</span>
+                        <div class="feat-lbl">API Endpoints</div>
                     </div>
                     <div class="feat-stat">
                         <span class="feat-num">5</span>
-                        <div class="feat-lbl">Rat Skins</div>
+                        <div class="feat-lbl">Day Forecast</div>
                     </div>
                     <div class="feat-stat">
                         <span class="feat-num">6</span>
-                        <div class="feat-lbl">Time Phases</div>
+                        <div class="feat-lbl">Live Stats</div>
+                    </div>
+                    <div class="feat-stat">
+                        <span class="feat-num">5</span>
+                        <div class="feat-lbl">History Slots</div>
                     </div>
                 </div>
             </div>
+        </a>
+
+        <a href="endless-runner/" class="project-card">
+            <h2>🐀 Rat Race</h2>
+            <p>City rooftop endless runner — sprint, jump, and slide across urban skylines with ghost racing, time-of-day cycles, zone progression, a full upgrade shop, and an APB boss encounter.</p>
+            <span class="tag">GAME</span>
         </a>
 
         <a href="snake-quest/" class="project-card">
@@ -505,12 +511,6 @@
             <h2>🃏 Blackjack Quest</h2>
             <p>Full-featured casino blackjack with split, double down, insurance, card flip animations, strategy hints, Hi-Lo counting, and three themes.</p>
             <span class="tag">GAME</span>
-        </a>
-
-        <a href="weather-dashboard/" class="project-card">
-            <h2>🌦️ Weather Dashboard</h2>
-            <p>Real-time weather via OpenWeatherMap — city search, geolocation, C/F toggle, current conditions, sunrise/sunset, and a 5-day forecast with search history.</p>
-            <span class="tag">API / DATA</span>
         </a>
 
     </div>
