@@ -49,6 +49,17 @@ body {
     align-items: center;
 }
 
+/* ── Weather gradient background ─────────────────────────────────── */
+#weather-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: background 3s ease, opacity 3s ease;
+}
+
 /* ── Canvas background ────────────────────────────────────────────── */
 #bg-canvas {
     position: fixed;
@@ -494,6 +505,13 @@ main {
     margin-top: 4px;
 }
 
+.fc-pop {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: rgba(100,180,255,0.7);
+    margin-top: 2px;
+}
+
 /* ── AQI badge colors ─────────────────────────────────────────────── */
 .aqi-1 { color: #00e676 !important; }   /* Good       */
 .aqi-2 { color: #aeea00 !important; }   /* Fair       */
@@ -527,6 +545,7 @@ body[data-mode="light"] .feels-like,
 body[data-mode="light"] .fc-desc,
 body[data-mode="light"] .fc-range,
 body[data-mode="light"] .stat-label { color: rgba(26,26,46,0.5); }
+body[data-mode="light"] .fc-pop { color: rgba(0,100,200,0.6); }
 body[data-mode="light"] .temperature,
 body[data-mode="light"] .fc-temp    { color: #1a1a2e; }
 

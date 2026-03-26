@@ -9,6 +9,16 @@ const MODE_KEY    = 'wx_mode';
 
 const AQI_LABELS = ['', 'Good', 'Fair', 'Moderate', 'Poor', 'Very Poor'];
 
+const WEATHER_GRADIENTS = {
+    thunderstorm: 'radial-gradient(ellipse at 20% 5%, rgba(80,20,160,0.55) 0%, transparent 55%), radial-gradient(ellipse at 80% 90%, rgba(30,0,80,0.4) 0%, transparent 55%)',
+    drizzle:      'radial-gradient(ellipse at 50% 0%, rgba(80,120,180,0.45) 0%, transparent 60%)',
+    rain:         'radial-gradient(ellipse at 30% 0%, rgba(40,80,160,0.5) 0%, transparent 58%), radial-gradient(ellipse at 75% 95%, rgba(20,50,120,0.35) 0%, transparent 55%)',
+    snow:         'radial-gradient(ellipse at 50% 0%, rgba(180,210,255,0.35) 0%, transparent 65%)',
+    fog:          'radial-gradient(ellipse at 50% 30%, rgba(150,135,115,0.3) 0%, transparent 65%)',
+    clear:        'radial-gradient(ellipse at 72% 8%, rgba(255,195,70,0.28) 0%, transparent 52%)',
+    clouds:       'radial-gradient(ellipse at 40% 0%, rgba(90,110,140,0.3) 0%, transparent 60%)',
+};
+
 const THEME_PARTICLES = {
     cyber:   { r: 0,   g: 210, b: 255 },
     ember:   { r: 255, g: 140, b: 0   },
@@ -18,6 +28,22 @@ const THEME_PARTICLES = {
 };
 
 let particleRGB = { ...THEME_PARTICLES.cyber };
+
+// ── Weather background ─────────────────────────────────────────────
+const weatherBg = document.getElementById('weather-bg');
+
+function applyWeatherBg(id) {
+    let key;
+    if      (id >= 200 && id < 300) key = 'thunderstorm';
+    else if (id >= 300 && id < 400) key = 'drizzle';
+    else if (id >= 500 && id < 600) key = 'rain';
+    else if (id >= 600 && id < 700) key = 'snow';
+    else if (id >= 700 && id < 800) key = 'fog';
+    else if (id === 800)            key = 'clear';
+    else                            key = 'clouds';
+    weatherBg.style.background = WEATHER_GRADIENTS[key];
+    weatherBg.style.opacity    = '1';
+}
 
 // ── DOM refs ───────────────────────────────────────────────────────
 const cityInput      = document.getElementById('city-input');
@@ -158,6 +184,7 @@ function renderCurrent(data) {
     sunriseEl.textContent   = formatTime(data.sys.sunrise, data.timezone);
     sunsetEl.textContent    = formatTime(data.sys.sunset,  data.timezone);
 
+    applyWeatherBg(data.weather[0].id);
     currentCard.hidden = false;
 }
 
@@ -185,6 +212,8 @@ function renderForecast(data) {
         const tempMin = Math.round(Math.min(...entries.map(e => e.main.temp_min)));
         const dayName = DAY_NAMES[new Date(date + 'T12:00:00').getDay()];
 
+        const maxPop = Math.round(Math.max(...entries.map(e => (e.pop || 0))) * 100);
+
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
@@ -192,6 +221,7 @@ function renderForecast(data) {
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
+            <div class="fc-pop">💧 ${maxPop}%</div>
         </div>`;
     }).join('');
 
