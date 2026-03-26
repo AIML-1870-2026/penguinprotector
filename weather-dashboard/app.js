@@ -20,11 +20,15 @@ const WEATHER_GRADIENTS = {
 };
 
 const THEME_PARTICLES = {
-    cyber:   { r: 0,   g: 210, b: 255 },
-    ember:   { r: 255, g: 140, b: 0   },
-    aurora:  { r: 120, g: 60,  b: 255 },
-    verdant: { r: 0,   g: 200, b: 90  },
-    crimson: { r: 220, g: 40,  b: 80  },
+    cyber:    { r: 0,   g: 210, b: 255 },
+    ember:    { r: 255, g: 140, b: 0   },
+    aurora:   { r: 120, g: 60,  b: 255 },
+    verdant:  { r: 0,   g: 200, b: 90  },
+    crimson:  { r: 220, g: 40,  b: 80  },
+    blush:    { r: 255, g: 160, b: 180 },
+    sky:      { r: 120, g: 190, b: 255 },
+    sage:     { r: 140, g: 200, b: 150 },
+    lavender: { r: 195, g: 165, b: 255 },
 };
 
 let particleRGB = { ...THEME_PARTICLES.cyber };
