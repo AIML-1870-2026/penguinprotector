@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-theme="cyber">
     <canvas id="bg-canvas"></canvas>
 
     <header>
@@ -27,16 +27,25 @@
                 <button id="search-btn">Get Weather</button>
             </div>
 
-            <!-- Unit toggle -->
-            <div class="unit-toggle">
-                <label class="radio-label">
-                    <input type="radio" name="units" value="metric" checked />
-                    <span>°C</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="units" value="imperial" />
-                    <span>°F</span>
-                </label>
+            <!-- Controls row: unit toggle + theme picker -->
+            <div class="search-controls-row">
+                <div class="unit-toggle">
+                    <label class="radio-label">
+                        <input type="radio" name="units" value="imperial" checked />
+                        <span>°F</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="units" value="metric" />
+                        <span>°C</span>
+                    </label>
+                </div>
+                <div class="theme-picker">
+                    <button class="theme-dot active" data-theme="cyber"   title="Cyber"   style="--dot: rgb(0,243,255)"></button>
+                    <button class="theme-dot"        data-theme="ember"   title="Ember"   style="--dot: rgb(255,160,0)"></button>
+                    <button class="theme-dot"        data-theme="aurora"  title="Aurora"  style="--dot: rgb(130,80,255)"></button>
+                    <button class="theme-dot"        data-theme="verdant" title="Verdant" style="--dot: rgb(0,230,100)"></button>
+                    <button class="theme-dot"        data-theme="crimson" title="Crimson" style="--dot: rgb(255,60,100)"></button>
+                </div>
             </div>
 
             <!-- Search history -->

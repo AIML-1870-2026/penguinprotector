@@ -3,6 +3,18 @@ const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 const ICON_URL = icon => `https://openweathermap.org/img/wn/${icon}@2x.png`;
 const HISTORY_KEY = 'wx_history';
 const MAX_HISTORY = 5;
+const THEME_KEY   = 'wx_theme';
+const UNIT_KEY    = 'wx_units';
+
+const THEME_PARTICLES = {
+    cyber:   { r: 0,   g: 210, b: 255 },
+    ember:   { r: 255, g: 140, b: 0   },
+    aurora:  { r: 120, g: 60,  b: 255 },
+    verdant: { r: 0,   g: 200, b: 90  },
+    crimson: { r: 220, g: 40,  b: 80  },
+};
+
+let particleRGB = { ...THEME_PARTICLES.cyber };
 
 // ── DOM refs ───────────────────────────────────────────────────────
 const cityInput      = document.getElementById('city-input');
@@ -250,13 +262,39 @@ geoBtn.addEventListener('click', () => {
 // Re-fetch with new units when toggled (if a result is already showing)
 document.querySelectorAll('input[name="units"]').forEach(radio => {
     radio.addEventListener('change', () => {
+        localStorage.setItem(UNIT_KEY, getUnits());
         const city = cityNameEl.textContent.split(',')[0].trim();
         if (city) fetchByCity(city);
     });
 });
 
+// ── Theme ───────────────────────────────────────────────────────────
+function setTheme(name) {
+    if (!THEME_PARTICLES[name]) return;
+    document.body.dataset.theme = name;
+    particleRGB = { ...THEME_PARTICLES[name] };
+    localStorage.setItem(THEME_KEY, name);
+    document.querySelectorAll('.theme-dot').forEach(d =>
+        d.classList.toggle('active', d.dataset.theme === name)
+    );
+}
+
+document.querySelectorAll('.theme-dot').forEach(dot =>
+    dot.addEventListener('click', () => setTheme(dot.dataset.theme))
+);
+
 // ── Init ───────────────────────────────────────────────────────────
 renderHistory();
+
+// Restore saved theme
+setTheme(localStorage.getItem(THEME_KEY) || 'cyber');
+
+// Restore saved unit
+const savedUnit = localStorage.getItem(UNIT_KEY);
+if (savedUnit) {
+    const radio = document.querySelector(`input[name="units"][value="${savedUnit}"]`);
+    if (radio) radio.checked = true;
+}
 
 // ── Canvas constellation background ───────────────────────────────
 const bgCanvas = document.getElementById('bg-canvas');
@@ -284,7 +322,7 @@ function initParticles() {
 
 function drawBg() {
     bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-    const r = 0, g = 210, b = 255;
+    const { r, g, b } = particleRGB;
     const maxDist = 130;
 
     particles.forEach(p => {

@@ -4,10 +4,43 @@
     --cyan:    0, 243, 255;
     --magenta: 255, 0, 200;
     --green:   0, 255, 130;
+    --bg:      #0a0a1a;
+}
+
+/* ── Themes ─────────────────────────────────────────────────────────── */
+[data-theme="cyber"] {
+    --cyan:    0, 243, 255;
+    --magenta: 255, 0, 200;
+    --green:   0, 255, 130;
+    --bg:      #0a0a1a;
+}
+[data-theme="ember"] {
+    --cyan:    255, 160, 0;
+    --magenta: 255, 60, 40;
+    --green:   255, 210, 0;
+    --bg:      #0f0800;
+}
+[data-theme="aurora"] {
+    --cyan:    130, 80, 255;
+    --magenta: 220, 60, 255;
+    --green:   0, 220, 200;
+    --bg:      #08060f;
+}
+[data-theme="verdant"] {
+    --cyan:    0, 230, 100;
+    --magenta: 80, 255, 160;
+    --green:   200, 255, 0;
+    --bg:      #04100a;
+}
+[data-theme="crimson"] {
+    --cyan:    255, 60, 100;
+    --magenta: 255, 150, 50;
+    --green:   255, 90, 40;
+    --bg:      #100408;
 }
 
 body {
-    background: #0a0a1a;
+    background: var(--bg);
     color: #e0e0e0;
     font-family: 'EB Garamond', Garamond, 'Times New Roman', serif;
     min-height: 100vh;
@@ -181,6 +214,13 @@ main {
     background: rgba(var(--cyan), 0.1);
 }
 
+/* ── Controls row ─────────────────────────────────────────────────── */
+.search-controls-row {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+}
+
 /* ── Unit toggle ──────────────────────────────────────────────────── */
 .unit-toggle {
     display: flex;
@@ -198,6 +238,32 @@ main {
 }
 .radio-label:has(input:checked) { color: rgb(var(--cyan)); }
 .radio-label input[type="radio"] { accent-color: rgb(var(--cyan)); }
+
+/* ── Theme picker ─────────────────────────────────────────────────── */
+.theme-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.theme-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--dot);
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: 0 0 6px var(--dot);
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.theme-dot:hover {
+    transform: scale(1.25);
+    box-shadow: 0 0 10px var(--dot);
+}
+.theme-dot.active {
+    border-color: rgba(224,224,224,0.8);
+    transform: scale(1.15);
+}
 
 /* ── Search history ───────────────────────────────────────────────── */
 .history-row {
