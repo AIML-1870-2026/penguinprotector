@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard — penguinprotector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <header>
+        <a href="../" class="back-link">← Portfolio</a>
+        <h1 data-text="Weather Dashboard">Weather Dashboard</h1>
+        <p class="subtitle">Real-Time Conditions &amp; 5-Day Forecast</p>
+    </header>
+
+    <main>
+        <!-- Search bar -->
+        <section class="search-section">
+            <div class="search-row">
+                <input id="city-input" type="text" placeholder="Enter city name…" autocomplete="off" />
+                <button id="geo-btn" title="Use my location">📍</button>
+                <button id="search-btn">Get Weather</button>
+            </div>
+
+            <!-- Unit toggle -->
+            <div class="unit-toggle">
+                <label class="radio-label">
+                    <input type="radio" name="units" value="metric" checked />
+                    <span>°C</span>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="units" value="imperial" />
+                    <span>°F</span>
+                </label>
+            </div>
+
+            <!-- Search history -->
+            <div id="history-row" class="history-row" hidden></div>
+        </section>
+
+        <!-- Error message -->
+        <p id="error-msg" class="error-msg" hidden></p>
+
+        <!-- Loading spinner -->
+        <div id="loader" class="loader" hidden>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Current weather card -->
+        <section id="current-card" class="current-card" hidden>
+            <div class="current-top">
+                <div class="current-left">
+                    <div id="city-name" class="city-name"></div>
+                    <div id="weather-desc" class="weather-desc"></div>
+                    <div class="temp-row">
+                        <img id="weather-icon" class="weather-icon" src="" alt="" />
+                        <span id="temperature" class="temperature"></span>
+                    </div>
+                    <div id="feels-like" class="feels-like"></div>
+                </div>
+                <div class="current-right">
+                    <div class="stat-grid">
+                        <div class="stat">
+                            <span class="stat-label">Humidity</span>
+                            <span id="humidity" class="stat-value"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Wind</span>
+                            <span id="wind" class="stat-value"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Pressure</span>
+                            <span id="pressure" class="stat-value"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Visibility</span>
+                            <span id="visibility" class="stat-value"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Sunrise</span>
+                            <span id="sunrise" class="stat-value"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Sunset</span>
+                            <span id="sunset" class="stat-value"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5-Day Forecast -->
+        <section id="forecast-section" class="forecast-section" hidden>
+            <h2 class="section-title">5-Day Forecast</h2>
+            <div id="forecast-cards" class="forecast-cards"></div>
+        </section>
+    </main>
+
+    <footer>AIML-1870-2026 · penguinprotector</footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
