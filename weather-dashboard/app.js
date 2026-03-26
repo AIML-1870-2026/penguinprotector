@@ -205,8 +205,9 @@ function renderForecast(data) {
         byDay[date].push(item);
     });
 
-    // Skip today (first key), take up to 5 following days
-    const days = Object.keys(byDay).slice(1, 6);
+    // Skip today, take up to 5 following days
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const days = Object.keys(byDay).filter(d => d !== todayStr).slice(0, 5);
 
     forecastCards.innerHTML = days.map(date => {
         const entries = byDay[date];
