@@ -1,6 +1,44 @@
 const API_KEY = '83301ee6bbb55308cf3054fe3afc3ee3';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
-const ICON_URL = icon => `https://openweathermap.org/img/wn/${icon}@2x.png`;
+const SUN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="none" stroke="#FFE566" stroke-width="5.5" stroke-linecap="round">
+    <line x1="50" y1="4"  x2="50" y2="20"/>
+    <line x1="50" y1="80" x2="50" y2="96"/>
+    <line x1="4"  y1="50" x2="20" y2="50"/>
+    <line x1="80" y1="50" x2="96" y2="50"/>
+    <line x1="15.6" y1="15.6" x2="26.9" y2="26.9"/>
+    <line x1="73.1" y1="73.1" x2="84.4" y2="84.4"/>
+    <line x1="84.4" y1="15.6" x2="73.1" y2="26.9"/>
+    <line x1="15.6" y1="84.4" x2="26.9" y2="73.1"/>
+  </g>
+  <circle cx="50" cy="50" r="22" fill="#FFE566" stroke="#FFD700" stroke-width="1.5"/>
+</svg>`;
+const SUN_ICON_URL = 'data:image/svg+xml,' + encodeURIComponent(SUN_ICON_SVG);
+
+const PARTLY_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="none" stroke="#FFE566" stroke-width="5" stroke-linecap="round">
+    <line x1="64" y1="4"  x2="64" y2="15"/>
+    <line x1="64" y1="41" x2="64" y2="50"/>
+    <line x1="38" y1="28" x2="48" y2="28"/>
+    <line x1="80" y1="28" x2="91" y2="28"/>
+    <line x1="46.2" y1="10.2" x2="54" y2="18"/>
+    <line x1="74"   y1="38"   x2="81.8" y2="45.8"/>
+    <line x1="81.8" y1="10.2" x2="74"   y2="18"/>
+    <line x1="54"   y1="38"   x2="46.2" y2="45.8"/>
+  </g>
+  <circle cx="64" cy="28" r="16" fill="#FFE566" stroke="#FFD700" stroke-width="1.5"/>
+  <circle cx="32" cy="73" r="15" fill="#c8d8ea"/>
+  <circle cx="50" cy="66" r="19" fill="#c8d8ea"/>
+  <circle cx="68" cy="71" r="14" fill="#c8d8ea"/>
+  <rect x="17" y="73" width="65" height="17" fill="#c8d8ea"/>
+</svg>`;
+const PARTLY_SUNNY_URL = 'data:image/svg+xml,' + encodeURIComponent(PARTLY_SUNNY_SVG);
+
+const ICON_URL = icon => {
+    if (icon.startsWith('01')) return SUN_ICON_URL;
+    if (icon.startsWith('02')) return PARTLY_SUNNY_URL;
+    return `https://openweathermap.org/img/wn/${icon}@2x.png`;
+};
 const HISTORY_KEY = 'wx_history';
 const MAX_HISTORY = 5;
 const THEME_KEY   = 'wx_theme';
@@ -182,8 +220,10 @@ function renderCurrent(data) {
 
     cityNameEl.textContent  = `${data.name}, ${data.sys.country}`;
     weatherDesc.textContent = data.weather[0].description;
-    weatherIcon.src         = ICON_URL(data.weather[0].icon);
+    const iconCode = data.weather[0].icon;
+    weatherIcon.src         = ICON_URL(iconCode);
     weatherIcon.alt         = data.weather[0].description;
+    weatherIcon.dataset.custom = iconCode.startsWith('01') || iconCode.startsWith('02') ? 'sun' : '';
     temperature.textContent = `${Math.round(data.main.temp)}${sym}`;
     feelsLike.textContent   = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
 
@@ -230,7 +270,7 @@ function renderForecast(data) {
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
-            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" />
+            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon.startsWith('01') || noon.weather[0].icon.startsWith('02') ? 'sun' : ''}" />
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
