@@ -57,19 +57,6 @@ const WEATHER_GRADIENTS = {
     clouds:       'radial-gradient(ellipse at 40% 0%, rgba(90,110,140,0.3) 0%, transparent 60%)',
 };
 
-const THEME_PARTICLES = {
-    cyber:    { r: 0,   g: 210, b: 255 },
-    ember:    { r: 255, g: 140, b: 0   },
-    aurora:   { r: 120, g: 60,  b: 255 },
-    verdant:  { r: 0,   g: 200, b: 90  },
-    crimson:  { r: 220, g: 40,  b: 80  },
-    blush:    { r: 255, g: 160, b: 180 },
-    sky:      { r: 120, g: 190, b: 255 },
-    sage:     { r: 140, g: 200, b: 150 },
-    lavender: { r: 195, g: 165, b: 255 },
-};
-
-let particleRGB = { ...THEME_PARTICLES.cyber };
 
 // ── Weather background ─────────────────────────────────────────────
 const weatherBg = document.getElementById('weather-bg');
@@ -85,6 +72,7 @@ function applyWeatherBg(id) {
     else                            key = 'clouds';
     weatherBg.style.background = WEATHER_GRADIENTS[key];
     weatherBg.style.opacity    = '1';
+    setWeatherEffect(id);
 }
 
 // ── DOM refs ───────────────────────────────────────────────────────
@@ -400,10 +388,11 @@ document.querySelectorAll('input[name="units"]').forEach(radio => {
 });
 
 // ── Theme ───────────────────────────────────────────────────────────
+const VALID_THEMES = new Set(['cyber','ember','aurora','verdant','crimson','blush','sky','sage','lavender']);
+
 function setTheme(name) {
-    if (!THEME_PARTICLES[name]) return;
+    if (!VALID_THEMES.has(name)) return;
     document.body.dataset.theme = name;
-    particleRGB = { ...THEME_PARTICLES[name] };
     localStorage.setItem(THEME_KEY, name);
     document.querySelectorAll('.theme-dot').forEach(d =>
         d.classList.toggle('active', d.dataset.theme === name)
@@ -430,80 +419,75 @@ if (savedUnit) {
     if (radio) radio.checked = true;
 }
 
-// ── Canvas constellation background ───────────────────────────────
+// ── Canvas rain effect ────────────────────────────────────────────
 const bgCanvas = document.getElementById('bg-canvas');
 const bgCtx    = bgCanvas.getContext('2d');
-let particles  = [];
-const mouse    = { x: -9999, y: -9999 };
+let rainDrops  = [];
+let currentWeatherId = null;
+
+function isRainCondition(id) {
+    return id >= 200 && id < 600;
+}
+
+function rainCount(id) {
+    if (id >= 200 && id < 300) return 200; // thunderstorm — heavy
+    if (id >= 300 && id < 400) return 80;  // drizzle — light
+    return 150;                             // rain — moderate
+}
 
 function resizeBg() {
     bgCanvas.width  = window.innerWidth;
     bgCanvas.height = window.innerHeight;
-    initParticles();
+    initRain();
 }
 
-function initParticles() {
-    const count = Math.min(Math.floor((bgCanvas.width * bgCanvas.height) / 16000), 72);
-    particles = Array.from({ length: count }, () => ({
-        x:  Math.random() * bgCanvas.width,
-        y:  Math.random() * bgCanvas.height,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        r:  Math.random() * 1.2 + 0.4,
-        op: Math.random() * 0.35 + 0.2,
+function setWeatherEffect(id) {
+    currentWeatherId = id;
+    initRain();
+}
+
+function initRain() {
+    if (!currentWeatherId || !isRainCondition(currentWeatherId)) {
+        rainDrops = [];
+        return;
+    }
+    const count = rainCount(currentWeatherId);
+    rainDrops = Array.from({ length: count }, () => ({
+        x:     Math.random() * bgCanvas.width,
+        y:     Math.random() * bgCanvas.height,
+        len:   Math.random() * 14 + 8,
+        speed: Math.random() * 5 + 9,
+        op:    Math.random() * 0.2 + 0.08,
     }));
 }
 
 function drawBg() {
     bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-    const { r, g, b } = particleRGB;
-    const maxDist = 130;
 
-    particles.forEach(p => {
-        const dx = mouse.x - p.x;
-        const dy = mouse.y - p.y;
-        const d  = Math.sqrt(dx * dx + dy * dy);
-        if (d < 200 && d > 0) {
-            p.vx += (dx / d) * 0.022;
-            p.vy += (dy / d) * 0.022;
-        }
-        p.vx *= 0.98; p.vy *= 0.98;
-        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        if (spd > 1.8) { p.vx = p.vx / spd * 1.8; p.vy = p.vy / spd * 1.8; }
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0) p.x += bgCanvas.width;  if (p.x > bgCanvas.width)  p.x -= bgCanvas.width;
-        if (p.y < 0) p.y += bgCanvas.height; if (p.y > bgCanvas.height) p.y -= bgCanvas.height;
-        bgCtx.beginPath();
-        bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        bgCtx.fillStyle = `rgba(${r},${g},${b},${p.op})`;
-        bgCtx.fill();
-    });
-
-    for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-            const dx = particles[i].x - particles[j].x;
-            const dy = particles[i].y - particles[j].y;
-            const d  = Math.sqrt(dx * dx + dy * dy);
-            if (d < maxDist) {
-                bgCtx.beginPath();
-                bgCtx.moveTo(particles[i].x, particles[i].y);
-                bgCtx.lineTo(particles[j].x, particles[j].y);
-                bgCtx.strokeStyle = `rgba(${r},${g},${b},${(1 - d / maxDist) * 0.12})`;
-                bgCtx.lineWidth = 0.5;
-                bgCtx.stroke();
+    if (rainDrops.length > 0) {
+        bgCtx.lineWidth = 1;
+        rainDrops.forEach(drop => {
+            bgCtx.globalAlpha = drop.op;
+            bgCtx.strokeStyle = 'rgba(170, 210, 255, 1)';
+            bgCtx.beginPath();
+            bgCtx.moveTo(drop.x, drop.y);
+            bgCtx.lineTo(drop.x - drop.len * 0.18, drop.y + drop.len);
+            bgCtx.stroke();
+            drop.y += drop.speed;
+            drop.x -= drop.speed * 0.18;
+            if (drop.y > bgCanvas.height) {
+                drop.y = -drop.len;
+                drop.x = Math.random() * (bgCanvas.width + 100);
             }
-        }
+            if (drop.x < -20) drop.x = bgCanvas.width + Math.random() * 80;
+        });
+        bgCtx.globalAlpha = 1;
     }
 
     requestAnimationFrame(drawBg);
 }
 
 window.addEventListener('resize', resizeBg);
-window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-window.addEventListener('touchmove', e => {
-    mouse.x = e.touches[0].clientX;
-    mouse.y = e.touches[0].clientY;
-}, { passive: true });
 
 resizeBg();
 drawBg();
