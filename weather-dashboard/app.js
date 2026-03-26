@@ -5,6 +5,9 @@ const HISTORY_KEY = 'wx_history';
 const MAX_HISTORY = 5;
 const THEME_KEY   = 'wx_theme';
 const UNIT_KEY    = 'wx_units';
+const MODE_KEY    = 'wx_mode';
+
+const AQI_LABELS = ['', 'Good', 'Fair', 'Moderate', 'Poor', 'Very Poor'];
 
 const THEME_PARTICLES = {
     cyber:   { r: 0,   g: 210, b: 255 },
@@ -40,6 +43,9 @@ const sunriseEl   = document.getElementById('sunrise');
 const sunsetEl    = document.getElementById('sunset');
 
 const forecastCards = document.getElementById('forecast-cards');
+const modeToggleBtn = document.getElementById('mode-toggle');
+const aqiStat       = document.getElementById('aqi-stat');
+const aqiValueEl    = document.getElementById('aqi-value');
 
 // ── Helpers ────────────────────────────────────────────────────────
 function getUnits() {
@@ -76,6 +82,30 @@ function setLoading(on) {
     loader.hidden = !on;
     searchBtn.disabled = on;
     geoBtn.disabled = on;
+}
+
+// ── Dark / Light mode ──────────────────────────────────────────────
+function setMode(mode) {
+    document.body.dataset.mode = mode;
+    localStorage.setItem(MODE_KEY, mode);
+    if (mode === 'light') {
+        modeToggleBtn.textContent = '🌙';
+        modeToggleBtn.title = 'Switch to dark mode';
+    } else {
+        modeToggleBtn.textContent = '☀';
+        modeToggleBtn.title = 'Switch to light mode';
+    }
+}
+
+modeToggleBtn.addEventListener('click', () => {
+    setMode(document.body.dataset.mode === 'light' ? 'dark' : 'light');
+});
+
+// ── AQI ────────────────────────────────────────────────────────────
+function renderAQI(aqi) {
+    aqiValueEl.textContent = AQI_LABELS[aqi] || '—';
+    aqiValueEl.className   = `stat-value aqi-${aqi}`;
+    aqiStat.hidden = false;
 }
 
 // ── Search history ─────────────────────────────────────────────────
@@ -173,6 +203,7 @@ async function fetchByCity(city) {
     clearError();
     currentCard.hidden = true;
     forecastSection.hidden = true;
+    aqiStat.hidden = true;
     setLoading(true);
 
     const units = getUnits();
@@ -197,6 +228,13 @@ async function fetchByCity(city) {
         renderForecast(forecastData);
         saveHistory(currentData.name);
 
+        // AQI — non-blocking, coords come from weather response
+        const { lat, lon } = currentData.coord;
+        fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
+            .catch(() => {});
+
     } catch (err) {
         showError(`Could not fetch weather: ${err.message}`);
     } finally {
@@ -208,6 +246,7 @@ async function fetchByCoords(lat, lon) {
     clearError();
     currentCard.hidden = true;
     forecastSection.hidden = true;
+    aqiStat.hidden = true;
     setLoading(true);
 
     const units = getUnits();
@@ -229,6 +268,12 @@ async function fetchByCoords(lat, lon) {
         renderCurrent(currentData);
         renderForecast(forecastData);
         saveHistory(currentData.name);
+
+        // AQI — non-blocking
+        fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
+            .catch(() => {});
 
     } catch (err) {
         showError(`Could not fetch weather: ${err.message}`);
@@ -288,6 +333,9 @@ renderHistory();
 
 // Restore saved theme
 setTheme(localStorage.getItem(THEME_KEY) || 'cyber');
+
+// Restore saved mode
+setMode(localStorage.getItem(MODE_KEY) || 'dark');
 
 // Restore saved unit
 const savedUnit = localStorage.getItem(UNIT_KEY);

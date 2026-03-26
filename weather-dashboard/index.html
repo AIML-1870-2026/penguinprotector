@@ -27,8 +27,9 @@
                 <button id="search-btn">Get Weather</button>
             </div>
 
-            <!-- Controls row: unit toggle + theme picker -->
+            <!-- Controls row: unit toggle + theme picker + mode toggle -->
             <div class="search-controls-row">
+                <button id="mode-toggle" class="mode-toggle" title="Switch to light mode">☀</button>
                 <div class="unit-toggle">
                     <label class="radio-label">
                         <input type="radio" name="units" value="imperial" checked />
@@ -97,6 +98,10 @@
                         <div class="stat">
                             <span class="stat-label">Sunset</span>
                             <span id="sunset" class="stat-value"></span>
+                        </div>
+                        <div class="stat aqi-stat-cell" id="aqi-stat" hidden>
+                            <span class="stat-label">Air Quality</span>
+                            <span id="aqi-value" class="stat-value"></span>
                         </div>
                     </div>
                 </div>

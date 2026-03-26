@@ -265,6 +265,25 @@ main {
     transform: scale(1.15);
 }
 
+/* ── Mode toggle ──────────────────────────────────────────────────── */
+.mode-toggle {
+    background: rgba(var(--cyan), 0.06);
+    border: 1px solid rgba(var(--cyan), 0.3);
+    border-radius: 4px;
+    color: rgb(var(--cyan));
+    font-size: 16px;
+    padding: 7px 10px;
+    cursor: pointer;
+    line-height: 1;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    font-family: inherit;
+}
+.mode-toggle:hover {
+    border-color: rgba(var(--cyan), 0.8);
+    box-shadow: 0 0 14px rgba(var(--cyan), 0.25);
+    background: rgba(var(--cyan), 0.1);
+}
+
 /* ── Search history ───────────────────────────────────────────────── */
 .history-row {
     display: flex;
@@ -474,6 +493,54 @@ main {
     color: rgba(224,224,224,0.4);
     margin-top: 4px;
 }
+
+/* ── AQI badge colors ─────────────────────────────────────────────── */
+.aqi-1 { color: #00e676 !important; }   /* Good       */
+.aqi-2 { color: #aeea00 !important; }   /* Fair       */
+.aqi-3 { color: #ffd600 !important; }   /* Moderate   */
+.aqi-4 { color: #ff6d00 !important; }   /* Poor       */
+.aqi-5 { color: #d50000 !important; }   /* Very Poor  */
+
+/* ── Light mode overrides ─────────────────────────────────────────── */
+body[data-mode="light"][data-theme="cyber"]   { --bg: #e4f3f8; }
+body[data-mode="light"][data-theme="ember"]   { --bg: #faf0e4; }
+body[data-mode="light"][data-theme="aurora"]  { --bg: #ede6fa; }
+body[data-mode="light"][data-theme="verdant"] { --bg: #e4f8ec; }
+body[data-mode="light"][data-theme="crimson"] { --bg: #f8e4ea; }
+
+body[data-mode="light"] { color: #1a1a2e; }
+
+body[data-mode="light"] .current-card {
+    background: rgba(255,255,255,0.72);
+    border-color: rgba(var(--cyan), 0.3);
+}
+body[data-mode="light"] .fc-card {
+    background: rgba(255,255,255,0.72);
+    border-color: rgba(var(--green), 0.28);
+}
+body[data-mode="light"] .stat {
+    background: rgba(255,255,255,0.55);
+    border-color: rgba(var(--cyan), 0.2);
+}
+body[data-mode="light"] .weather-desc,
+body[data-mode="light"] .feels-like,
+body[data-mode="light"] .fc-desc,
+body[data-mode="light"] .fc-range,
+body[data-mode="light"] .stat-label { color: rgba(26,26,46,0.5); }
+body[data-mode="light"] .temperature,
+body[data-mode="light"] .fc-temp    { color: #1a1a2e; }
+
+body[data-mode="light"] #city-input {
+    background: rgba(255,255,255,0.8);
+    color: #1a1a2e;
+    border-color: rgba(var(--cyan), 0.35);
+}
+body[data-mode="light"] #city-input::placeholder { color: rgba(26,26,46,0.3); }
+body[data-mode="light"] .back-link  { color: rgba(var(--cyan), 0.75); }
+body[data-mode="light"] .subtitle   { color: rgba(var(--magenta), 0.75); }
+body[data-mode="light"] .section-title { color: rgba(var(--green), 0.8); }
+body[data-mode="light"] footer       { color: rgba(26,26,46,0.3); }
+body[data-mode="light"] .error-msg   { color: #cc1133; background: rgba(204,17,51,0.06); }
 
 /* ── Footer ───────────────────────────────────────────────────────── */
 footer {
