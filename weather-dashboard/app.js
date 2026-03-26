@@ -76,6 +76,8 @@ const forecastCards = document.getElementById('forecast-cards');
 const modeToggleBtn = document.getElementById('mode-toggle');
 const aqiStat       = document.getElementById('aqi-stat');
 const aqiValueEl    = document.getElementById('aqi-value');
+const aqiWordEl     = document.getElementById('aqi-word');
+const aqiBar        = document.getElementById('aqi-bar');
 
 // ── Helpers ────────────────────────────────────────────────────────
 function getUnits() {
@@ -133,8 +135,14 @@ modeToggleBtn.addEventListener('click', () => {
 
 // ── AQI ────────────────────────────────────────────────────────────
 function renderAQI(aqi) {
-    aqiValueEl.textContent = AQI_LABELS[aqi] || '—';
-    aqiValueEl.className   = `stat-value aqi-${aqi}`;
+    aqiValueEl.textContent = aqi;
+    aqiValueEl.className   = `aqi-num aqi-${aqi}`;
+    aqiWordEl.textContent  = AQI_LABELS[aqi] || '—';
+    aqiWordEl.className    = `aqi-word aqi-${aqi}`;
+    aqiBar.querySelectorAll('.aqi-seg').forEach(seg => {
+        const i = +seg.dataset.i;
+        seg.className = `aqi-seg aqi-seg-${i}${i <= aqi ? ' active' : ''}`;
+    });
     aqiStat.hidden = false;
 }
 

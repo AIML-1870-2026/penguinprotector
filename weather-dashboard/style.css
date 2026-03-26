@@ -536,12 +536,51 @@ main {
     margin-top: 2px;
 }
 
-/* ── AQI badge colors ─────────────────────────────────────────────── */
-.aqi-1 { color: #00e676 !important; }   /* Good       */
-.aqi-2 { color: #aeea00 !important; }   /* Fair       */
-.aqi-3 { color: #ffd600 !important; }   /* Moderate   */
-.aqi-4 { color: #ff6d00 !important; }   /* Poor       */
-.aqi-5 { color: #d50000 !important; }   /* Very Poor  */
+/* ── AQI scale ────────────────────────────────────────────────────── */
+.aqi-stat-cell { grid-column: 1 / -1; }
+
+.aqi-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 2px 0 7px;
+}
+.aqi-num {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+}
+.aqi-word {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+.aqi-bar {
+    display: flex;
+    gap: 4px;
+    height: 7px;
+}
+.aqi-seg {
+    flex: 1;
+    border-radius: 4px;
+    opacity: 0.18;
+    transition: opacity 0.35s;
+}
+.aqi-seg.active { opacity: 1; }
+.aqi-seg-1 { background: #00e676; }
+.aqi-seg-2 { background: #aeea00; }
+.aqi-seg-3 { background: #ffd600; }
+.aqi-seg-4 { background: #ff6d00; }
+.aqi-seg-5 { background: #d50000; }
+
+/* number + word inherit segment color */
+.aqi-1 { color: #00e676; }
+.aqi-2 { color: #aeea00; }
+.aqi-3 { color: #ffd600; }
+.aqi-4 { color: #ff6d00; }
+.aqi-5 { color: #d50000; }
 
 /* ── Light mode overrides ─────────────────────────────────────────── */
 body[data-mode="light"][data-theme="cyber"]    { --bg: #e4f3f8; }
