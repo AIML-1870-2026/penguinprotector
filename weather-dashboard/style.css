@@ -127,38 +127,6 @@ h1 {
     display: inline-block;
 }
 
-h1::before, h1::after {
-    content: attr(data-text);
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%;
-    overflow: hidden;
-}
-h1::before {
-    color: rgb(var(--magenta));
-    animation: glitch-top 3.5s infinite;
-    clip-path: inset(0 0 65% 0);
-}
-h1::after {
-    color: rgb(var(--green));
-    animation: glitch-bottom 2.8s infinite;
-    clip-path: inset(60% 0 0 0);
-}
-
-@keyframes glitch-top {
-    0%,92%  { transform: translate(0); opacity: 0; }
-    93%     { transform: translate(-3px,-1px); opacity: 1; }
-    94%     { transform: translate(3px,1px); opacity: 1; }
-    95%     { transform: translate(-2px,0); opacity: 1; }
-    96%,100%{ transform: translate(0); opacity: 0; }
-}
-@keyframes glitch-bottom {
-    0%,88%  { transform: translate(0); opacity: 0; }
-    89%     { transform: translate(3px,1px); opacity: 1; }
-    90%     { transform: translate(-3px,-1px); opacity: 1; }
-    91%     { transform: translate(2px,0); opacity: 1; }
-    92%,100%{ transform: translate(0); opacity: 0; }
-}
 
 .subtitle {
     margin-top: 8px;
@@ -588,10 +556,10 @@ body[data-mode="light"][data-theme="ember"]    { --bg: #faf0e4; }
 body[data-mode="light"][data-theme="aurora"]   { --bg: #ede6fa; }
 body[data-mode="light"][data-theme="verdant"]  { --bg: #e4f8ec; }
 body[data-mode="light"][data-theme="crimson"]  { --bg: #f8e4ea; }
-body[data-mode="light"][data-theme="blush"]    { --bg: #fde8f0; }
-body[data-mode="light"][data-theme="sky"]      { --bg: #deeeff; }
-body[data-mode="light"][data-theme="sage"]     { --bg: #e2f0e4; }
-body[data-mode="light"][data-theme="lavender"] { --bg: #ede8ff; }
+body[data-mode="light"][data-theme="blush"]    { --bg: #fde8f0; --cyan: 190, 50, 85; --magenta: 200, 40, 90; --green: 195, 80, 110; }
+body[data-mode="light"][data-theme="sky"]      { --bg: #deeeff; --cyan: 25, 95, 190; --magenta: 20, 80, 200; --green: 45, 130, 210; }
+body[data-mode="light"][data-theme="sage"]     { --bg: #e2f0e4; --cyan: 35, 125, 65; --magenta: 30, 110, 75; --green: 55, 140, 60; }
+body[data-mode="light"][data-theme="lavender"] { --bg: #ede8ff; --cyan: 95, 55, 200; --magenta: 130, 70, 215; --green: 80, 40, 185; }
 
 body[data-mode="light"] { color: #1a1a2e; }
 
