@@ -237,11 +237,13 @@ async function fetchByCity(city) {
     setLoading(true);
 
     const units = getUnits();
+    // Support "City, CC" format — normalize spacing around comma so the API matches correctly
+    const q = city.replace(/\s*,\s*/, ',').trim();
 
     try {
         const [currentRes, forecastRes] = await Promise.all([
-            fetch(`${BASE_URL}/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=${units}`),
-            fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=${units}`)
+            fetch(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`),
+            fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`)
         ]);
 
         if (!currentRes.ok) {
@@ -338,7 +340,8 @@ geoBtn.addEventListener('click', () => {
 document.querySelectorAll('input[name="units"]').forEach(radio => {
     radio.addEventListener('change', () => {
         localStorage.setItem(UNIT_KEY, getUnits());
-        const city = cityNameEl.textContent.split(',')[0].trim();
+        const typed = cityInput.value.trim();
+        const city  = typed || cityNameEl.textContent.split(',')[0].trim();
         if (city) fetchByCity(city);
     });
 });
