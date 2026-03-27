@@ -13,13 +13,14 @@
 <body data-theme="cyber">
     <div id="weather-bg"></div>
     <canvas id="bg-canvas"></canvas>
+    <div id="lightning-flash"></div>
 
     <header>
-<h1 data-text="Weather Dashboard">Weather Dashboard</h1>
+        <h1 data-text="Weather Dashboard">Weather Dashboard</h1>
         <p class="subtitle">Real-Time Conditions &amp; 5-Day Forecast</p>
     </header>
 
-    <main>
+    <main id="main-content">
         <!-- Search bar -->
         <section class="search-section">
             <div class="search-row">
@@ -28,7 +29,7 @@
                 <button id="search-btn">Get Weather</button>
             </div>
 
-            <!-- Controls row: unit toggle + theme picker + mode toggle -->
+            <!-- Controls row -->
             <div class="search-controls-row">
                 <button id="mode-toggle" class="mode-toggle" title="Switch to light mode">☀</button>
                 <div class="unit-toggle">
@@ -52,10 +53,17 @@
                     <button class="theme-dot"        data-theme="sage"     title="Sage"     style="--dot: rgb(140,200,150)"></button>
                     <button class="theme-dot"        data-theme="lavender" title="Lavender" style="--dot: rgb(195,165,255)"></button>
                 </div>
+                <button id="compare-toggle" class="compare-toggle" title="Compare two cities">⊞ Compare</button>
             </div>
 
             <!-- Search history -->
             <div id="history-row" class="history-row" hidden></div>
+
+            <!-- Compare search row -->
+            <div id="compare-row" class="compare-row" hidden>
+                <input id="compare-input" type="text" placeholder="Compare with city…" autocomplete="off" />
+                <button id="compare-btn">Compare</button>
+            </div>
         </section>
 
         <!-- Error message -->
@@ -66,81 +74,105 @@
             <div class="spinner"></div>
         </div>
 
-        <!-- Current weather card -->
-        <section id="current-card" class="current-card" hidden>
-            <div class="current-top">
-                <div class="current-left">
-                    <div id="city-name" class="city-name"></div>
-                    <div id="weather-desc" class="weather-desc"></div>
-                    <div class="temp-row">
-                        <img id="weather-icon" class="weather-icon" src="" alt="" />
-                        <span id="temperature" class="temperature"></span>
-                    </div>
-                    <div id="feels-like" class="feels-like"></div>
-                </div>
-                <div class="current-right">
-                    <div class="stat-grid">
-                        <div class="stat" id="humidity-stat">
-                            <span class="stat-label">Humidity</span>
-                            <span id="humidity" class="stat-value"></span>
-                            <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+        <!-- Current weather cards (side-by-side in compare mode) -->
+        <div class="current-area">
+            <section id="current-card" class="current-card" hidden>
+                <div class="current-top">
+                    <div class="current-left">
+                        <div id="city-name" class="city-name"></div>
+                        <div id="weather-desc" class="weather-desc"></div>
+                        <div class="temp-row">
+                            <img id="weather-icon" class="weather-icon" src="" alt="" />
+                            <span id="temperature" class="temperature"></span>
                         </div>
-                        <div class="stat" id="wind-stat">
-                            <span class="stat-label">Wind</span>
-                            <div class="wind-row">
-                                <span id="wind" class="stat-value"></span>
-                                <svg id="wind-compass" class="wind-compass" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="10" fill="none" class="compass-ring" stroke-width="1.5"/>
-                                    <polygon points="12,3 9,15 12,13 15,15" class="compass-arrow"/>
-                                </svg>
-                            </div>
-                            <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Pressure</span>
-                            <span id="pressure" class="stat-value"></span>
-                        </div>
-                        <div class="stat" id="visibility-stat">
-                            <span class="stat-label">Visibility</span>
-                            <span id="visibility" class="stat-value"></span>
-                            <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Sunrise</span>
-                            <span id="sunrise" class="stat-value"></span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Sunset</span>
-                            <span id="sunset" class="stat-value"></span>
-                        </div>
-                        <div class="stat aqi-stat-cell" id="aqi-stat" hidden>
-                            <span class="stat-label">Air Quality</span>
-                            <div class="aqi-readout">
-                                <span id="aqi-value" class="aqi-num"></span>
-                                <span id="aqi-word" class="aqi-word"></span>
-                            </div>
-                            <div class="aqi-bar" id="aqi-bar">
-                                <div class="aqi-seg" data-i="1"></div>
-                                <div class="aqi-seg" data-i="2"></div>
-                                <div class="aqi-seg" data-i="3"></div>
-                                <div class="aqi-seg" data-i="4"></div>
-                                <div class="aqi-seg" data-i="5"></div>
-                            </div>
+                        <div class="feels-like-wrap">
+                            <div id="feels-like" class="feels-like"></div>
+                            <button class="fl-tip-icon" aria-label="About feels-like temperature">?</button>
+                            <div id="fl-tooltip" class="fl-tooltip"></div>
                         </div>
                     </div>
+                    <div class="current-right">
+                        <div class="stat-grid">
+                            <div class="stat" id="humidity-stat">
+                                <span class="stat-label">Humidity</span>
+                                <span id="humidity" class="stat-value"></span>
+                                <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                            </div>
+                            <div class="stat" id="wind-stat">
+                                <span class="stat-label">Wind</span>
+                                <div class="wind-row">
+                                    <span id="wind" class="stat-value"></span>
+                                    <svg id="wind-compass" class="wind-compass" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" fill="none" class="compass-ring" stroke-width="1.5"/>
+                                        <polygon points="12,3 9,15 12,13 15,15" class="compass-arrow"/>
+                                    </svg>
+                                </div>
+                                <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Pressure</span>
+                                <span id="pressure" class="stat-value"></span>
+                            </div>
+                            <div class="stat" id="visibility-stat">
+                                <span class="stat-label">Visibility</span>
+                                <span id="visibility" class="stat-value"></span>
+                                <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                            </div>
+                            <div class="stat" id="cloud-stat">
+                                <span class="stat-label">Cloud Cover</span>
+                                <span id="cloud-cover" class="stat-value"></span>
+                                <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                            </div>
+                            <div class="stat" id="precip-stat" hidden>
+                                <span class="stat-label" id="precip-label">Recent Rain</span>
+                                <span id="precip-val" class="stat-value"></span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Sunrise</span>
+                                <span id="sunrise" class="stat-value"></span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Sunset</span>
+                                <span id="sunset" class="stat-value"></span>
+                            </div>
+                            <div class="stat aqi-stat-cell" id="aqi-stat" hidden>
+                                <span class="stat-label">Air Quality</span>
+                                <div class="aqi-readout">
+                                    <span id="aqi-value" class="aqi-num"></span>
+                                    <span id="aqi-word" class="aqi-word"></span>
+                                </div>
+                                <div class="aqi-bar" id="aqi-bar">
+                                    <div class="aqi-seg" data-i="1"></div>
+                                    <div class="aqi-seg" data-i="2"></div>
+                                    <div class="aqi-seg" data-i="3"></div>
+                                    <div class="aqi-seg" data-i="4"></div>
+                                    <div class="aqi-seg" data-i="5"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="sun-progress-wrap" id="sun-progress-wrap">
-                <div class="sun-progress-labels">
-                    <span id="sun-rise-label"></span>
-                    <span class="sun-progress-title">☀ Day Progress</span>
-                    <span id="sun-set-label"></span>
+                <div class="sun-progress-wrap" id="sun-progress-wrap">
+                    <div class="sun-progress-labels">
+                        <span id="sun-rise-label"></span>
+                        <span class="sun-progress-title">☀ Day Progress</span>
+                        <span id="sun-set-label"></span>
+                    </div>
+                    <div class="sun-progress-bar">
+                        <div class="sun-progress-fill" id="sun-progress-fill"></div>
+                        <div class="sun-progress-dot" id="sun-progress-dot"></div>
+                    </div>
                 </div>
-                <div class="sun-progress-bar">
-                    <div class="sun-progress-fill" id="sun-progress-fill"></div>
-                    <div class="sun-progress-dot" id="sun-progress-dot"></div>
-                </div>
-            </div>
+            </section>
+
+            <!-- Compare city card -->
+            <section id="compare-card" class="current-card compare-card" hidden></section>
+        </div>
+
+        <!-- Hourly forecast strip -->
+        <section id="hourly-section" class="hourly-section" hidden>
+            <h2 class="section-title">Next 24 Hours</h2>
+            <div id="hourly-strip" class="hourly-strip"></div>
         </section>
 
         <!-- 5-Day Forecast -->

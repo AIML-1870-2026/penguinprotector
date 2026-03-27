@@ -1,5 +1,6 @@
 const API_KEY = '83301ee6bbb55308cf3054fe3afc3ee3';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
 const SUN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <g fill="none" stroke="#FFF176" stroke-width="5.5" stroke-linecap="round">
     <line x1="50" y1="4"  x2="50" y2="20"/>
@@ -56,6 +57,7 @@ const ICON_URL = icon => {
     if (icon === '10d') return RAIN_SUNNY_URL;
     return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 };
+
 const HISTORY_KEY = 'wx_history';
 const MAX_HISTORY = 5;
 const THEME_KEY   = 'wx_theme';
@@ -73,7 +75,6 @@ const WEATHER_GRADIENTS = {
     clear:        'radial-gradient(ellipse at 72% 8%, rgba(255,195,70,0.28) 0%, transparent 52%)',
     clouds:       'radial-gradient(ellipse at 40% 0%, rgba(90,110,140,0.3) 0%, transparent 60%)',
 };
-
 
 // ── Weather background ─────────────────────────────────────────────
 const weatherBg = document.getElementById('weather-bg');
@@ -93,27 +94,40 @@ function applyWeatherBg(id) {
 }
 
 // ── DOM refs ───────────────────────────────────────────────────────
-const cityInput      = document.getElementById('city-input');
-const searchBtn      = document.getElementById('search-btn');
-const geoBtn         = document.getElementById('geo-btn');
-const errorMsg       = document.getElementById('error-msg');
-const loader         = document.getElementById('loader');
-const currentCard    = document.getElementById('current-card');
-const forecastSection= document.getElementById('forecast-section');
-const historyRow     = document.getElementById('history-row');
+const mainEl          = document.getElementById('main-content');
+const cityInput       = document.getElementById('city-input');
+const searchBtn       = document.getElementById('search-btn');
+const geoBtn          = document.getElementById('geo-btn');
+const errorMsg        = document.getElementById('error-msg');
+const loader          = document.getElementById('loader');
+const currentCard     = document.getElementById('current-card');
+const forecastSection = document.getElementById('forecast-section');
+const historyRow      = document.getElementById('history-row');
+const hourlySection   = document.getElementById('hourly-section');
+const hourlyStrip     = document.getElementById('hourly-strip');
+const compareToggleBtn = document.getElementById('compare-toggle');
+const compareRow      = document.getElementById('compare-row');
+const compareInput    = document.getElementById('compare-input');
+const compareBtn      = document.getElementById('compare-btn');
+const compareCard     = document.getElementById('compare-card');
 
 // current-card fields
-const cityNameEl  = document.getElementById('city-name');
-const weatherDesc = document.getElementById('weather-desc');
-const weatherIcon = document.getElementById('weather-icon');
-const temperature = document.getElementById('temperature');
-const feelsLike   = document.getElementById('feels-like');
-const humidityEl  = document.getElementById('humidity');
-const windEl      = document.getElementById('wind');
-const pressureEl  = document.getElementById('pressure');
-const visibilityEl= document.getElementById('visibility');
-const sunriseEl   = document.getElementById('sunrise');
-const sunsetEl    = document.getElementById('sunset');
+const cityNameEl    = document.getElementById('city-name');
+const weatherDesc   = document.getElementById('weather-desc');
+const weatherIcon   = document.getElementById('weather-icon');
+const temperature   = document.getElementById('temperature');
+const feelsLikeEl   = document.getElementById('feels-like');
+const humidityEl    = document.getElementById('humidity');
+const windEl        = document.getElementById('wind');
+const pressureEl    = document.getElementById('pressure');
+const visibilityEl  = document.getElementById('visibility');
+const sunriseEl     = document.getElementById('sunrise');
+const sunsetEl      = document.getElementById('sunset');
+const cloudCoverEl  = document.getElementById('cloud-cover');
+const precipValEl   = document.getElementById('precip-val');
+const precipLabelEl = document.getElementById('precip-label');
+const precipStat    = document.getElementById('precip-stat');
+const flTooltip     = document.getElementById('fl-tooltip');
 
 const forecastCards = document.getElementById('forecast-cards');
 const modeToggleBtn = document.getElementById('mode-toggle');
@@ -122,19 +136,20 @@ const aqiValueEl    = document.getElementById('aqi-value');
 const aqiWordEl     = document.getElementById('aqi-word');
 const aqiBar        = document.getElementById('aqi-bar');
 
+// Compare state
+let compareActive   = false;
+let lastCompareCity = null;
+
 // ── Helpers ────────────────────────────────────────────────────────
 function getUnits() {
     return document.querySelector('input[name="units"]:checked').value;
 }
-
 function unitSymbol() {
     return getUnits() === 'metric' ? '°C' : '°F';
 }
-
 function windUnit() {
     return getUnits() === 'metric' ? 'm/s' : 'mph';
 }
-
 function formatTime(unixSec, tzOffsetSec) {
     const d = new Date((unixSec + tzOffsetSec) * 1000);
     const h = d.getUTCHours();
@@ -142,17 +157,14 @@ function formatTime(unixSec, tzOffsetSec) {
     const ampm = h >= 12 ? 'pm' : 'am';
     return `${h % 12 || 12}:${m} ${ampm}`;
 }
-
 function showError(msg) {
     errorMsg.textContent = msg;
     errorMsg.hidden = false;
 }
-
 function clearError() {
     errorMsg.textContent = '';
     errorMsg.hidden = true;
 }
-
 function setLoading(on) {
     loader.hidden = !on;
     searchBtn.disabled = on;
@@ -171,7 +183,6 @@ function setMode(mode) {
         modeToggleBtn.title = 'Switch to light mode';
     }
 }
-
 modeToggleBtn.addEventListener('click', () => {
     setMode(document.body.dataset.mode === 'light' ? 'dark' : 'light');
 });
@@ -194,7 +205,6 @@ function loadHistory() {
     try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
     catch { return []; }
 }
-
 function saveHistory(city) {
     let hist = loadHistory().filter(c => c.toLowerCase() !== city.toLowerCase());
     hist.unshift(city);
@@ -202,7 +212,6 @@ function saveHistory(city) {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
     renderHistory();
 }
-
 function renderHistory() {
     const hist = loadHistory();
     if (!hist.length) { historyRow.hidden = true; return; }
@@ -218,7 +227,20 @@ function renderHistory() {
     });
 }
 
-// ── Render functions ───────────────────────────────────────────────
+// ── Feels-like tooltip ─────────────────────────────────────────────
+function feelsLikeExplanation(data) {
+    const tempC    = getUnits() === 'metric' ? data.main.temp : (data.main.temp - 32) * 5 / 9;
+    const humidity = data.main.humidity;
+    const windKph  = getUnits() === 'metric' ? data.wind.speed * 3.6 : data.wind.speed * 1.609;
+    if (tempC > 27 && humidity > 50) {
+        return 'Heat index — high humidity reduces evaporative cooling, making it feel hotter than the actual temperature.';
+    } else if (tempC < 10 && windKph > 10) {
+        return 'Wind chill — moving air strips heat from exposed skin faster, making it feel colder than the actual temperature.';
+    }
+    return 'Apparent temperature — a combined measure of air temp, humidity, and wind speed as felt on skin.';
+}
+
+// ── Render: current ────────────────────────────────────────────────
 function renderCurrent(data) {
     const sym  = unitSymbol();
     const wSym = windUnit();
@@ -230,12 +252,13 @@ function renderCurrent(data) {
     weatherIcon.alt         = data.weather[0].description;
     weatherIcon.dataset.custom = (iconCode === '01d' || iconCode === '02d' || iconCode === '10d') ? 'sun' : '';
     temperature.textContent = `${Math.round(data.main.temp)}${sym}`;
-    feelsLike.textContent   = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
+    feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
+    flTooltip.textContent   = feelsLikeExplanation(data);
 
     humidityEl.textContent  = `${data.main.humidity}%`;
     document.getElementById('humidity-stat').style.setProperty('--bar-pct', `${data.main.humidity}%`);
 
-    windEl.textContent      = `${Math.round(data.wind.speed)} ${wSym}`;
+    windEl.textContent = `${Math.round(data.wind.speed)} ${wSym}`;
     const windMax = getUnits() === 'metric' ? 28 : 60;
     const windPct = Math.min(100, Math.round(data.wind.speed / windMax * 100));
     document.getElementById('wind-stat').style.setProperty('--bar-pct', `${windPct}%`);
@@ -249,21 +272,41 @@ function renderCurrent(data) {
         compass.hidden = true;
     }
 
-    pressureEl.textContent  = `${data.main.pressure} hPa`;
-    visibilityEl.textContent= data.visibility
+    pressureEl.textContent   = `${data.main.pressure} hPa`;
+    visibilityEl.textContent = data.visibility
         ? `${(data.visibility / 1000).toFixed(1)} km`
         : '—';
     const visPct = data.visibility ? Math.min(100, Math.round(data.visibility / 100)) : 0;
     document.getElementById('visibility-stat').style.setProperty('--bar-pct', `${visPct}%`);
 
+    // Cloud cover
+    const cloudPct = data.clouds ? data.clouds.all : 0;
+    cloudCoverEl.textContent = `${cloudPct}%`;
+    document.getElementById('cloud-stat').style.setProperty('--bar-pct', `${cloudPct}%`);
+
+    // Rain / snow accumulation
+    const rainMm = data.rain && data.rain['1h'] != null ? data.rain['1h'] : null;
+    const snowMm = data.snow && data.snow['1h'] != null ? data.snow['1h'] : null;
+    if (rainMm !== null) {
+        precipLabelEl.textContent = 'Recent Rain';
+        precipValEl.textContent   = `${rainMm.toFixed(1)} mm`;
+        precipStat.hidden = false;
+    } else if (snowMm !== null) {
+        precipLabelEl.textContent = 'Recent Snow';
+        precipValEl.textContent   = `${snowMm.toFixed(1)} mm`;
+        precipStat.hidden = false;
+    } else {
+        precipStat.hidden = true;
+    }
+
     const riseFmt = formatTime(data.sys.sunrise, data.timezone);
     const setFmt  = formatTime(data.sys.sunset,  data.timezone);
-    sunriseEl.textContent   = riseFmt;
-    sunsetEl.textContent    = setFmt;
+    sunriseEl.textContent = riseFmt;
+    sunsetEl.textContent  = setFmt;
     document.getElementById('sun-rise-label').textContent = riseFmt;
     document.getElementById('sun-set-label').textContent  = setFmt;
-    const nowSec  = Math.floor(Date.now() / 1000);
-    const sunPct  = Math.max(0, Math.min(100,
+    const nowSec = Math.floor(Date.now() / 1000);
+    const sunPct = Math.max(0, Math.min(100,
         ((nowSec - data.sys.sunrise) / (data.sys.sunset - data.sys.sunrise)) * 100
     ));
     document.getElementById('sun-progress-fill').style.width = `${sunPct}%`;
@@ -273,12 +316,32 @@ function renderCurrent(data) {
     currentCard.hidden = false;
 }
 
+// ── Render: hourly ─────────────────────────────────────────────────
+function renderHourly(data) {
+    const sym     = unitSymbol();
+    const tz      = data.city.timezone;
+    const entries = data.list.slice(0, 8);
+
+    hourlyStrip.innerHTML = entries.map(e => {
+        const pop = Math.round((e.pop || 0) * 100);
+        return `
+        <div class="hr-cell">
+            <div class="hr-time">${formatTime(e.dt, tz)}</div>
+            <img class="hr-icon" src="${ICON_URL(e.weather[0].icon)}" alt="${e.weather[0].description}" />
+            <div class="hr-temp">${Math.round(e.main.temp)}${sym}</div>
+            <div class="hr-pop">${pop > 0 ? '💧' + pop + '%' : ''}</div>
+        </div>`;
+    }).join('');
+
+    hourlySection.hidden = false;
+}
+
+// ── Render: 5-day forecast ─────────────────────────────────────────
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 function renderForecast(data) {
     const sym = unitSymbol();
 
-    // Group list by day (calendar date), pick the entry closest to noon
     const byDay = {};
     data.list.forEach(item => {
         const date = item.dt_txt.slice(0, 10);
@@ -286,19 +349,16 @@ function renderForecast(data) {
         byDay[date].push(item);
     });
 
-    // Skip today, take up to 5 following days
     const todayStr = new Date().toISOString().slice(0, 10);
     const days = Object.keys(byDay).filter(d => d !== todayStr).slice(0, 5);
 
     forecastCards.innerHTML = days.map(date => {
         const entries = byDay[date];
-        // Pick noon slot if available, else middle entry
-        const noon = entries.find(e => e.dt_txt.includes('12:00:00')) || entries[Math.floor(entries.length / 2)];
+        const noon    = entries.find(e => e.dt_txt.includes('12:00:00')) || entries[Math.floor(entries.length / 2)];
         const tempMax = Math.round(Math.max(...entries.map(e => e.main.temp_max)));
         const tempMin = Math.round(Math.min(...entries.map(e => e.main.temp_min)));
         const dayName = DAY_NAMES[new Date(date + 'T12:00:00').getDay()];
-
-        const maxPop = Math.round(Math.max(...entries.map(e => (e.pop || 0))) * 100);
+        const maxPop  = Math.round(Math.max(...entries.map(e => (e.pop || 0))) * 100);
 
         return `
         <div class="fc-card">
@@ -315,18 +375,106 @@ function renderForecast(data) {
     }).join('');
 
     forecastSection.hidden = false;
+    renderHourly(data);
+}
+
+// ── Render: compare card ───────────────────────────────────────────
+function renderCompare(data) {
+    const sym  = unitSymbol();
+    const wSym = windUnit();
+    const iconCode = data.weather[0].icon;
+    const cloudPct = data.clouds ? data.clouds.all : null;
+    const rainMm   = data.rain && data.rain['1h'] != null ? data.rain['1h'] : null;
+    const snowMm   = data.snow && data.snow['1h'] != null ? data.snow['1h'] : null;
+
+    compareCard.innerHTML = `
+        <div class="compare-badge">⊞ Comparing</div>
+        <div class="current-top">
+            <div class="current-left">
+                <div class="city-name compare-city-name">${data.name}, ${data.sys.country}</div>
+                <div class="weather-desc">${data.weather[0].description}</div>
+                <div class="temp-row">
+                    <img class="weather-icon" src="${ICON_URL(iconCode)}" alt="${data.weather[0].description}" data-custom="${iconCode === '01d' || iconCode === '02d' || iconCode === '10d' ? 'sun' : ''}" />
+                    <span class="temperature">${Math.round(data.main.temp)}${sym}</span>
+                </div>
+                <div class="feels-like">Feels like ${Math.round(data.main.feels_like)}${sym}</div>
+            </div>
+            <div class="current-right">
+                <div class="stat-grid compare-stat-grid">
+                    <div class="stat" style="--bar-pct: ${data.main.humidity}%">
+                        <span class="stat-label">Humidity</span>
+                        <span class="stat-value">${data.main.humidity}%</span>
+                        <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Wind</span>
+                        <span class="stat-value">${Math.round(data.wind.speed)} ${wSym}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Pressure</span>
+                        <span class="stat-value">${data.main.pressure} hPa</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Visibility</span>
+                        <span class="stat-value">${data.visibility ? (data.visibility / 1000).toFixed(1) + ' km' : '—'}</span>
+                    </div>
+                    ${cloudPct !== null ? `
+                    <div class="stat" style="--bar-pct: ${cloudPct}%">
+                        <span class="stat-label">Cloud Cover</span>
+                        <span class="stat-value">${cloudPct}%</span>
+                        <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
+                    </div>` : ''}
+                    ${rainMm !== null ? `
+                    <div class="stat">
+                        <span class="stat-label">Recent Rain</span>
+                        <span class="stat-value">${rainMm.toFixed(1)} mm</span>
+                    </div>` : ''}
+                    ${snowMm !== null ? `
+                    <div class="stat">
+                        <span class="stat-label">Recent Snow</span>
+                        <span class="stat-value">${snowMm.toFixed(1)} mm</span>
+                    </div>` : ''}
+                    <div class="stat">
+                        <span class="stat-label">Sunrise</span>
+                        <span class="stat-value">${formatTime(data.sys.sunrise, data.timezone)}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Sunset</span>
+                        <span class="stat-value">${formatTime(data.sys.sunset, data.timezone)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    compareCard.hidden = false;
+    mainEl.classList.add('compare-active');
+}
+
+async function fetchCompare(city) {
+    const units = getUnits();
+    const q = city.replace(/\s*,\s*/, ',').trim();
+    try {
+        const res = await fetch(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`);
+        if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'City not found.'); }
+        const data = await res.json();
+        lastCompareCity = data.name;
+        renderCompare(data);
+    } catch (err) {
+        showError(`Compare failed: ${err.message}`);
+    }
 }
 
 // ── API calls ──────────────────────────────────────────────────────
 async function fetchByCity(city) {
     clearError();
-    currentCard.hidden = true;
+    currentCard.hidden    = true;
     forecastSection.hidden = true;
+    hourlySection.hidden  = true;
+    compareCard.hidden    = true;
+    mainEl.classList.remove('compare-active');
     aqiStat.hidden = true;
     setLoading(true);
 
     const units = getUnits();
-    // Support "City, CC" format — normalize spacing around comma so the API matches correctly
     const q = city.replace(/\s*,\s*/, ',').trim();
 
     try {
@@ -349,7 +497,8 @@ async function fetchByCity(city) {
         renderForecast(forecastData);
         saveHistory(currentData.name);
 
-        // AQI — non-blocking, coords come from weather response
+        if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
+
         const { lat, lon } = currentData.coord;
         fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
@@ -365,8 +514,11 @@ async function fetchByCity(city) {
 
 async function fetchByCoords(lat, lon) {
     clearError();
-    currentCard.hidden = true;
+    currentCard.hidden    = true;
     forecastSection.hidden = true;
+    hourlySection.hidden  = true;
+    compareCard.hidden    = true;
+    mainEl.classList.remove('compare-active');
     aqiStat.hidden = true;
     setLoading(true);
 
@@ -390,7 +542,8 @@ async function fetchByCoords(lat, lon) {
         renderForecast(forecastData);
         saveHistory(currentData.name);
 
-        // AQI — non-blocking
+        if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
+
         fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
@@ -425,7 +578,6 @@ geoBtn.addEventListener('click', () => {
     );
 });
 
-// Re-fetch with new units when toggled (if a result is already showing)
 document.querySelectorAll('input[name="units"]').forEach(radio => {
     radio.addEventListener('change', () => {
         localStorage.setItem(UNIT_KEY, getUnits());
@@ -435,7 +587,32 @@ document.querySelectorAll('input[name="units"]').forEach(radio => {
     });
 });
 
-// ── Theme ───────────────────────────────────────────────────────────
+// ── Compare ────────────────────────────────────────────────────────
+compareToggleBtn.addEventListener('click', () => {
+    compareActive = !compareActive;
+    compareToggleBtn.classList.toggle('active', compareActive);
+    compareRow.hidden = !compareActive;
+    if (!compareActive) {
+        compareCard.hidden = true;
+        compareCard.innerHTML = '';
+        lastCompareCity = null;
+        mainEl.classList.remove('compare-active');
+    } else {
+        compareInput.focus();
+    }
+});
+
+compareBtn.addEventListener('click', () => {
+    const city = compareInput.value.trim();
+    if (!city) return;
+    fetchCompare(city);
+});
+
+compareInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') compareBtn.click();
+});
+
+// ── Theme ──────────────────────────────────────────────────────────
 const VALID_THEMES = new Set(['cyber','ember','aurora','verdant','crimson','blush','sky','sage','lavender']);
 
 function setTheme(name) {
@@ -453,53 +630,66 @@ document.querySelectorAll('.theme-dot').forEach(dot =>
 
 // ── Init ───────────────────────────────────────────────────────────
 renderHistory();
-
-// Restore saved theme
 setTheme(localStorage.getItem(THEME_KEY) || 'cyber');
-
-// Restore saved mode
 setMode(localStorage.getItem(MODE_KEY) || 'dark');
 
-// Restore saved unit
 const savedUnit = localStorage.getItem(UNIT_KEY);
 if (savedUnit) {
     const radio = document.querySelector(`input[name="units"][value="${savedUnit}"]`);
     if (radio) radio.checked = true;
 }
 
-// ── Canvas rain effect ────────────────────────────────────────────
+// ── Canvas weather effects ─────────────────────────────────────────
 const bgCanvas = document.getElementById('bg-canvas');
 const bgCtx    = bgCanvas.getContext('2d');
-let rainDrops  = [];
+let rainDrops      = [];
+let snowFlakes     = [];
 let currentWeatherId = null;
 
-function isRainCondition(id) {
-    return id >= 200 && id < 600;
+// ── Lightning ──────────────────────────────────────────────────────
+const lightningFlash = document.getElementById('lightning-flash');
+let lightningTimer = null;
+
+function scheduleLightning() {
+    const delay = 1500 + Math.random() * 4000;
+    lightningTimer = setTimeout(() => {
+        if (currentWeatherId >= 200 && currentWeatherId < 300) {
+            lightningFlash.classList.add('flash');
+            const dur = 70 + Math.random() * 100;
+            setTimeout(() => {
+                lightningFlash.classList.remove('flash');
+                if (Math.random() < 0.4) {
+                    setTimeout(() => {
+                        lightningFlash.classList.add('flash');
+                        setTimeout(() => lightningFlash.classList.remove('flash'), 60);
+                    }, 180);
+                }
+            }, dur);
+            scheduleLightning();
+        }
+    }, delay);
 }
 
+function startLightning() {
+    stopLightning();
+    scheduleLightning();
+}
+
+function stopLightning() {
+    clearTimeout(lightningTimer);
+    lightningTimer = null;
+    lightningFlash.classList.remove('flash');
+}
+
+// ── Rain ───────────────────────────────────────────────────────────
 function rainCount(id) {
-    if (id >= 200 && id < 300) return 200; // thunderstorm — heavy
-    if (id >= 300 && id < 400) return 80;  // drizzle — light
-    return 150;                             // rain — moderate
+    if (id >= 200 && id < 300) return 200;
+    if (id >= 300 && id < 400) return 80;
+    return 150;
 }
 
-function resizeBg() {
-    bgCanvas.width  = window.innerWidth;
-    bgCanvas.height = window.innerHeight;
-    initRain();
-}
-
-function setWeatherEffect(id) {
-    currentWeatherId = id;
-    initRain();
-}
-
-function initRain() {
-    if (!currentWeatherId || !isRainCondition(currentWeatherId)) {
-        rainDrops = [];
-        return;
-    }
-    const count = rainCount(currentWeatherId);
+function initRain(id) {
+    const count = rainCount(id);
     rainDrops = Array.from({ length: count }, () => ({
         x:     Math.random() * bgCanvas.width,
         y:     Math.random() * bgCanvas.height,
@@ -507,6 +697,42 @@ function initRain() {
         speed: Math.random() * 5 + 9,
         op:    Math.random() * 0.2 + 0.08,
     }));
+}
+
+// ── Snow ───────────────────────────────────────────────────────────
+function initSnow() {
+    snowFlakes = Array.from({ length: 90 }, () => ({
+        x:     Math.random() * bgCanvas.width,
+        y:     Math.random() * bgCanvas.height,
+        r:     Math.random() * 2.5 + 0.8,
+        speed: Math.random() * 1.2 + 0.4,
+        drift: (Math.random() - 0.5) * 0.6,
+        op:    Math.random() * 0.45 + 0.15,
+    }));
+}
+
+// ── Set weather effect ─────────────────────────────────────────────
+function setWeatherEffect(id) {
+    currentWeatherId = id;
+    stopLightning();
+    rainDrops  = [];
+    snowFlakes = [];
+
+    if (id >= 200 && id < 300) {
+        initRain(id);
+        startLightning();
+    } else if (id >= 300 && id < 600) {
+        initRain(id);
+    } else if (id >= 600 && id < 700) {
+        initSnow();
+    }
+}
+
+function resizeBg() {
+    bgCanvas.width  = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+    if (rainDrops.length > 0 && currentWeatherId)  initRain(currentWeatherId);
+    if (snowFlakes.length > 0)                      initSnow();
 }
 
 function drawBg() {
@@ -532,10 +758,28 @@ function drawBg() {
         bgCtx.globalAlpha = 1;
     }
 
+    if (snowFlakes.length > 0) {
+        snowFlakes.forEach(flake => {
+            bgCtx.globalAlpha = flake.op;
+            bgCtx.fillStyle = 'rgba(220, 235, 255, 1)';
+            bgCtx.beginPath();
+            bgCtx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
+            bgCtx.fill();
+            flake.y += flake.speed;
+            flake.x += flake.drift;
+            if (flake.y > bgCanvas.height) {
+                flake.y = -flake.r * 2;
+                flake.x = Math.random() * bgCanvas.width;
+            }
+            if (flake.x > bgCanvas.width) flake.x = 0;
+            if (flake.x < 0)             flake.x = bgCanvas.width;
+        });
+        bgCtx.globalAlpha = 1;
+    }
+
     requestAnimationFrame(drawBg);
 }
 
 window.addEventListener('resize', resizeBg);
-
 resizeBg();
 drawBg();
