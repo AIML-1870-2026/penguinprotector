@@ -1,7 +1,7 @@
 const API_KEY = '83301ee6bbb55308cf3054fe3afc3ee3';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 const SUN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <g fill="none" stroke="#FFE566" stroke-width="5.5" stroke-linecap="round">
+  <g fill="none" stroke="#FFF176" stroke-width="5.5" stroke-linecap="round">
     <line x1="50" y1="4"  x2="50" y2="20"/>
     <line x1="50" y1="80" x2="50" y2="96"/>
     <line x1="4"  y1="50" x2="20" y2="50"/>
@@ -11,19 +11,22 @@ const SUN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1
     <line x1="84.4" y1="15.6" x2="73.1" y2="26.9"/>
     <line x1="15.6" y1="84.4" x2="26.9" y2="73.1"/>
   </g>
-  <circle cx="50" cy="50" r="22" fill="#FFE566" stroke="#FFD700" stroke-width="1.5"/>
+  <circle cx="50" cy="50" r="22" fill="#FFF176" stroke="#FFE000" stroke-width="1.5"/>
 </svg>`;
 const SUN_ICON_URL = 'data:image/svg+xml,' + encodeURIComponent(SUN_ICON_SVG);
 
 const PARTLY_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <g fill="none" stroke="#FFE566" stroke-width="5.5" stroke-linecap="round">
+  <g fill="none" stroke="#FFF176" stroke-width="5.5" stroke-linecap="round">
     <line x1="52" y1="3"  x2="52" y2="13"/>
+    <line x1="52" y1="59" x2="52" y2="69"/>
     <line x1="16" y1="36" x2="26" y2="36"/>
     <line x1="78" y1="36" x2="88" y2="36"/>
     <line x1="26" y1="11" x2="33" y2="18"/>
     <line x1="78" y1="11" x2="71" y2="18"/>
+    <line x1="26" y1="61" x2="33" y2="54"/>
+    <line x1="78" y1="61" x2="71" y2="54"/>
   </g>
-  <circle cx="52" cy="36" r="19" fill="#FFE566" stroke="#FFD700" stroke-width="1.5"/>
+  <circle cx="52" cy="36" r="19" fill="#FFF176" stroke="#FFE000" stroke-width="1.5"/>
   <circle cx="30" cy="76" r="13" fill="#c8d8ea"/>
   <circle cx="49" cy="68" r="17" fill="#c8d8ea"/>
   <circle cx="67" cy="74" r="12" fill="#c8d8ea"/>
