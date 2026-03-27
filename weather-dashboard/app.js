@@ -34,9 +34,34 @@ const PARTLY_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1
 </svg>`;
 const PARTLY_SUNNY_URL = 'data:image/svg+xml,' + encodeURIComponent(PARTLY_SUNNY_SVG);
 
+const RAIN_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g fill="none" stroke="#FFF176" stroke-width="5.5" stroke-linecap="round">
+    <line x1="52" y1="2"  x2="52" y2="11"/>
+    <line x1="52" y1="45" x2="52" y2="54"/>
+    <line x1="15" y1="28" x2="24" y2="28"/>
+    <line x1="80" y1="28" x2="89" y2="28"/>
+    <line x1="26" y1="7"  x2="33" y2="14"/>
+    <line x1="78" y1="7"  x2="71" y2="14"/>
+    <line x1="26" y1="49" x2="33" y2="42"/>
+    <line x1="78" y1="49" x2="71" y2="42"/>
+  </g>
+  <circle cx="52" cy="28" r="16" fill="#FFF176" stroke="#FFE000" stroke-width="1.5"/>
+  <circle cx="29" cy="67" r="12" fill="#c8d8ea"/>
+  <circle cx="48" cy="59" r="16" fill="#c8d8ea"/>
+  <circle cx="66" cy="65" r="11" fill="#c8d8ea"/>
+  <rect x="17" y="67" width="60" height="12" fill="#c8d8ea"/>
+  <g stroke="#6ab4f5" stroke-width="2.5" stroke-linecap="round">
+    <line x1="30" y1="82" x2="27" y2="93"/>
+    <line x1="48" y1="82" x2="45" y2="93"/>
+    <line x1="66" y1="82" x2="63" y2="93"/>
+  </g>
+</svg>`;
+const RAIN_SUNNY_URL = 'data:image/svg+xml,' + encodeURIComponent(RAIN_SUNNY_SVG);
+
 const ICON_URL = icon => {
     if (icon.startsWith('01')) return SUN_ICON_URL;
     if (icon.startsWith('02')) return PARTLY_SUNNY_URL;
+    if (icon.startsWith('10')) return RAIN_SUNNY_URL;
     return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 };
 const HISTORY_KEY = 'wx_history';
@@ -211,7 +236,7 @@ function renderCurrent(data) {
     const iconCode = data.weather[0].icon;
     weatherIcon.src         = ICON_URL(iconCode);
     weatherIcon.alt         = data.weather[0].description;
-    weatherIcon.dataset.custom = iconCode.startsWith('01') || iconCode.startsWith('02') ? 'sun' : '';
+    weatherIcon.dataset.custom = iconCode.startsWith('01') || iconCode.startsWith('02') || iconCode.startsWith('10') ? 'sun' : '';
     temperature.textContent = `${Math.round(data.main.temp)}${sym}`;
     feelsLike.textContent   = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
 
@@ -258,7 +283,7 @@ function renderForecast(data) {
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
-            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon.startsWith('01') || noon.weather[0].icon.startsWith('02') ? 'sun' : ''}" />
+            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon.startsWith('01') || noon.weather[0].icon.startsWith('02') || noon.weather[0].icon.startsWith('10') ? 'sun' : ''}" />
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
