@@ -241,7 +241,12 @@ function renderCurrent(data) {
     feelsLike.textContent   = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
 
     humidityEl.textContent  = `${data.main.humidity}%`;
+    document.getElementById('humidity-stat').style.setProperty('--bar-pct', `${data.main.humidity}%`);
+
     windEl.textContent      = `${Math.round(data.wind.speed)} ${wSym}`;
+    const windMax = getUnits() === 'metric' ? 28 : 60;
+    const windPct = Math.min(100, Math.round(data.wind.speed / windMax * 100));
+    document.getElementById('wind-stat').style.setProperty('--bar-pct', `${windPct}%`);
     pressureEl.textContent  = `${data.main.pressure} hPa`;
     visibilityEl.textContent= data.visibility
         ? `${(data.visibility / 1000).toFixed(1)} km`
