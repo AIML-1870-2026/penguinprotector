@@ -59,9 +59,9 @@ const RAIN_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100
 const RAIN_SUNNY_URL = 'data:image/svg+xml,' + encodeURIComponent(RAIN_SUNNY_SVG);
 
 const ICON_URL = icon => {
-    if (icon.startsWith('01')) return SUN_ICON_URL;
-    if (icon.startsWith('02')) return PARTLY_SUNNY_URL;
-    if (icon.startsWith('10')) return RAIN_SUNNY_URL;
+    if (icon === '01d') return SUN_ICON_URL;
+    if (icon === '02d') return PARTLY_SUNNY_URL;
+    if (icon === '10d') return RAIN_SUNNY_URL;
     return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 };
 const HISTORY_KEY = 'wx_history';
@@ -236,7 +236,7 @@ function renderCurrent(data) {
     const iconCode = data.weather[0].icon;
     weatherIcon.src         = ICON_URL(iconCode);
     weatherIcon.alt         = data.weather[0].description;
-    weatherIcon.dataset.custom = iconCode.startsWith('01') || iconCode.startsWith('02') || iconCode.startsWith('10') ? 'sun' : '';
+    weatherIcon.dataset.custom = (iconCode === '01d' || iconCode === '02d' || iconCode === '10d') ? 'sun' : '';
     temperature.textContent = `${Math.round(data.main.temp)}${sym}`;
     feelsLike.textContent   = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
 
@@ -283,7 +283,7 @@ function renderForecast(data) {
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
-            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon.startsWith('01') || noon.weather[0].icon.startsWith('02') || noon.weather[0].icon.startsWith('10') ? 'sun' : ''}" />
+            <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon === '01d' || noon.weather[0].icon === '02d' || noon.weather[0].icon === '10d' ? 'sun' : ''}" />
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
