@@ -247,12 +247,35 @@ function renderCurrent(data) {
     const windMax = getUnits() === 'metric' ? 28 : 60;
     const windPct = Math.min(100, Math.round(data.wind.speed / windMax * 100));
     document.getElementById('wind-stat').style.setProperty('--bar-pct', `${windPct}%`);
+    const windDeg = data.wind.deg ?? null;
+    const compass = document.getElementById('wind-compass');
+    if (windDeg !== null) {
+        compass.style.transform = `rotate(${windDeg}deg)`;
+        compass.title = `Wind from ${windDeg}°`;
+        compass.hidden = false;
+    } else {
+        compass.hidden = true;
+    }
+
     pressureEl.textContent  = `${data.main.pressure} hPa`;
     visibilityEl.textContent= data.visibility
         ? `${(data.visibility / 1000).toFixed(1)} km`
         : '—';
-    sunriseEl.textContent   = formatTime(data.sys.sunrise, data.timezone);
-    sunsetEl.textContent    = formatTime(data.sys.sunset,  data.timezone);
+    const visPct = data.visibility ? Math.min(100, Math.round(data.visibility / 100)) : 0;
+    document.getElementById('visibility-stat').style.setProperty('--bar-pct', `${visPct}%`);
+
+    const riseFmt = formatTime(data.sys.sunrise, data.timezone);
+    const setFmt  = formatTime(data.sys.sunset,  data.timezone);
+    sunriseEl.textContent   = riseFmt;
+    sunsetEl.textContent    = setFmt;
+    document.getElementById('sun-rise-label').textContent = riseFmt;
+    document.getElementById('sun-set-label').textContent  = setFmt;
+    const nowSec  = Math.floor(Date.now() / 1000);
+    const sunPct  = Math.max(0, Math.min(100,
+        ((nowSec - data.sys.sunrise) / (data.sys.sunset - data.sys.sunrise)) * 100
+    ));
+    document.getElementById('sun-progress-fill').style.width = `${sunPct}%`;
+    document.getElementById('sun-progress-dot').style.left   = `${sunPct}%`;
 
     applyWeatherBg(data.weather[0].id);
     currentCard.hidden = false;
@@ -292,7 +315,10 @@ function renderForecast(data) {
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
-            <div class="fc-pop">💧 ${maxPop}%</div>
+            <div class="fc-pop-wrap">
+                <span class="fc-pop-label">💧 ${maxPop}%</span>
+                <div class="fc-pop-track"><div class="fc-pop-fill" style="width:${maxPop}%"></div></div>
+            </div>
         </div>`;
     }).join('');
 

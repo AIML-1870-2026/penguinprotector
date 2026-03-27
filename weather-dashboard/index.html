@@ -87,16 +87,23 @@
                         </div>
                         <div class="stat" id="wind-stat">
                             <span class="stat-label">Wind</span>
-                            <span id="wind" class="stat-value"></span>
+                            <div class="wind-row">
+                                <span id="wind" class="stat-value"></span>
+                                <svg id="wind-compass" class="wind-compass" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="10" fill="none" class="compass-ring" stroke-width="1.5"/>
+                                    <polygon points="12,3 9,15 12,13 15,15" class="compass-arrow"/>
+                                </svg>
+                            </div>
                             <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
                         </div>
                         <div class="stat">
                             <span class="stat-label">Pressure</span>
                             <span id="pressure" class="stat-value"></span>
                         </div>
-                        <div class="stat">
+                        <div class="stat" id="visibility-stat">
                             <span class="stat-label">Visibility</span>
                             <span id="visibility" class="stat-value"></span>
+                            <div class="stat-bar-track"><div class="stat-bar-fill"></div></div>
                         </div>
                         <div class="stat">
                             <span class="stat-label">Sunrise</span>
@@ -121,6 +128,17 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="sun-progress-wrap" id="sun-progress-wrap">
+                <div class="sun-progress-labels">
+                    <span id="sun-rise-label"></span>
+                    <span class="sun-progress-title">☀ Day Progress</span>
+                    <span id="sun-set-label"></span>
+                </div>
+                <div class="sun-progress-bar">
+                    <div class="sun-progress-fill" id="sun-progress-fill"></div>
+                    <div class="sun-progress-dot" id="sun-progress-dot"></div>
                 </div>
             </div>
         </section>

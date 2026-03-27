@@ -520,11 +520,85 @@ main {
     margin-top: 4px;
 }
 
-.fc-pop {
+.fc-pop-wrap {
+    margin-top: 6px;
+}
+.fc-pop-label {
     font-size: 10px;
     letter-spacing: 1px;
     color: rgba(100,180,255,0.7);
-    margin-top: 2px;
+}
+.fc-pop-track {
+    height: 3px;
+    background: rgba(100,180,255,0.12);
+    border-radius: 2px;
+    margin-top: 3px;
+    overflow: hidden;
+}
+.fc-pop-fill {
+    height: 100%;
+    background: rgba(100,180,255,0.75);
+    border-radius: 2px;
+    box-shadow: 0 0 5px rgba(100,180,255,0.35);
+}
+
+/* ── Wind compass ────────────────────────────────────────────────── */
+.wind-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.wind-compass {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transform-origin: center center;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.compass-ring  { stroke: rgba(var(--cyan), 0.25); }
+.compass-arrow { fill: rgb(var(--cyan)); filter: drop-shadow(0 0 3px rgba(var(--cyan), 0.6)); }
+
+/* ── Sunrise/sunset progress bar ─────────────────────────────────── */
+.sun-progress-wrap {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(var(--cyan), 0.1);
+}
+.sun-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(224,224,224,0.35);
+    text-transform: uppercase;
+    margin-bottom: 7px;
+}
+.sun-progress-title { color: rgba(var(--magenta), 0.45); }
+.sun-progress-bar {
+    position: relative;
+    height: 3px;
+    background: rgba(var(--cyan), 0.12);
+    border-radius: 2px;
+    overflow: visible;
+}
+.sun-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(var(--magenta), 0.7), rgba(var(--cyan), 0.9));
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(var(--cyan), 0.35);
+    transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sun-progress-dot {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgb(var(--cyan));
+    box-shadow: 0 0 8px rgba(var(--cyan), 0.8);
+    transition: left 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── AQI scale ────────────────────────────────────────────────────── */
@@ -603,7 +677,11 @@ body[data-mode="light"] .feels-like,
 body[data-mode="light"] .fc-desc,
 body[data-mode="light"] .fc-range,
 body[data-mode="light"] .stat-label { color: rgba(26,26,46,0.5); }
-body[data-mode="light"] .fc-pop { color: rgba(0,100,200,0.6); }
+body[data-mode="light"] .fc-pop-label { color: rgba(0,100,200,0.6); }
+body[data-mode="light"] .fc-pop-track { background: rgba(0,100,200,0.1); }
+body[data-mode="light"] .fc-pop-fill  { background: rgba(0,100,200,0.5); box-shadow: none; }
+body[data-mode="light"] .sun-progress-labels { color: rgba(26,26,46,0.35); }
+body[data-mode="light"] .sun-progress-wrap { border-top-color: rgba(var(--cyan), 0.15); }
 body[data-mode="light"] .temperature,
 body[data-mode="light"] .fc-temp    { color: #1a1a2e; }
 
