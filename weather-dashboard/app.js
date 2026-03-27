@@ -16,21 +16,17 @@ const SUN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1
 const SUN_ICON_URL = 'data:image/svg+xml,' + encodeURIComponent(SUN_ICON_SVG);
 
 const PARTLY_SUNNY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <g fill="none" stroke="#FFF176" stroke-width="5.5" stroke-linecap="round">
-    <line x1="52" y1="3"  x2="52" y2="13"/>
-    <line x1="52" y1="59" x2="52" y2="69"/>
-    <line x1="16" y1="36" x2="26" y2="36"/>
-    <line x1="78" y1="36" x2="88" y2="36"/>
-    <line x1="26" y1="11" x2="33" y2="18"/>
-    <line x1="78" y1="11" x2="71" y2="18"/>
-    <line x1="26" y1="61" x2="33" y2="54"/>
-    <line x1="78" y1="61" x2="71" y2="54"/>
+  <g fill="none" stroke="#FFF176" stroke-width="4.5" stroke-linecap="round">
+    <line x1="68" y1="18" x2="68" y2="11"/>
+    <line x1="79" y1="23" x2="84" y2="18"/>
+    <line x1="84" y1="34" x2="91" y2="34"/>
+    <line x1="57" y1="23" x2="52" y2="18"/>
   </g>
-  <circle cx="52" cy="36" r="19" fill="#FFF176" stroke="#FFE000" stroke-width="1.5"/>
-  <circle cx="30" cy="76" r="13" fill="#c8d8ea"/>
-  <circle cx="49" cy="68" r="17" fill="#c8d8ea"/>
-  <circle cx="67" cy="74" r="12" fill="#c8d8ea"/>
-  <rect x="17" y="76" width="62" height="14" fill="#c8d8ea"/>
+  <circle cx="68" cy="34" r="13" fill="#FFF176" stroke="#FFE000" stroke-width="1.5"/>
+  <circle cx="26" cy="68" r="12" fill="#c8d8ea"/>
+  <circle cx="44" cy="59" r="16" fill="#c8d8ea"/>
+  <circle cx="62" cy="53" r="14" fill="#c8d8ea"/>
+  <rect x="14" y="68" width="58" height="14" fill="#c8d8ea"/>
 </svg>`;
 const PARTLY_SUNNY_URL = 'data:image/svg+xml,' + encodeURIComponent(PARTLY_SUNNY_SVG);
 
