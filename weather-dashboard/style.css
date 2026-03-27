@@ -552,10 +552,10 @@ main {
 .aqi-5 { color: #d50000; }
 
 /* ── Light mode overrides ─────────────────────────────────────────── */
-body[data-mode="light"][data-theme="cyber"]    { --bg: #e4f3f8; }
+body[data-mode="light"][data-theme="cyber"]    { --bg: #e4f3f8; --cyan: 0, 140, 180; --magenta: 180, 0, 140; --green: 0, 155, 90; }
 body[data-mode="light"][data-theme="ember"]    { --bg: #faf0e4; }
 body[data-mode="light"][data-theme="aurora"]   { --bg: #ede6fa; }
-body[data-mode="light"][data-theme="verdant"]  { --bg: #e4f8ec; }
+body[data-mode="light"][data-theme="verdant"]  { --bg: #e4f8ec; --cyan: 0, 150, 65; --magenta: 30, 160, 90; --green: 100, 155, 0; }
 body[data-mode="light"][data-theme="crimson"]  { --bg: #f8e4ea; }
 body[data-mode="light"][data-theme="blush"]    { --bg: #fde8f0; --cyan: 190, 50, 85; --magenta: 200, 40, 90; --green: 195, 80, 110; }
 body[data-mode="light"][data-theme="sky"]      { --bg: #deeeff; --cyan: 25, 95, 190; --magenta: 20, 80, 200; --green: 45, 130, 210; }
