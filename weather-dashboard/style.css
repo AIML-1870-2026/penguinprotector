@@ -647,6 +647,79 @@ main {
 .aqi-4 { color: #ff6d00; }
 .aqi-5 { color: #d50000; }
 
+/* ── Local time clock ────────────────────────────────────────────── */
+.local-time {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: rgba(var(--cyan), 0.55);
+    margin-top: 2px;
+    margin-bottom: 2px;
+    font-style: italic;
+    min-height: 1em;
+}
+
+/* ── Temp range (H/L) ────────────────────────────────────────────── */
+.temp-range {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: rgba(224,224,224,0.45);
+    margin-bottom: 6px;
+}
+
+/* ── Forecast feels-like ─────────────────────────────────────────── */
+.fc-feels {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: rgba(224,224,224,0.38);
+    margin-top: 2px;
+}
+
+/* ── UV Index scale ──────────────────────────────────────────────── */
+.uvi-stat-cell { grid-column: 1 / -1; }
+
+.uvi-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 2px 0 7px;
+}
+.uvi-num {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+}
+.uvi-word {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    align-self: center;
+}
+.uvi-bar {
+    display: flex;
+    gap: 3px;
+    height: 5px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.uvi-seg {
+    flex: 1;
+    border-radius: 2px;
+    opacity: 0.18;
+    transition: opacity 0.3s;
+}
+.uvi-seg.active { opacity: 1; }
+.uvi-seg-1 { background: #00e676; }
+.uvi-seg-2 { background: #aeea00; }
+.uvi-seg-3 { background: #ffd600; }
+.uvi-seg-4 { background: #ff6d00; }
+.uvi-seg-5 { background: #d50000; }
+
+.uvi-low   { color: #00e676; }
+.uvi-mod   { color: #aeea00; }
+.uvi-high  { color: #ffd600; }
+.uvi-vhigh { color: #ff6d00; }
+.uvi-ext   { color: #d50000; }
+
 /* ── Light mode overrides ─────────────────────────────────────────── */
 body[data-mode="light"][data-theme="cyber"]    { --bg: #e4f3f8; --cyan: 0, 140, 180; --magenta: 180, 0, 140; --green: 0, 155, 90; }
 body[data-mode="light"][data-theme="ember"]    { --bg: #faf0e4; }
@@ -676,6 +749,8 @@ body[data-mode="light"] .weather-desc,
 body[data-mode="light"] .feels-like,
 body[data-mode="light"] .fc-desc,
 body[data-mode="light"] .fc-range,
+body[data-mode="light"] .fc-feels,
+body[data-mode="light"] .temp-range,
 body[data-mode="light"] .stat-label { color: rgba(26,26,46,0.5); }
 body[data-mode="light"] .fc-pop-label { color: rgba(0,100,200,0.6); }
 body[data-mode="light"] .fc-pop-track { background: rgba(0,100,200,0.1); }

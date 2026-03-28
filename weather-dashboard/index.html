@@ -80,11 +80,13 @@
                 <div class="current-top">
                     <div class="current-left">
                         <div id="city-name" class="city-name"></div>
+                        <div id="local-time" class="local-time"></div>
                         <div id="weather-desc" class="weather-desc"></div>
                         <div class="temp-row">
                             <img id="weather-icon" class="weather-icon" src="" alt="" />
                             <span id="temperature" class="temperature"></span>
                         </div>
+                        <div id="temp-range" class="temp-range"></div>
                         <div class="feels-like-wrap">
                             <div id="feels-like" class="feels-like"></div>
                             <button class="fl-tip-icon" aria-label="About feels-like temperature">?</button>
@@ -147,6 +149,20 @@
                                     <div class="aqi-seg" data-i="3"></div>
                                     <div class="aqi-seg" data-i="4"></div>
                                     <div class="aqi-seg" data-i="5"></div>
+                                </div>
+                            </div>
+                            <div class="stat uvi-stat-cell" id="uvi-stat" hidden>
+                                <span class="stat-label">UV Index</span>
+                                <div class="uvi-readout">
+                                    <span id="uvi-value" class="uvi-num"></span>
+                                    <span id="uvi-word" class="uvi-word"></span>
+                                </div>
+                                <div class="uvi-bar" id="uvi-bar">
+                                    <div class="uvi-seg" data-i="1"></div>
+                                    <div class="uvi-seg" data-i="2"></div>
+                                    <div class="uvi-seg" data-i="3"></div>
+                                    <div class="uvi-seg" data-i="4"></div>
+                                    <div class="uvi-seg" data-i="5"></div>
                                 </div>
                             </div>
                         </div>

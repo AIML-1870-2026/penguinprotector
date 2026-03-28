@@ -135,10 +135,65 @@ const aqiStat       = document.getElementById('aqi-stat');
 const aqiValueEl    = document.getElementById('aqi-value');
 const aqiWordEl     = document.getElementById('aqi-word');
 const aqiBar        = document.getElementById('aqi-bar');
+const uviStat       = document.getElementById('uvi-stat');
+const uviValueEl    = document.getElementById('uvi-value');
+const uviWordEl     = document.getElementById('uvi-word');
+const uviBar        = document.getElementById('uvi-bar');
+const localTimeEl   = document.getElementById('local-time');
+const tempRangeEl   = document.getElementById('temp-range');
 
 // Compare state
 let compareActive   = false;
 let lastCompareCity = null;
+
+// Local clock state
+let clockTimer    = null;
+let clockTimezone = null;
+
+function startClock(tzOffsetSec) {
+    clockTimezone = tzOffsetSec;
+    if (clockTimer) clearInterval(clockTimer);
+    const tick = () => {
+        localTimeEl.textContent = 'Local: ' + formatTime(Math.floor(Date.now() / 1000), clockTimezone);
+    };
+    tick();
+    clockTimer = setInterval(tick, 1000);
+}
+
+function stopClock() {
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    clockTimezone = null;
+    localTimeEl.textContent = '';
+}
+
+// ── UV Index ────────────────────────────────────────────────────────
+const UVI_LEVELS = [
+    { max: 2,  word: 'Low',       cls: 'uvi-low'   },
+    { max: 5,  word: 'Moderate',  cls: 'uvi-mod'   },
+    { max: 7,  word: 'High',      cls: 'uvi-high'  },
+    { max: 10, word: 'Very High', cls: 'uvi-vhigh' },
+    { max: Infinity, word: 'Extreme', cls: 'uvi-ext' },
+];
+
+function uviLevel(v) {
+    return UVI_LEVELS.find(l => v <= l.max);
+}
+
+function renderUVI(value) {
+    const v   = Math.round(value);
+    const lvl = uviLevel(v);
+    uviValueEl.textContent = v;
+    uviValueEl.className   = `uvi-num ${lvl.cls}`;
+    uviWordEl.textContent  = lvl.word;
+    uviWordEl.className    = `uvi-word ${lvl.cls}`;
+    // light up segments: Low=1, Mod=2, High=3, VHigh=4, Ext=5
+    const segIndex = UVI_LEVELS.indexOf(lvl) + 1;
+    uviBar.querySelectorAll('.uvi-seg').forEach(seg => {
+        const i = +seg.dataset.i;
+        seg.className = `uvi-seg uvi-seg-${i}${i <= segIndex ? ' active' : ''}`;
+    });
+    uviStat.hidden = false;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────
 function getUnits() {
@@ -246,7 +301,9 @@ function renderCurrent(data) {
     const wSym = windUnit();
 
     cityNameEl.textContent  = `${data.name}, ${data.sys.country}`;
+    startClock(data.timezone);
     weatherDesc.textContent = data.weather[0].description;
+    tempRangeEl.textContent = `H: ${Math.round(data.main.temp_max)}${sym}  ·  L: ${Math.round(data.main.temp_min)}${sym}`;
     const iconCode = data.weather[0].icon;
     weatherIcon.src         = ICON_URL(iconCode);
     weatherIcon.alt         = data.weather[0].description;
@@ -360,12 +417,14 @@ function renderForecast(data) {
         const dayName = DAY_NAMES[new Date(date + 'T12:00:00').getDay()];
         const maxPop  = Math.round(Math.max(...entries.map(e => (e.pop || 0))) * 100);
 
+        const feelsNoon = Math.round(noon.main.feels_like);
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
             <img class="fc-icon" src="${ICON_URL(noon.weather[0].icon)}" alt="${noon.weather[0].description}" data-custom="${noon.weather[0].icon === '01d' || noon.weather[0].icon === '02d' || noon.weather[0].icon === '10d' ? 'sun' : ''}" />
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
+            <div class="fc-feels">Feels like ${feelsNoon}${sym}</div>
             <div class="fc-range">${tempMax}° / ${tempMin}°</div>
             <div class="fc-pop-wrap">
                 <span class="fc-pop-label">💧 ${maxPop}%</span>
@@ -472,6 +531,8 @@ async function fetchByCity(city) {
     compareCard.hidden    = true;
     mainEl.classList.remove('compare-active');
     aqiStat.hidden = true;
+    uviStat.hidden = true;
+    stopClock();
     setLoading(true);
 
     const units = getUnits();
@@ -504,6 +565,10 @@ async function fetchByCity(city) {
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
             .catch(() => {});
+        fetch(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d && d.value != null) renderUVI(d.value); })
+            .catch(() => {});
 
     } catch (err) {
         showError(`Could not fetch weather: ${err.message}`);
@@ -520,6 +585,8 @@ async function fetchByCoords(lat, lon) {
     compareCard.hidden    = true;
     mainEl.classList.remove('compare-active');
     aqiStat.hidden = true;
+    uviStat.hidden = true;
+    stopClock();
     setLoading(true);
 
     const units = getUnits();
@@ -547,6 +614,10 @@ async function fetchByCoords(lat, lon) {
         fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
+            .catch(() => {});
+        fetch(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d && d.value != null) renderUVI(d.value); })
             .catch(() => {});
 
     } catch (err) {
