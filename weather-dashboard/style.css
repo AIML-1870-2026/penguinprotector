@@ -339,6 +339,23 @@ main {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Weather icon animations ──────────────────────────────────────── */
+@keyframes icon-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+@keyframes icon-bob {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-5px); }
+}
+.weather-icon.icon-spin {
+    animation: icon-spin 18s linear infinite;
+    transform-origin: center center;
+}
+.weather-icon.icon-bob {
+    animation: icon-bob 3.5s ease-in-out infinite;
+}
+
 /* ── Current card ─────────────────────────────────────────────────── */
 .current-card {
     border: 1px solid rgba(var(--cyan), 0.2);
@@ -514,10 +531,35 @@ main {
     color: #e0e0e0;
 }
 .fc-range {
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: rgba(224,224,224,0.4);
-    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    width: 100%;
+}
+.fc-range-lo,
+.fc-range-hi {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: rgba(224,224,224,0.45);
+    flex-shrink: 0;
+}
+.fc-range-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(224,224,224,0.08);
+    border-radius: 3px;
+    position: relative;
+    overflow: visible;
+}
+.fc-range-fill {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #6ab4f5, #ffa040);
+    box-shadow: 0 0 5px rgba(255,160,64,0.35);
+    transition: left 0.6s cubic-bezier(0.4,0,0.2,1), width 0.6s cubic-bezier(0.4,0,0.2,1);
 }
 
 .fc-pop-wrap {
@@ -752,6 +794,9 @@ body[data-mode="light"] .fc-range,
 body[data-mode="light"] .fc-feels,
 body[data-mode="light"] .temp-range,
 body[data-mode="light"] .stat-label { color: rgba(26,26,46,0.5); }
+body[data-mode="light"] .fc-range-track { background: rgba(0,0,0,0.08); }
+body[data-mode="light"] .fc-range-lo,
+body[data-mode="light"] .fc-range-hi   { color: rgba(26,26,46,0.45); }
 body[data-mode="light"] .fc-pop-label { color: rgba(0,100,200,0.6); }
 body[data-mode="light"] .fc-pop-track { background: rgba(0,100,200,0.1); }
 body[data-mode="light"] .fc-pop-fill  { background: rgba(0,100,200,0.5); box-shadow: none; }

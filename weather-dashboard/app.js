@@ -308,6 +308,8 @@ function renderCurrent(data) {
     weatherIcon.src         = ICON_URL(iconCode);
     weatherIcon.alt         = data.weather[0].description;
     weatherIcon.dataset.custom = (iconCode === '01d' || iconCode === '02d' || iconCode === '10d') ? 'sun' : '';
+    weatherIcon.classList.remove('icon-spin', 'icon-bob');
+    weatherIcon.classList.add(iconCode === '01d' ? 'icon-spin' : 'icon-bob');
     temperature.textContent = `${Math.round(data.main.temp)}${sym}`;
     feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}${sym}`;
     flTooltip.textContent   = feelsLikeExplanation(data);
@@ -409,15 +411,25 @@ function renderForecast(data) {
     const todayStr = new Date().toISOString().slice(0, 10);
     const days = Object.keys(byDay).filter(d => d !== todayStr).slice(0, 5);
 
-    forecastCards.innerHTML = days.map(date => {
+    // Pre-compute per-day stats so we can find the global range for the bar
+    const dayStats = days.map(date => {
         const entries = byDay[date];
         const noon    = entries.find(e => e.dt_txt.includes('12:00:00')) || entries[Math.floor(entries.length / 2)];
         const tempMax = Math.round(Math.max(...entries.map(e => e.main.temp_max)));
         const tempMin = Math.round(Math.min(...entries.map(e => e.main.temp_min)));
         const dayName = DAY_NAMES[new Date(date + 'T12:00:00').getDay()];
         const maxPop  = Math.round(Math.max(...entries.map(e => (e.pop || 0))) * 100);
-
         const feelsNoon = Math.round(noon.main.feels_like);
+        return { noon, tempMax, tempMin, dayName, maxPop, feelsNoon };
+    });
+
+    const globalMin  = Math.min(...dayStats.map(d => d.tempMin));
+    const globalMax  = Math.max(...dayStats.map(d => d.tempMax));
+    const globalSpan = globalMax - globalMin || 1;
+
+    forecastCards.innerHTML = dayStats.map(({ noon, tempMax, tempMin, dayName, maxPop, feelsNoon }) => {
+        const barLeft  = Math.round((tempMin - globalMin) / globalSpan * 100);
+        const barWidth = Math.max(8, Math.round((tempMax - tempMin) / globalSpan * 100));
         return `
         <div class="fc-card">
             <div class="fc-day">${dayName}</div>
@@ -425,7 +437,13 @@ function renderForecast(data) {
             <div class="fc-desc">${noon.weather[0].description}</div>
             <div class="fc-temp">${Math.round(noon.main.temp)}${sym}</div>
             <div class="fc-feels">Feels like ${feelsNoon}${sym}</div>
-            <div class="fc-range">${tempMax}° / ${tempMin}°</div>
+            <div class="fc-range">
+                <span class="fc-range-lo">${tempMin}°</span>
+                <div class="fc-range-track">
+                    <div class="fc-range-fill" style="left:${barLeft}%;width:${barWidth}%"></div>
+                </div>
+                <span class="fc-range-hi">${tempMax}°</span>
+            </div>
             <div class="fc-pop-wrap">
                 <span class="fc-pop-label">💧 ${maxPop}%</span>
                 <div class="fc-pop-track"><div class="fc-pop-fill" style="width:${maxPop}%"></div></div>
