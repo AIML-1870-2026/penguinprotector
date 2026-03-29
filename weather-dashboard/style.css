@@ -130,7 +130,7 @@ h1 {
 
 .subtitle {
     margin-top: 8px;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 5px;
     color: rgba(var(--magenta), 0.6);
     text-transform: uppercase;
@@ -299,7 +299,7 @@ main {
     border: 1px solid rgba(var(--magenta), 0.2);
     border-radius: 3px;
     padding: 4px 12px;
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 2px;
     color: rgba(var(--magenta), 0.65);
     cursor: pointer;
@@ -380,7 +380,7 @@ main {
 .current-left { flex: 1; min-width: 200px; }
 
 .city-name {
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 600;
     letter-spacing: 4px;
     color: rgb(var(--cyan));
@@ -388,7 +388,7 @@ main {
 }
 
 .weather-desc {
-    font-size: 14px;
+    font-size: 16px;
     letter-spacing: 3px;
     color: rgba(224,224,224,0.55);
     text-transform: uppercase;
@@ -417,7 +417,7 @@ main {
 }
 
 .feels-like {
-    font-size: 14px;
+    font-size: 16px;
     letter-spacing: 2px;
     color: rgba(224,224,224,0.4);
     margin-top: 6px;
@@ -443,13 +443,13 @@ main {
     min-width: 100px;
 }
 .stat-label {
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 2px;
     color: rgba(224,224,224,0.4);
     text-transform: uppercase;
 }
 .stat-value {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: rgb(var(--cyan));
     margin-top: 4px;
@@ -477,7 +477,7 @@ main {
 .forecast-section {}
 
 .section-title {
-    font-size: 14px;
+    font-size: 16px;
     letter-spacing: 5px;
     text-transform: uppercase;
     color: rgba(var(--green), 0.7);
@@ -507,7 +507,7 @@ main {
 }
 
 .fc-day {
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 2px;
     color: rgba(var(--green), 0.65);
     text-transform: uppercase;
@@ -519,14 +519,14 @@ main {
     filter: drop-shadow(0 0 6px rgba(var(--green), 0.35));
 }
 .fc-desc {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 1px;
     color: rgba(224,224,224,0.4);
     margin: 6px 0 4px;
     text-transform: capitalize;
 }
 .fc-temp {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 600;
     color: #e0e0e0;
 }
@@ -566,7 +566,7 @@ main {
     margin-top: 6px;
 }
 .fc-pop-label {
-    font-size: 12px;
+    font-size: 13px;
     letter-spacing: 1px;
     color: rgba(100,180,255,0.7);
 }
@@ -691,7 +691,7 @@ main {
 
 /* ── Local time clock ────────────────────────────────────────────── */
 .local-time {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 2px;
     color: rgba(var(--cyan), 0.55);
     margin-top: 2px;
@@ -702,7 +702,7 @@ main {
 
 /* ── Temp range (H/L) ────────────────────────────────────────────── */
 .temp-range {
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 2px;
     color: rgba(224,224,224,0.45);
     margin-bottom: 6px;
@@ -710,7 +710,7 @@ main {
 
 /* ── Forecast feels-like ─────────────────────────────────────────── */
 .fc-feels {
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 1px;
     color: rgba(224,224,224,0.38);
     margin-top: 2px;
@@ -1031,7 +1031,7 @@ body[data-mode="light"] .fc-icon:not([data-custom="sun"]) {
     background: rgba(var(--cyan), 0.07);
 }
 .hr-time {
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 1px;
     color: rgba(var(--cyan), 0.6);
     text-transform: uppercase;
@@ -1042,12 +1042,12 @@ body[data-mode="light"] .fc-icon:not([data-custom="sun"]) {
     filter: drop-shadow(0 0 4px rgba(var(--cyan), 0.3));
 }
 .hr-temp {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: #e0e0e0;
 }
 .hr-pop {
-    font-size: 11px;
+    font-size: 13px;
     letter-spacing: 1px;
     color: rgba(100,180,255,0.7);
     min-height: 13px;
