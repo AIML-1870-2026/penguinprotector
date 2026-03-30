@@ -59,6 +59,12 @@
             <!-- Search history -->
             <div id="history-row" class="history-row" hidden></div>
 
+            <!-- Refresh row -->
+            <div id="refresh-row" class="refresh-row" hidden>
+                <span id="last-updated" class="last-updated"></span>
+                <button id="refresh-btn" class="refresh-btn">↺ Refresh</button>
+            </div>
+
             <!-- Compare search row -->
             <div id="compare-row" class="compare-row" hidden>
                 <input id="compare-input" type="text" placeholder="Compare with city…" autocomplete="off" />
@@ -104,6 +110,7 @@
                                 <span class="stat-label">Wind</span>
                                 <div class="wind-row">
                                     <span id="wind" class="stat-value"></span>
+                                    <span id="wind-dir" class="wind-dir"></span>
                                     <svg id="wind-compass" class="wind-compass" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <circle cx="12" cy="12" r="10" fill="none" class="compass-ring" stroke-width="1.5"/>
                                         <polygon points="12,3 9,15 12,13 15,15" class="compass-arrow"/>
@@ -136,6 +143,13 @@
                             <div class="stat">
                                 <span class="stat-label">Sunset</span>
                                 <span id="sunset" class="stat-value"></span>
+                            </div>
+                            <div class="stat" id="moon-stat" hidden>
+                                <span class="stat-label">Moon Phase</span>
+                                <div class="moon-readout">
+                                    <span id="moon-emoji" class="moon-emoji"></span>
+                                    <span id="moon-phase-name" class="moon-phase-name"></span>
+                                </div>
                             </div>
                             <div class="stat aqi-stat-cell" id="aqi-stat" hidden>
                                 <span class="stat-label">Air Quality</span>
@@ -189,6 +203,7 @@
         <section id="hourly-section" class="hourly-section" hidden>
             <h2 class="section-title">Next 24 Hours</h2>
             <div id="hourly-strip" class="hourly-strip"></div>
+            <canvas id="hourly-chart" class="hourly-chart"></canvas>
         </section>
 
         <!-- 5-Day Forecast -->

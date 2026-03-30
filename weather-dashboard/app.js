@@ -131,6 +131,13 @@ const flTooltip     = document.getElementById('fl-tooltip');
 
 const forecastCards = document.getElementById('forecast-cards');
 const modeToggleBtn = document.getElementById('mode-toggle');
+const windDirEl     = document.getElementById('wind-dir');
+const moonStat      = document.getElementById('moon-stat');
+const moonEmojiEl   = document.getElementById('moon-emoji');
+const moonNameEl    = document.getElementById('moon-phase-name');
+const refreshRow    = document.getElementById('refresh-row');
+const lastUpdatedEl = document.getElementById('last-updated');
+const refreshBtn    = document.getElementById('refresh-btn');
 const aqiStat       = document.getElementById('aqi-stat');
 const aqiValueEl    = document.getElementById('aqi-value');
 const aqiWordEl     = document.getElementById('aqi-word');
@@ -166,6 +173,32 @@ function stopClock() {
     localTimeEl.textContent = '';
 }
 
+// ── Auto-refresh ────────────────────────────────────────────────────
+let lastFetchedCity  = null;
+let lastFetchTime    = null;
+let autoRefreshTimer = null;
+let updateAgeTimer   = null;
+const AUTO_REFRESH_MS = 10 * 60 * 1000;
+
+function updateLastUpdatedLabel() {
+    if (!lastFetchTime) return;
+    const mins = Math.round((Date.now() - lastFetchTime) / 60000);
+    lastUpdatedEl.textContent = mins === 0 ? 'Updated just now' : `Updated ${mins} min ago`;
+}
+
+function startAutoRefresh(city) {
+    lastFetchedCity = city;
+    lastFetchTime   = Date.now();
+    refreshRow.hidden = false;
+    updateLastUpdatedLabel();
+    clearInterval(updateAgeTimer);
+    updateAgeTimer = setInterval(updateLastUpdatedLabel, 60000);
+    clearTimeout(autoRefreshTimer);
+    autoRefreshTimer = setTimeout(function doRefresh() {
+        if (lastFetchedCity) fetchByCity(lastFetchedCity);
+    }, AUTO_REFRESH_MS);
+}
+
 // ── UV Index ────────────────────────────────────────────────────────
 const UVI_LEVELS = [
     { max: 2,  word: 'Low',       cls: 'uvi-low'   },
@@ -195,6 +228,30 @@ function renderUVI(value) {
     uviStat.hidden = false;
 }
 
+// ── Moon phase ──────────────────────────────────────────────────────
+function getMoonPhase() {
+    const knownNewMoon = new Date('2000-01-06T18:14:00Z').getTime();
+    const synodicMs    = 29.53059 * 86400000;
+    const age   = ((Date.now() - knownNewMoon) % synodicMs + synodicMs) % synodicMs;
+    const phase = age / synodicMs;
+
+    if (phase < 0.0339) return { name: 'New Moon',        emoji: '🌑' };
+    if (phase < 0.25)   return { name: 'Waxing Crescent', emoji: '🌒' };
+    if (phase < 0.2661) return { name: 'First Quarter',   emoji: '🌓' };
+    if (phase < 0.5)    return { name: 'Waxing Gibbous',  emoji: '🌔' };
+    if (phase < 0.5339) return { name: 'Full Moon',       emoji: '🌕' };
+    if (phase < 0.75)   return { name: 'Waning Gibbous',  emoji: '🌖' };
+    if (phase < 0.7661) return { name: 'Last Quarter',    emoji: '🌗' };
+    return                     { name: 'Waning Crescent', emoji: '🌘' };
+}
+
+function renderMoonPhase() {
+    const { name, emoji } = getMoonPhase();
+    moonEmojiEl.textContent = emoji;
+    moonNameEl.textContent  = name;
+    moonStat.hidden = false;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────
 function getUnits() {
     return document.querySelector('input[name="units"]:checked').value;
@@ -204,6 +261,10 @@ function unitSymbol() {
 }
 function windUnit() {
     return getUnits() === 'metric' ? 'm/s' : 'mph';
+}
+function windDirText(deg) {
+    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round(deg / 22.5) % 16];
 }
 function formatTime(unixSec, tzOffsetSec) {
     const d = new Date((unixSec + tzOffsetSec) * 1000);
@@ -327,8 +388,10 @@ function renderCurrent(data) {
         compass.style.transform = `rotate(${windDeg}deg)`;
         compass.title = `Wind from ${windDeg}°`;
         compass.hidden = false;
+        windDirEl.textContent = windDirText(windDeg);
     } else {
         compass.hidden = true;
+        windDirEl.textContent = '';
     }
 
     pressureEl.textContent   = `${data.main.pressure} hPa`;
@@ -371,6 +434,7 @@ function renderCurrent(data) {
     document.getElementById('sun-progress-fill').style.width = `${sunPct}%`;
     document.getElementById('sun-progress-dot').style.left   = `${sunPct}%`;
 
+    renderMoonPhase();
     applyWeatherBg(data.weather[0].id);
     currentCard.hidden = false;
 }
@@ -393,6 +457,79 @@ function renderHourly(data) {
     }).join('');
 
     hourlySection.hidden = false;
+    requestAnimationFrame(() => renderHourlyChart(entries, sym));
+}
+
+function renderHourlyChart(entries, sym) {
+    const canvas = document.getElementById('hourly-chart');
+    if (!canvas) return;
+    const W   = Math.max(200, hourlySection.clientWidth - 48);
+    const H   = 68;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const style   = getComputedStyle(document.body);
+    const cyanRgb = style.getPropertyValue('--cyan').trim() || '0,243,255';
+
+    const temps = entries.map(e => e.main.temp);
+    const minT  = Math.min(...temps);
+    const maxT  = Math.max(...temps);
+    const span  = maxT - minT || 1;
+
+    const padL = 8, padR = 8, padT = 18, padB = 6;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+
+    const pts = entries.map((e, i) => ({
+        x: padL + (i / (entries.length - 1)) * chartW,
+        y: padT + chartH - ((e.main.temp - minT) / span) * chartH,
+    }));
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(0, padT, 0, H);
+    grad.addColorStop(0, `rgba(${cyanRgb},0.22)`);
+    grad.addColorStop(1, `rgba(${cyanRgb},0)`);
+
+    function drawCurve() {
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i++) {
+            const mx = (pts[i].x + pts[i + 1].x) / 2;
+            const my = (pts[i].y + pts[i + 1].y) / 2;
+            ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    }
+
+    ctx.beginPath();
+    drawCurve();
+    ctx.lineTo(pts[pts.length - 1].x, H - padB);
+    ctx.lineTo(pts[0].x, H - padB);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    drawCurve();
+    ctx.strokeStyle = `rgba(${cyanRgb},0.75)`;
+    ctx.lineWidth   = 1.5;
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+
+    ctx.font      = `11px 'EB Garamond', serif`;
+    ctx.textAlign = 'center';
+    pts.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgb(${cyanRgb})`;
+        ctx.fill();
+        ctx.fillStyle = `rgba(${cyanRgb},0.7)`;
+        ctx.fillText(`${Math.round(entries[i].main.temp)}${sym}`, p.x, p.y - 5);
+    });
 }
 
 // ── Render: 5-day forecast ─────────────────────────────────────────
@@ -575,6 +712,7 @@ async function fetchByCity(city) {
         renderCurrent(currentData);
         renderForecast(forecastData);
         saveHistory(currentData.name);
+        startAutoRefresh(currentData.name);
 
         if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
 
@@ -626,6 +764,7 @@ async function fetchByCoords(lat, lon) {
         renderCurrent(currentData);
         renderForecast(forecastData);
         saveHistory(currentData.name);
+        startAutoRefresh(currentData.name);
 
         if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
 
@@ -701,6 +840,10 @@ compareInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') compareBtn.click();
 });
 
+refreshBtn.addEventListener('click', () => {
+    if (lastFetchedCity) fetchByCity(lastFetchedCity);
+});
+
 // ── Theme ──────────────────────────────────────────────────────────
 const VALID_THEMES = new Set(['cyber','ember','aurora','verdant','crimson','blush','sky','sage','lavender']);
 
@@ -733,6 +876,7 @@ const bgCanvas = document.getElementById('bg-canvas');
 const bgCtx    = bgCanvas.getContext('2d');
 let rainDrops      = [];
 let snowFlakes     = [];
+let fogParticles   = [];
 let currentWeatherId = null;
 
 // ── Lightning ──────────────────────────────────────────────────────
@@ -800,12 +944,25 @@ function initSnow() {
     }));
 }
 
+// ── Fog ─────────────────────────────────────────────────────────────
+function initFog() {
+    fogParticles = Array.from({ length: 14 }, () => ({
+        x:     Math.random() * bgCanvas.width,
+        y:     bgCanvas.height * 0.1 + Math.random() * bgCanvas.height * 0.75,
+        w:     260 + Math.random() * 280,
+        h:     70  + Math.random() * 80,
+        speed: 0.10 + Math.random() * 0.22,
+        op:    0.035 + Math.random() * 0.05,
+    }));
+}
+
 // ── Set weather effect ─────────────────────────────────────────────
 function setWeatherEffect(id) {
     currentWeatherId = id;
     stopLightning();
-    rainDrops  = [];
-    snowFlakes = [];
+    rainDrops    = [];
+    snowFlakes   = [];
+    fogParticles = [];
 
     if (id >= 200 && id < 300) {
         initRain(id);
@@ -814,6 +971,8 @@ function setWeatherEffect(id) {
         initRain(id);
     } else if (id >= 600 && id < 700) {
         initSnow();
+    } else if (id >= 700 && id < 800) {
+        initFog();
     }
 }
 
@@ -822,6 +981,7 @@ function resizeBg() {
     bgCanvas.height = window.innerHeight;
     if (rainDrops.length > 0 && currentWeatherId)  initRain(currentWeatherId);
     if (snowFlakes.length > 0)                      initSnow();
+    if (fogParticles.length > 0)                    initFog();
 }
 
 function drawBg() {
@@ -864,6 +1024,23 @@ function drawBg() {
             if (flake.x < 0)             flake.x = bgCanvas.width;
         });
         bgCtx.globalAlpha = 1;
+    }
+
+    if (fogParticles.length > 0) {
+        fogParticles.forEach(p => {
+            const grad = bgCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.w / 2);
+            grad.addColorStop(0, `rgba(190,205,218,${p.op})`);
+            grad.addColorStop(1, 'rgba(190,205,218,0)');
+            bgCtx.fillStyle = grad;
+            bgCtx.beginPath();
+            bgCtx.ellipse(p.x, p.y, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
+            bgCtx.fill();
+            p.x += p.speed;
+            if (p.x - p.w / 2 > bgCanvas.width) {
+                p.x = -p.w / 2;
+                p.y = bgCanvas.height * 0.1 + Math.random() * bgCanvas.height * 0.75;
+            }
+        });
     }
 
     requestAnimationFrame(drawBg);

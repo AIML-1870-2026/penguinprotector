@@ -600,6 +600,71 @@ main {
 .compass-ring  { stroke: rgba(var(--cyan), 0.25); }
 .compass-arrow { fill: rgb(var(--cyan)); filter: drop-shadow(0 0 3px rgba(var(--cyan), 0.6)); }
 
+/* ── Wind direction text ─────────────────────────────────────────── */
+.wind-dir {
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: rgba(var(--cyan), 0.6);
+    font-weight: 600;
+    text-transform: uppercase;
+    min-width: 28px;
+}
+
+/* ── Refresh row ─────────────────────────────────────────────────── */
+.refresh-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.last-updated {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: rgba(var(--cyan), 0.35);
+    font-style: italic;
+}
+.refresh-btn {
+    background: rgba(var(--cyan), 0.05);
+    border: 1px solid rgba(var(--cyan), 0.2);
+    border-radius: 4px;
+    color: rgba(var(--cyan), 0.55);
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.refresh-btn:hover {
+    border-color: rgba(var(--cyan), 0.6);
+    color: rgb(var(--cyan));
+    background: rgba(var(--cyan), 0.08);
+}
+
+/* ── Moon phase stat ─────────────────────────────────────────────── */
+.moon-readout {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+.moon-emoji {
+    font-size: 22px;
+    line-height: 1;
+}
+.moon-phase-name {
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: rgba(var(--cyan), 0.75);
+    text-transform: capitalize;
+}
+
+/* ── Hourly temperature chart ────────────────────────────────────── */
+.hourly-chart {
+    display: block;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
 /* ── Sunrise/sunset progress bar ─────────────────────────────────── */
 .sun-progress-wrap {
     margin-top: 18px;
@@ -1088,6 +1153,9 @@ body[data-mode="light"] #compare-input {
     border-color: rgba(var(--magenta), 0.35);
 }
 body[data-mode="light"] #compare-input::placeholder { color: rgba(26,26,46,0.3); }
+body[data-mode="light"] .last-updated   { color: rgba(var(--cyan), 0.5); }
+body[data-mode="light"] .refresh-btn    { color: rgba(var(--cyan), 0.65); }
+body[data-mode="light"] .moon-phase-name { color: rgba(var(--cyan), 0.8); }
 
 /* ── Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 600px) {
