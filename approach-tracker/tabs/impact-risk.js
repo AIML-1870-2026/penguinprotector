@@ -1,7 +1,7 @@
 // ===================== TAB 5: IMPACT RISK (JPL Sentry) =====================
 // Data source: https://ssd-api.jpl.nasa.gov/sentry.api (no API key needed)
 
-const SENTRY_URL = 'https://ssd-api.jpl.nasa.gov/sentry.api';
+const SENTRY_URL = 'https://corsproxy.io/?url=https://ssd-api.jpl.nasa.gov/sentry.api';
 
 let sentryData = [];
 let sortKey = 'ps_cum';
