@@ -1,0 +1,182 @@
+// ===================== TAB 4: SCHEDULE (30-day timeline + calendar) =====================
+import { NASA_API_KEY, showSpinner, hideSpinner } from '../shared.js';
+
+// Fetch 30 days in weekly chunks (NeoWs max range = 7 days per request)
+async function fetch30Days(state) {
+  if (state.scheduleCache) return state.scheduleCache;
+  showSpinner();
+
+  const chunks = [];
+  const start = new Date();
+  for (let i = 0; i < 5; i++) {
+    const s = new Date(start);
+    s.setDate(s.getDate() + i * 7);
+    const e = new Date(s);
+    e.setDate(e.getDate() + 6);
+    chunks.push({
+      start: s.toISOString().split('T')[0],
+      end:   e.toISOString().split('T')[0],
+    });
+  }
+
+  try {
+    const byDate = {};
+    await Promise.all(chunks.map(async ({ start, end }) => {
+      const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
+      const data = await resp.json();
+      Object.entries(data.near_earth_objects).forEach(([date, list]) => {
+        byDate[date] = list.map(neo => {
+          const ca = neo.close_approach_data[0];
+          return {
+            id:    neo.id,
+            name:  neo.name,
+            ld:    parseFloat(ca.miss_distance.lunar),
+            isPha: neo.is_potentially_hazardous_asteroid,
+          };
+        });
+      });
+    }));
+
+    state.scheduleCache = byDate;
+    return byDate;
+  } finally {
+    hideSpinner();
+  }
+}
+
+function renderNext5(byDate) {
+  const all = [];
+  Object.entries(byDate).forEach(([date, neos]) =>
+    neos.forEach(n => all.push({ ...n, date }))
+  );
+  all.sort((a, b) => a.ld - b.ld);
+  const next5 = all.slice(0, 5);
+
+  document.getElementById('next-5-list').innerHTML = next5.map(n => `
+    <div class="approach-chip">
+      <div class="chip-name">${n.name}</div>
+      <div class="chip-date">${n.date}</div>
+      <div class="chip-dist">
+        ${n.ld.toFixed(2)} LD
+        ${n.isPha ? '<span class="pha-badge">PHA</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderTimeline(byDate) {
+  const dates = Object.keys(byDate).sort();
+  document.getElementById('timeline-list').innerHTML = dates.map(date => {
+    const neos = byDate[date].slice().sort((a, b) => a.ld - b.ld);
+    return `
+      <div class="timeline-date-group">
+        <div class="timeline-date-header">${date} — ${neos.length} object${neos.length !== 1 ? 's' : ''}</div>
+        <div class="timeline-cards">
+          ${neos.map(n => `
+            <div class="timeline-card">
+              <span class="tc-name">${n.name}</span>
+              <span class="tc-dist">${n.ld.toFixed(3)} LD</span>
+              ${n.isPha ? '<span class="tc-pha">PHA</span>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCalendar(byDate) {
+  const dates = Object.keys(byDate).sort();
+  if (!dates.length) return;
+
+  const firstDate = new Date(dates[0] + 'T12:00:00');
+  const lastDate  = new Date(dates[dates.length - 1] + 'T12:00:00');
+
+  // Start at the Sunday of the first week
+  const calStart = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+  const startDow = calStart.getDay(); // 0 = Sun
+
+  const grid = document.getElementById('calendar-grid');
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let html = dayLabels.map(d => `<div class="cal-day-label">${d}</div>`).join('');
+
+  // Empty cells before month start
+  for (let i = 0; i < startDow; i++) html += '<div class="cal-cell empty"></div>';
+
+  const cursor = new Date(calStart);
+  while (cursor <= lastDate) {
+    const ds = cursor.toISOString().split('T')[0];
+    const dayNeos = byDate[ds] || [];
+    const hasPha  = dayNeos.some(n => n.isPha);
+    const badge   = dayNeos.length
+      ? `<div class="cal-badge ${hasPha ? 'has-pha' : ''}">${dayNeos.length} NEO${dayNeos.length > 1 ? 's' : ''}</div>`
+      : '';
+    html += `
+      <div class="cal-cell${dayNeos.length ? '' : ' no-neos'}" data-date="${ds}">
+        <div class="cal-date">${cursor.getDate()}</div>
+        ${badge}
+      </div>`;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  grid.innerHTML = html;
+
+  // Click-to-expand rows
+  let expandedDate = null;
+  grid.querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const ds = cell.dataset.date;
+      const neos = byDate[ds] || [];
+      if (!neos.length) return;
+
+      grid.querySelectorAll('.cal-expanded').forEach(el => el.remove());
+      if (expandedDate === ds) { expandedDate = null; return; }
+
+      expandedDate = ds;
+      const div = document.createElement('div');
+      div.className = 'cal-expanded';
+      div.innerHTML = `<strong>${ds}</strong><br>` +
+        neos.slice().sort((a, b) => a.ld - b.ld).map(n =>
+          `${n.name} — ${n.ld.toFixed(3)} LD ${n.isPha ? '<span class="pha-badge">PHA</span>' : ''}`
+        ).join('<br>');
+      cell.after(div);
+    });
+  });
+}
+
+export async function initSchedule(state) {
+  document.getElementById('next-5-list').innerHTML =
+    '<div class="skeleton" style="height:60px;width:100%"></div>';
+  document.getElementById('timeline-list').innerHTML =
+    '<div class="skeleton" style="height:300px"></div>';
+
+  let byDate;
+  try {
+    byDate = await fetch30Days(state);
+  } catch (err) {
+    document.getElementById('timeline-list').innerHTML =
+      `<div class="error-card"><p>${err.message}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;
+    return;
+  }
+
+  renderNext5(byDate);
+  renderTimeline(byDate);
+
+  // View toggle buttons
+  document.getElementById('timeline-view-btn').addEventListener('click', () => {
+    document.getElementById('timeline-view-btn').classList.add('active');
+    document.getElementById('calendar-view-btn').classList.remove('active');
+    document.getElementById('timeline-view').classList.remove('hidden');
+    document.getElementById('calendar-view').classList.add('hidden');
+  });
+
+  document.getElementById('calendar-view-btn').addEventListener('click', () => {
+    document.getElementById('calendar-view-btn').classList.add('active');
+    document.getElementById('timeline-view-btn').classList.remove('active');
+    document.getElementById('calendar-view').classList.remove('hidden');
+    document.getElementById('timeline-view').classList.add('hidden');
+    renderCalendar(byDate);
+  });
+}

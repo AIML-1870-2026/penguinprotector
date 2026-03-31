@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEO Dashboard — Approach Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- CDN libraries loaded before module scripts so globals are available -->
+  <script src="https://unpkg.com/globe.gl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Fixed tab bar -->
+  <header id="tab-bar">
+    <nav id="tab-nav">
+      <button class="tab-btn active" data-tab="globe">🌍 Globe</button>
+      <button class="tab-btn" data-tab="this-week">📅 This Week</button>
+      <button class="tab-btn" data-tab="size-speed">📏 Size &amp; Speed</button>
+      <button class="tab-btn" data-tab="schedule">🗓️ Schedule</button>
+      <button class="tab-btn" data-tab="impact-risk">⚠️ Impact Risk</button>
+    </nav>
+    <div id="header-controls">
+      <span id="last-updated"></span>
+      <button id="refresh-btn" title="Refresh data">↻</button>
+      <div id="spinner-wrap"></div>
+    </div>
+  </header>
+
+  <main id="main-content">
+
+    <!-- Tab 1: Globe -->
+    <section id="tab-globe" class="tab-panel active">
+      <div id="globe-wrap">
+        <div id="globe-container"></div>
+        <div id="globe-status-bar">Select an asteroid to see details</div>
+      </div>
+      <aside id="globe-info-panel">
+        <div id="globe-info-content">
+          <p class="muted hint-text">Click any glowing dot on the globe to select an asteroid.</p>
+          <div class="legend">
+            <div class="legend-item"><span class="dot orange"></span> Potentially Hazardous</div>
+            <div class="legend-item"><span class="dot green"></span> Routine Flyby</div>
+            <div class="legend-item"><span class="dot gray"></span> Moon (1 LD ref.)</div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Tab 2: This Week -->
+    <section id="tab-this-week" class="tab-panel">
+      <div id="stat-cards"></div>
+      <div id="filter-controls">
+        <label class="filter-label">
+          <input type="checkbox" id="pha-only-toggle"> PHAs only
+        </label>
+        <label class="filter-label">
+          Max miss distance (LD):
+          <input type="number" id="max-ld" min="0" max="500" step="1" value="500">
+        </label>
+        <label class="filter-label">
+          Sort by:
+          <select id="sort-select">
+            <option value="date">Date</option>
+            <option value="distance">Miss Distance</option>
+            <option value="diameter">Diameter</option>
+            <option value="velocity">Velocity</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+      </div>
+      <div id="neo-table-wrapper">
+        <table id="neo-table">
+          <thead>
+            <tr>
+              <th data-col="name">Name</th>
+              <th data-col="date">Date</th>
+              <th data-col="distance">Miss Dist (LD)</th>
+              <th data-col="diameter">Diameter (m)</th>
+              <th data-col="velocity">Velocity (km/s)</th>
+              <th data-col="hazardous">Hazardous</th>
+            </tr>
+          </thead>
+          <tbody id="neo-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tab 3: Size & Speed -->
+    <section id="tab-size-speed" class="tab-panel">
+      <div id="asteroid-select-wrapper">
+        <label>Select asteroid:
+          <select id="asteroid-select"></select>
+        </label>
+      </div>
+      <div id="size-speed-panels">
+        <div class="panel" id="size-panel">
+          <h2>Size Comparison</h2>
+          <div id="size-viz"></div>
+        </div>
+        <div class="panel" id="velocity-panel">
+          <h2>Velocity Context</h2>
+          <div id="velocity-viz"></div>
+        </div>
+        <div class="panel" id="distance-panel">
+          <h2>Miss Distance</h2>
+          <div id="distance-viz"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Schedule -->
+    <section id="tab-schedule" class="tab-panel">
+      <div id="next-5-panel">
+        <h2>Next 5 Close Approaches</h2>
+        <div id="next-5-list"></div>
+      </div>
+      <div id="view-toggle">
+        <button id="timeline-view-btn" class="active">Timeline</button>
+        <button id="calendar-view-btn">Calendar</button>
+      </div>
+      <div id="timeline-view">
+        <div id="timeline-list"></div>
+      </div>
+      <div id="calendar-view" class="hidden">
+        <div id="calendar-grid"></div>
+      </div>
+    </section>
+
+    <!-- Tab 5: Impact Risk -->
+    <section id="tab-impact-risk" class="tab-panel">
+      <div id="sentry-controls">
+        <input type="text" id="sentry-search" placeholder="Filter by name...">
+        <select id="sentry-sort">
+          <option value="ps_cum">Palermo Scale</option>
+          <option value="ip">Impact Probability</option>
+          <option value="ts_max">Torino Scale</option>
+          <option value="diameter">Diameter</option>
+        </select>
+      </div>
+      <div id="sentry-table-wrapper">
+        <table id="sentry-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Year Range</th>
+              <th>Potential Impacts</th>
+              <th>Impact Probability</th>
+              <th class="palermo-header" title="Palermo Scale &lt; −2: routine. −2 to 0: merits attention. &gt; 0: threatening.">Palermo Scale ⓘ</th>
+              <th>Torino Scale</th>
+              <th>Diameter (km)</th>
+            </tr>
+          </thead>
+          <tbody id="sentry-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer id="app-footer">
+    <span id="footer-updated">—</span>
+    <span>Data: NASA NeoWs API &amp; JPL Sentry</span>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
