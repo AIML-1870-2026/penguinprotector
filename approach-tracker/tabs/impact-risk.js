@@ -31,10 +31,10 @@ function renderTable(filter = '') {
   });
 
   document.getElementById('sentry-tbody').innerHTML = rows.map(r => {
-    const name    = r.fullname || r.des || '—';
-    const yearMin = r.range_year_min  || r.year_min  || '?';
-    const yearMax = r.range_year_max  || r.year_max  || '?';
-    const nImp    = r.n_imp           || r.n_impacts || '—';
+    const name              = r.fullname || r.des || '—';
+    // API returns a single "range" string like "2056-2113"
+    const [yearMin, yearMax] = (r.range || '?-?').split('-');
+    const nImp              = r.n_imp ?? '—';
     // ip is cumulative impact probability (0–1)
     const ipPct   = r.ip !== undefined
       ? (parseFloat(r.ip) * 100).toExponential(2) + '%'
@@ -92,7 +92,7 @@ export async function initImpactRisk(state) {
   });
 
   // Column header sort
-  const colKeys = ['fullname', 'range_year_min', 'n_imp', 'ip', 'ps_cum', 'ts_max', 'diameter'];
+  const colKeys = ['fullname', 'range', 'n_imp', 'ip', 'ps_cum', 'ts_max', 'diameter'];
   document.querySelectorAll('#sentry-table thead th').forEach((th, i) => {
     th.addEventListener('click', () => {
       const key = colKeys[i];
