@@ -1,5 +1,5 @@
 // ===================== CONSTANTS =====================
-export const NASA_API_KEY = 'DEMO_KEY'; // swap for a real key at https://api.nasa.gov/
+export const NASA_API_KEY = '2xrAl9l4pBlI0C31voaXTToikcapps2YBtuz5FEF';
 
 export const TODAY = new Date().toISOString().split('T')[0];
 
