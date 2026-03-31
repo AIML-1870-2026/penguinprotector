@@ -49,6 +49,7 @@ export async function fetchFeed() {
   try {
     const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${TODAY}&end_date=${WEEK_END}&api_key=${NASA_API_KEY}`;
     const resp = await fetch(url);
+    if (resp.status === 429) throw new Error('NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or get a free key at api.nasa.gov.');
     if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
     const data = await resp.json();
     const all = [];

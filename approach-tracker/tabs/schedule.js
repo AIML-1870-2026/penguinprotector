@@ -21,9 +21,11 @@ async function fetch30Days(state) {
 
   try {
     const byDate = {};
-    await Promise.all(chunks.map(async ({ start, end }) => {
+    // Fetch chunks sequentially to avoid bursting DEMO_KEY's rate limit
+    for (const { start, end } of chunks) {
       const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
       const resp = await fetch(url);
+      if (resp.status === 429) throw new Error('RATE_LIMIT');
       if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
       const data = await resp.json();
       Object.entries(data.near_earth_objects).forEach(([date, list]) => {
@@ -37,7 +39,7 @@ async function fetch30Days(state) {
           };
         });
       });
-    }));
+    }
 
     state.scheduleCache = byDate;
     return byDate;
@@ -156,8 +158,11 @@ export async function initSchedule(state) {
   try {
     byDate = await fetch30Days(state);
   } catch (err) {
+    const msg = err.message === 'RATE_LIMIT'
+      ? 'NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or swap in a free key at api.nasa.gov.'
+      : err.message;
     document.getElementById('timeline-list').innerHTML =
-      `<div class="error-card"><p>${err.message}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;
+      `<div class="error-card"><p>${msg}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;
     return;
   }
 
