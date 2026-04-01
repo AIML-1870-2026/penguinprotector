@@ -63,7 +63,8 @@ function renderNext5(byDate) {
   Object.entries(byDate).forEach(([date, neos]) =>
     neos.forEach(n => all.push({ ...n, date }))
   );
-  all.sort((a, b) => a.ld - b.ld);
+  // Sort chronologically, then by miss distance within the same day
+  all.sort((a, b) => a.date.localeCompare(b.date) || a.ld - b.ld);
   const next5 = all.slice(0, 5);
 
   document.getElementById('next-5-list').innerHTML = next5.map(n => `

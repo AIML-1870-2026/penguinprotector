@@ -67,7 +67,7 @@ export async function initGlobe(state) {
   let neos;
   try {
     const raw = await fetchFeed();
-    neos = raw.map(parseNeo);
+    neos = raw.map(parseNeo).filter(Boolean);
   } catch (err) {
     infoEl.innerHTML = `
       <div class="error-card">
@@ -112,10 +112,13 @@ export async function initGlobe(state) {
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
   if (sorted.length) {
     const first = points.find(p => p.id === sorted[0].id);
-    if (first) renderInfoPanel(first);
+    if (first) {
+      state.selectedNeo = first.id;
+      renderInfoPanel(first);
+    }
   }
 
-  // Restore info panel hint + legend if nothing was shown
+  // Fallback hint + legend if no NEO could be pre-selected
   if (!state.selectedNeo) {
     infoEl.innerHTML = `
       <p class="hint-text muted">Click any glowing dot on the globe to select an asteroid.</p>
