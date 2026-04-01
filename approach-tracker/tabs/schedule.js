@@ -106,16 +106,13 @@ function renderCalendar(byDate) {
   const firstDate = new Date(dates[0] + 'T12:00:00');
   const lastDate  = new Date(dates[dates.length - 1] + 'T12:00:00');
 
-  // Start at the Sunday of the first week
-  const calStart = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
-  const startDow = calStart.getDay(); // 0 = Sun
+  // Start at the Sunday of the week containing the first data date
+  const calStart = new Date(firstDate);
+  calStart.setDate(calStart.getDate() - calStart.getDay()); // rewind to Sunday
 
   const grid = document.getElementById('calendar-grid');
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   let html = dayLabels.map(d => `<div class="cal-day-label">${d}</div>`).join('');
-
-  // Empty cells before month start
-  for (let i = 0; i < startDow; i++) html += '<div class="cal-cell empty"></div>';
 
   const cursor = new Date(calStart);
   while (cursor <= lastDate) {

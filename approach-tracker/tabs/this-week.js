@@ -45,7 +45,7 @@ function applyFilters(neos) {
     rows = rows.filter(n => n.isPha);
   }
 
-  const maxLd = parseFloat(document.getElementById('max-ld')?.value ?? 500);
+  const maxLd = Math.max(0, parseFloat(document.getElementById('max-ld')?.value ?? 500));
   if (!isNaN(maxLd)) rows = rows.filter(n => n.ld <= maxLd);
 
   const colMap = { date: 'date', distance: 'ld', diameter: 'diameter', velocity: 'vel', name: 'name', hazardous: 'isPha' };
