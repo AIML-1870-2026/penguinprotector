@@ -1,7 +1,11 @@
 // ===================== TAB 5: IMPACT RISK (JPL Sentry) =====================
 // Data source: https://ssd-api.jpl.nasa.gov/sentry.api (no API key needed)
 
-const SENTRY_URL = 'https://corsproxy.io/?url=https://ssd-api.jpl.nasa.gov/sentry.api';
+const SENTRY_BASE = 'https://ssd-api.jpl.nasa.gov/sentry.api';
+const PROXIES = [
+  url => `https://corsproxy.io/?url=${url}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
 
 let sentryData = [];
 let sortKey = 'ps_cum';
@@ -61,15 +65,24 @@ export async function initImpactRisk(state) {
   document.getElementById('sentry-tbody').innerHTML =
     '<tr><td colspan="7"><div class="skeleton" style="height:300px"></div></td></tr>';
 
-  try {
-    const resp = await fetch(SENTRY_URL);
-    if (!resp.ok) throw new Error(`Sentry API error ${resp.status}`);
-    const data = await resp.json();
-    sentryData = data.data || [];
-  } catch (err) {
+  let lastErr;
+  for (const proxy of PROXIES) {
+    try {
+      const resp = await fetch(proxy(SENTRY_BASE));
+      if (!resp.ok) throw new Error(`Sentry API error ${resp.status}`);
+      const data = await resp.json();
+      sentryData = data.data || [];
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  if (lastErr) {
     document.getElementById('sentry-table-wrapper').innerHTML = `
       <div class="error-card">
-        <p>Sentry API unavailable: ${err.message}</p>
+        <p>JPL Sentry data unavailable — both CORS proxies failed.</p>
         <p class="error-time">Last attempted: ${new Date().toLocaleTimeString()}</p>
         <button class="retry-btn" onclick="location.reload()">Retry</button>
       </div>
@@ -92,10 +105,9 @@ export async function initImpactRisk(state) {
   });
 
   // Column header sort
-  const colKeys = ['fullname', 'range', 'n_imp', 'ip', 'ps_cum', 'ts_max', 'diameter'];
-  document.querySelectorAll('#sentry-table thead th').forEach((th, i) => {
+  document.querySelectorAll('#sentry-table thead th').forEach(th => {
     th.addEventListener('click', () => {
-      const key = colKeys[i];
+      const key = th.dataset.col;
       if (!key) return;
       if (sortKey === key) sortDir *= -1;
       else { sortKey = key; sortDir = -1; }

@@ -1,5 +1,5 @@
 // ===================== TAB 3: SIZE & SPEED =====================
-import { fetchFeed, parseNeo } from '../shared.js';
+import { fetchFeed, parseNeo, state } from '../shared.js';
 
 // Reference objects for size comparison (metres)
 const SIZE_REFS = [
@@ -116,7 +116,7 @@ export async function initSizeSpeed(state) {
 
   let neos;
   try {
-    neos = (await fetchFeed()).map(parseNeo);
+    neos = (await fetchFeed()).map(parseNeo).filter(Boolean);
   } catch (err) {
     document.getElementById('size-speed-panels').innerHTML =
       `<div class="error-card"><p>${err.message}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;
@@ -135,9 +135,9 @@ export async function initSizeSpeed(state) {
   }
 
   // Check for preselect from This Week table row click
-  if (window.__preselectNeoId) {
-    sel.value = window.__preselectNeoId;
-    window.__preselectNeoId = null;
+  if (state.selectedNeo) {
+    sel.value = state.selectedNeo;
+    state.selectedNeo = null;
   }
 
   renderAll(getSelected());

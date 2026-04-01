@@ -1,5 +1,5 @@
 // ===================== TAB 2: THIS WEEK IN SPACE ROCKS =====================
-import { fetchFeed, parseNeo } from '../shared.js';
+import { fetchFeed, parseNeo, state } from '../shared.js';
 
 let allNeos = [];
 let sortCol = 'date';
@@ -78,7 +78,7 @@ function renderTable() {
     row.addEventListener('click', () => {
       document.querySelectorAll('#neo-tbody tr').forEach(r => r.classList.remove('selected'));
       row.classList.add('selected');
-      window.__preselectNeoId = row.dataset.id;
+      state.selectedNeo = row.dataset.id;
       document.dispatchEvent(new CustomEvent('preselect-neo', { detail: row.dataset.id }));
       document.querySelector('[data-tab="size-speed"]').click();
     });
