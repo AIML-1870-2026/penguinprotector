@@ -1,7 +1,54 @@
 // ===================== TAB 1: GLOBE =====================
 import { fetchFeed, parseNeo } from '../shared.js';
 
-let _ro = null; // ResizeObserver — disconnected on re-init to prevent leak
+let _ro = null;           // ResizeObserver — disconnected on re-init to prevent leak
+let _cloudMesh = null;   // Cloud sphere — reference kept so we can dispose on re-init
+let _rafId = null;       // requestAnimationFrame for cloud rotation
+
+function _addCloudLayer(globe) {
+  // Access the underlying Three.js renderer globals exposed by globe.gl
+  const THREE = window.THREE;
+  if (!THREE) return; // three-globe bundles THREE but may not expose it as window.THREE
+
+  const scene = globe.scene();
+  if (!scene) return;
+
+  const GLOBE_RADIUS = 100; // globe.gl internal radius
+
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    'https://unpkg.com/three-globe/example/img/earth-clouds.png',
+    texture => {
+      const geo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.004, 64, 64);
+      const mat = new THREE.MeshPhongMaterial({
+        map:         texture,
+        transparent: true,
+        opacity:     0.35,
+        depthWrite:  false,
+      });
+      _cloudMesh = new THREE.Mesh(geo, mat);
+      scene.add(_cloudMesh);
+
+      // Slow drift independent of globe rotation
+      const drift = () => {
+        if (_cloudMesh) _cloudMesh.rotation.y += 0.00008;
+        _rafId = requestAnimationFrame(drift);
+      };
+      if (_rafId) cancelAnimationFrame(_rafId);
+      _rafId = requestAnimationFrame(drift);
+    }
+  );
+}
+
+function _disposeCloudLayer() {
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+  if (_cloudMesh) {
+    _cloudMesh.geometry.dispose();
+    _cloudMesh.material.map?.dispose();
+    _cloudMesh.material.dispose();
+    _cloudMesh = null;
+  }
+}
 
 // Altitude mapping — square-root compression so objects spread visually.
 // Miss distances range ~0.1 LD to 70+ LD; we map that onto globe altitude
@@ -89,16 +136,20 @@ export async function initGlobe(state) {
 
   // Clear any previous WebGL canvas — Globe() appends a new canvas each time,
   // so without this every refresh stacks canvases and leaks GPU memory.
+  _disposeCloudLayer();
   container.innerHTML = '';
 
   const globe = Globe()(container)
     .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
+    .atmosphereColor('#3a7bd5')
+    .atmosphereAltitude(0.22)
     .pointsData(points)
     .pointAltitude('alt')
     .pointColor('color')
     .pointRadius('size')
-    .pointResolution(8)
+    .pointResolution(12)
     .pointLabel(p =>
       `<div style="font-family:monospace;font-size:12px;background:#111827dd;padding:4px 8px;border-radius:4px;color:#f9fafb;border:1px solid #1f2937">${p.name}</div>`
     )
@@ -113,6 +164,10 @@ export async function initGlobe(state) {
   // Gentle auto-rotation
   globe.controls().autoRotate      = true;
   globe.controls().autoRotateSpeed = 0.25;
+  globe.controls().enableDamping   = true;
+
+  // Cloud layer — thin transparent sphere slightly above the surface
+  _addCloudLayer(globe);
 
   // Pre-select the closest NEO
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
