@@ -90,6 +90,7 @@ export async function initImpactRisk(_state) {
     document.getElementById('sentry-table-wrapper').innerHTML = `
       <div class="error-card">
         <p>JPL Sentry data unavailable — both CORS proxies failed.</p>
+        <p class="muted" style="font-size:0.8rem;margin-top:4px">${lastErr.message}</p>
         <p class="error-time">Last attempted: ${new Date().toLocaleTimeString()}</p>
         <button class="retry-btn" onclick="location.reload()">Retry</button>
       </div>

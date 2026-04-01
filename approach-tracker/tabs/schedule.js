@@ -10,11 +10,16 @@ async function fetch30Days(state) {
 
   const chunks = [];
   const start = new Date();
+  const end30 = new Date(start);
+  end30.setDate(end30.getDate() + 29); // inclusive day 29 = exactly 30 days
+
   for (let i = 0; i < 5; i++) {
     const s = new Date(start);
     s.setDate(s.getDate() + i * 7);
+    if (s > end30) break; // no chunk starts beyond day 29
     const e = new Date(s);
     e.setDate(e.getDate() + 6);
+    if (e > end30) e.setTime(end30.getTime()); // cap last chunk at day 29
     chunks.push({
       start: s.toISOString().split('T')[0],
       end:   e.toISOString().split('T')[0],
