@@ -23,7 +23,7 @@ function renderCards(neos) {
     </div>
     <div class="stat-card">
       <div class="card-label">Largest Object</div>
-      <div class="card-value">${closest ? largest.diameter.toFixed(0) : '—'}<span class="card-unit">m</span></div>
+      <div class="card-value">${largest ? largest.diameter.toFixed(0) : '—'}<span class="card-unit">m</span></div>
       <div class="card-sub">${largest.name}</div>
     </div>
     <div class="stat-card">
@@ -93,7 +93,7 @@ export async function initThisWeek(state) {
     '<tr><td colspan="6"><div class="skeleton" style="height:200px"></div></td></tr>';
 
   try {
-    allNeos = (await fetchFeed()).map(parseNeo);
+    allNeos = (await fetchFeed()).map(parseNeo).filter(Boolean);
   } catch (err) {
     document.getElementById('stat-cards').innerHTML =
       `<div class="error-card"><p>${err.message}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;

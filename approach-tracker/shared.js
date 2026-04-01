@@ -66,9 +66,10 @@ export async function fetchFeed() {
 // ===================== PARSE NEO =====================
 // Normalises a raw NeoWs NEO object into a flat record
 export function parseNeo(neo) {
-  const ca = neo.close_approach_data[0];
-  const dMin = parseFloat(neo.estimated_diameter.meters.estimated_diameter_min);
-  const dMax = parseFloat(neo.estimated_diameter.meters.estimated_diameter_max);
+  const ca = neo.close_approach_data?.[0];
+  if (!ca) return null;
+  const dMin = parseFloat(neo.estimated_diameter?.meters?.estimated_diameter_min) || 0;
+  const dMax = parseFloat(neo.estimated_diameter?.meters?.estimated_diameter_max) || 0;
   return {
     id:       neo.id,
     name:     neo.name,

@@ -21,24 +21,34 @@ async function fetch30Days(state) {
 
   try {
     const byDate = {};
+    let rateLimited = false;
     // Fetch chunks sequentially to avoid bursting DEMO_KEY's rate limit
     for (const { start, end } of chunks) {
-      const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
-      const resp = await fetch(url);
-      if (resp.status === 429) throw new Error('RATE_LIMIT');
-      if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
-      const data = await resp.json();
-      Object.entries(data.near_earth_objects).forEach(([date, list]) => {
-        byDate[date] = list.map(neo => {
-          const ca = neo.close_approach_data[0];
-          return {
-            id:    neo.id,
-            name:  neo.name,
-            ld:    parseFloat(ca.miss_distance.lunar),
-            isPha: neo.is_potentially_hazardous_asteroid,
-          };
+      try {
+        const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
+        const resp = await fetch(url);
+        if (resp.status === 429) { rateLimited = true; break; }
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        Object.entries(data.near_earth_objects).forEach(([date, list]) => {
+          byDate[date] = list.flatMap(neo => {
+            const ca = neo.close_approach_data?.[0];
+            if (!ca) return [];
+            return [{
+              id:    neo.id,
+              name:  neo.name,
+              ld:    parseFloat(ca.miss_distance.lunar),
+              isPha: neo.is_potentially_hazardous_asteroid,
+            }];
+          });
         });
-      });
+      } catch {
+        continue; // network error on one chunk — keep what we have
+      }
+    }
+
+    if (!Object.keys(byDate).length) {
+      throw new Error(rateLimited ? 'RATE_LIMIT' : 'Failed to fetch NEO data');
     }
 
     state.scheduleCache = byDate;
@@ -109,7 +119,7 @@ function renderCalendar(byDate) {
 
   const cursor = new Date(calStart);
   while (cursor <= lastDate) {
-    const ds = cursor.toISOString().split('T')[0];
+    const ds = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
     const dayNeos = byDate[ds] || [];
     const hasPha  = dayNeos.some(n => n.isPha);
     const badge   = dayNeos.length
