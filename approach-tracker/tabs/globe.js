@@ -1,6 +1,8 @@
 // ===================== TAB 1: GLOBE =====================
 import { fetchFeed, parseNeo } from '../shared.js';
 
+let _ro = null; // ResizeObserver — disconnected on re-init to prevent leak
+
 // Altitude mapping — square-root compression so objects spread visually.
 // Miss distances range ~0.1 LD to 70+ LD; we map that onto globe altitude
 // 0.05 – 3.0 units. sqrt() compresses the high end so distant objects don't
@@ -129,9 +131,10 @@ export async function initGlobe(state) {
       </div>`;
   }
 
-  // Responsive resize
-  const ro = new ResizeObserver(() => {
+  // Responsive resize — disconnect previous observer before creating a new one
+  if (_ro) _ro.disconnect();
+  _ro = new ResizeObserver(() => {
     globe.width(container.offsetWidth).height(container.offsetHeight);
   });
-  ro.observe(container);
+  _ro.observe(container);
 }

@@ -1,6 +1,8 @@
 // ===================== TAB 4: SCHEDULE (30-day timeline + calendar) =====================
 import { NASA_API_KEY, showSpinner, hideSpinner } from '../shared.js';
 
+let _ac = null; // AbortController — cancelled on re-init to prevent listener accumulation
+
 // Fetch 30 days in weekly chunks (NeoWs max range = 7 days per request)
 async function fetch30Days(state) {
   if (state.scheduleCache) return state.scheduleCache;
@@ -159,6 +161,9 @@ function renderCalendar(byDate) {
 }
 
 export async function initSchedule(state) {
+  if (_ac) _ac.abort();
+  _ac = new AbortController();
+  const { signal } = _ac;
   document.getElementById('next-5-list').innerHTML =
     '<div class="skeleton" style="height:60px;width:100%"></div>';
   document.getElementById('timeline-list').innerHTML =
@@ -176,6 +181,8 @@ export async function initSchedule(state) {
     return;
   }
 
+  // Remove any existing banner before conditionally re-inserting (prevents duplicates on refresh)
+  document.querySelectorAll('.warning-banner').forEach(el => el.remove());
   if (state.schedulePartial) {
     document.getElementById('timeline-list').insertAdjacentHTML('beforebegin',
       '<div class="warning-banner">⚠ Some date ranges failed to load — data may be incomplete. Try refreshing.</div>'
@@ -191,7 +198,7 @@ export async function initSchedule(state) {
     document.getElementById('calendar-view-btn').classList.remove('active');
     document.getElementById('timeline-view').classList.remove('hidden');
     document.getElementById('calendar-view').classList.add('hidden');
-  });
+  }, { signal });
 
   document.getElementById('calendar-view-btn').addEventListener('click', () => {
     document.getElementById('calendar-view-btn').classList.add('active');
@@ -199,5 +206,5 @@ export async function initSchedule(state) {
     document.getElementById('calendar-view').classList.remove('hidden');
     document.getElementById('timeline-view').classList.add('hidden');
     renderCalendar(byDate);
-  });
+  }, { signal });
 }

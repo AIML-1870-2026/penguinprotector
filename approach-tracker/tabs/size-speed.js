@@ -142,13 +142,15 @@ export async function initSizeSpeed(state) {
 
   renderAll(getSelected());
 
-  sel.addEventListener('change', () => renderAll(getSelected()));
-
-  // Listen for cross-tab navigation event — abort any previous listener on re-init
+  // Abort any previous listeners before adding new ones (prevents accumulation on refresh)
   if (initSizeSpeed._abortCtrl) initSizeSpeed._abortCtrl.abort();
   initSizeSpeed._abortCtrl = new AbortController();
+  const { signal } = initSizeSpeed._abortCtrl;
+
+  sel.addEventListener('change', () => renderAll(getSelected()), { signal });
+
   document.addEventListener('preselect-neo', e => {
     sel.value = e.detail;
     renderAll(getSelected());
-  }, { signal: initSizeSpeed._abortCtrl.signal });
+  }, { signal });
 }

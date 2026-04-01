@@ -4,6 +4,7 @@ import { fetchFeed, parseNeo, state } from '../shared.js';
 let allNeos = [];
 let sortCol = 'date';
 let sortDir = 1;
+let _ac = null; // AbortController — cancelled on re-init to prevent listener accumulation
 
 function renderCards(neos) {
   if (!neos.length) {
@@ -80,7 +81,10 @@ function renderTable() {
   `).join('');
 }
 
-export async function initThisWeek() {
+export async function initThisWeek(_state) {
+  if (_ac) _ac.abort();
+  _ac = new AbortController();
+  const { signal } = _ac;
   // Show skeletons
   document.getElementById('stat-cards').innerHTML =
     '<div class="skeleton" style="height:90px;grid-column:1/-1"></div>';
@@ -107,7 +111,7 @@ export async function initThisWeek() {
     state.selectedNeo = row.dataset.id;
     document.dispatchEvent(new CustomEvent('preselect-neo', { detail: row.dataset.id }));
     document.querySelector('[data-tab="size-speed"]').click();
-  });
+  }, { signal });
 
   // Column header sort
   document.querySelectorAll('#neo-table th').forEach(th => {
@@ -116,15 +120,15 @@ export async function initThisWeek() {
       if (sortCol === col) sortDir *= -1;
       else { sortCol = col; sortDir = 1; }
       renderTable();
-    });
+    }, { signal });
   });
 
   // Filter controls
-  document.getElementById('pha-only-toggle').addEventListener('change', renderTable);
-  document.getElementById('max-ld').addEventListener('input', renderTable);
+  document.getElementById('pha-only-toggle').addEventListener('change', renderTable, { signal });
+  document.getElementById('max-ld').addEventListener('input', renderTable, { signal });
   document.getElementById('sort-select').addEventListener('change', e => {
     sortCol = e.target.value;
     sortDir = 1;
     renderTable();
-  });
+  }, { signal });
 }

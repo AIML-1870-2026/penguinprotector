@@ -10,6 +10,7 @@ const PROXIES = [
 let sentryData = [];
 let sortKey = 'ps_cum';
 let sortDir = -1; // descending by default (most dangerous first)
+let _ac = null; // AbortController — cancelled on re-init to prevent listener accumulation
 
 function torinoClass(ts) {
   const t = parseInt(ts, 10) || 0;
@@ -62,7 +63,10 @@ function renderTable(filter = '') {
   }).join('');
 }
 
-export async function initImpactRisk(state) {
+export async function initImpactRisk(_state) {
+  if (_ac) _ac.abort();
+  _ac = new AbortController();
+  const { signal } = _ac;
   document.getElementById('sentry-tbody').innerHTML =
     '<tr><td colspan="7"><div class="skeleton" style="height:300px"></div></td></tr>';
 
@@ -96,14 +100,14 @@ export async function initImpactRisk(state) {
   // Name search filter
   document.getElementById('sentry-search').addEventListener('input', e => {
     renderTable(e.target.value);
-  });
+  }, { signal });
 
   // Sort dropdown
   document.getElementById('sentry-sort').addEventListener('change', e => {
     sortKey = e.target.value;
     sortDir = -1;
     renderTable(document.getElementById('sentry-search').value);
-  });
+  }, { signal });
 
   // Column header sort
   document.querySelectorAll('#sentry-table thead th').forEach(th => {
@@ -113,6 +117,6 @@ export async function initImpactRisk(state) {
       if (sortKey === key) sortDir *= -1;
       else { sortKey = key; sortDir = -1; }
       renderTable(document.getElementById('sentry-search').value);
-    });
+    }, { signal });
   });
 }
