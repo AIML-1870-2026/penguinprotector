@@ -79,8 +79,10 @@ export async function initImpactRisk(_state) {
 
   let lastErr;
   for (const proxy of PROXIES) {
+    const proxyAc = new AbortController();
+    const timer = setTimeout(() => proxyAc.abort(), 10_000);
     try {
-      const resp = await fetch(proxy(SENTRY_BASE));
+      const resp = await fetch(proxy(SENTRY_BASE), { signal: proxyAc.signal });
       if (!resp.ok) throw new Error(`Sentry API error ${resp.status}`);
       const data = await resp.json();
       sentryData = data.data || [];
@@ -88,6 +90,8 @@ export async function initImpactRisk(_state) {
       break;
     } catch (err) {
       lastErr = err;
+    } finally {
+      clearTimeout(timer);
     }
   }
 

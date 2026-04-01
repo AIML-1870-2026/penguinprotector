@@ -2,6 +2,7 @@
 import { NASA_API_KEY, showSpinner, hideSpinner } from '../shared.js';
 
 let _ac = null; // AbortController — cancelled on re-init to prevent listener accumulation
+let _calendarRendered = false;
 
 // Fetch 30 days in weekly chunks (NeoWs max range = 7 days per request)
 async function fetch30Days(state) {
@@ -32,9 +33,11 @@ async function fetch30Days(state) {
     let failedChunks = 0;
     // Fetch chunks sequentially to avoid bursting DEMO_KEY's rate limit
     for (const { start, end } of chunks) {
+      const chunkAc = new AbortController();
+      const timer = setTimeout(() => chunkAc.abort(), 10_000);
       try {
         const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal: chunkAc.signal });
         if (resp.status === 429) { rateLimited = true; break; }
         if (!resp.ok) { failedChunks++; continue; }
         const data = await resp.json();
@@ -51,7 +54,9 @@ async function fetch30Days(state) {
           });
         });
       } catch {
-        failedChunks++; // network error on one chunk — keep what we have
+        failedChunks++; // network error or timeout on one chunk — keep what we have
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -173,6 +178,7 @@ export async function initSchedule(state) {
   const { signal } = _ac;
 
   // Reset to timeline view so stale calendar data isn't left visible after refresh
+  _calendarRendered = false;
   document.getElementById('timeline-view-btn').classList.add('active');
   document.getElementById('calendar-view-btn').classList.remove('active');
   document.getElementById('timeline-view').classList.remove('hidden');
@@ -219,6 +225,9 @@ export async function initSchedule(state) {
     document.getElementById('timeline-view-btn').classList.remove('active');
     document.getElementById('calendar-view').classList.remove('hidden');
     document.getElementById('timeline-view').classList.add('hidden');
-    renderCalendar(byDate);
+    if (!_calendarRendered) {
+      renderCalendar(byDate);
+      _calendarRendered = true;
+    }
   }, { signal });
 }

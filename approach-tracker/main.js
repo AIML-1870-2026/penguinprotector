@@ -42,6 +42,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 // Refresh button — clear caches and re-init active tab
 document.getElementById('refresh-btn').addEventListener('click', () => {
+  if (state.rateLimitedUntil > Date.now()) {
+    const secs = Math.ceil((state.rateLimitedUntil - Date.now()) / 1000);
+    const lu = document.getElementById('last-updated');
+    if (lu) lu.textContent = `Rate limited — retry in ${secs}s`;
+    return;
+  }
   state.feedCache = null;
   state.feedFetchedAt = null;
   state.scheduleCache = null;

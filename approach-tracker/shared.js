@@ -17,6 +17,7 @@ export const state = {
   scheduleCache: null,    // cached 30-day feed grouped by date
   schedulePartial: false, // true if some 30-day chunks failed to load
   selectedNeo: null,      // currently selected NEO id (for cross-tab nav)
+  rateLimitedUntil: 0,    // timestamp until which refresh should be blocked
 };
 
 // ===================== SPINNER =====================
@@ -51,10 +52,15 @@ export async function fetchFeed() {
   if (_feedInflight) return _feedInflight;
   showSpinner();
   _feedInflight = (async () => {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 10_000);
     try {
       const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${TODAY}&end_date=${WEEK_END}&api_key=${NASA_API_KEY}`;
-      const resp = await fetch(url);
-      if (resp.status === 429) throw new Error('NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or get a free key at api.nasa.gov.');
+      const resp = await fetch(url, { signal: ac.signal });
+      if (resp.status === 429) {
+        state.rateLimitedUntil = Date.now() + 60_000;
+        throw new Error('NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or get a free key at api.nasa.gov.');
+      }
       if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
       const data = await resp.json();
       const all = [];
@@ -64,6 +70,7 @@ export async function fetchFeed() {
       updateLastUpdated();
       return all;
     } finally {
+      clearTimeout(timer);
       hideSpinner();
       _feedInflight = null;
     }
