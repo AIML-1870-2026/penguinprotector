@@ -313,6 +313,15 @@ modeToggleBtn.addEventListener('click', () => {
     setMode(document.body.dataset.mode === 'light' ? 'dark' : 'light');
 });
 
+// ── Feels-like tooltip (click/tap for touch devices) ────────────────
+document.querySelector('.fl-tip-icon').addEventListener('click', e => {
+    e.stopPropagation();
+    flTooltip.classList.toggle('visible');
+});
+document.addEventListener('click', e => {
+    if (!e.target.closest('.feels-like-wrap')) flTooltip.classList.remove('visible');
+});
+
 // ── AQI ────────────────────────────────────────────────────────────
 function renderAQI(aqi) {
     aqiValueEl.textContent = aqi;
@@ -324,6 +333,11 @@ function renderAQI(aqi) {
         seg.className = `aqi-seg aqi-seg-${i}${i <= aqi ? ' active' : ''}`;
     });
     aqiStat.hidden = false;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ── Search history ─────────────────────────────────────────────────
@@ -343,7 +357,7 @@ function renderHistory() {
     if (!hist.length) { historyRow.hidden = true; return; }
     historyRow.hidden = false;
     historyRow.innerHTML = hist.map(city =>
-        `<button class="history-pill" data-city="${city}">${city}</button>`
+        `<button class="history-pill" data-city="${escapeHtml(city)}">${escapeHtml(city)}</button>`
     ).join('');
     historyRow.querySelectorAll('.history-pill').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -557,8 +571,8 @@ function renderForecast(data) {
         byDay[date].push(item);
     });
 
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const cityNow = new Date(Date.now() + data.city.timezone * 1000);
+    const todayStr = `${cityNow.getUTCFullYear()}-${String(cityNow.getUTCMonth()+1).padStart(2,'0')}-${String(cityNow.getUTCDate()).padStart(2,'0')}`;
     const days = Object.keys(byDay).filter(d => d !== todayStr).slice(0, 5);
 
     // Pre-compute per-day stats so we can find the global range for the bar
@@ -713,8 +727,8 @@ async function fetchByCity(city) {
 
     try {
         const [currentRes, forecastRes] = await Promise.all([
-            fetch(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`),
-            fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`)
+            fetchWithTimeout(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`),
+            fetchWithTimeout(`${BASE_URL}/forecast?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`)
         ]);
 
         if (!currentRes.ok) {
@@ -741,9 +755,9 @@ async function fetchByCity(city) {
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
             .catch(() => {});
-        fetchWithTimeout(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d && d.value != null) renderUVI(d.value); })
+            .then(d => { if (d && d.current && d.current.uvi != null) renderUVI(d.current.uvi); })
             .catch(() => {});
 
     } catch (err) {
@@ -793,9 +807,9 @@ async function fetchByCoords(lat, lon) {
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
             .catch(() => {});
-        fetchWithTimeout(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d && d.value != null) renderUVI(d.value); })
+            .then(d => { if (d && d.current && d.current.uvi != null) renderUVI(d.current.uvi); })
             .catch(() => {});
 
     } catch (err) {
