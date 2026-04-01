@@ -287,6 +287,12 @@ function setLoading(on) {
     geoBtn.disabled = on;
 }
 
+function fetchWithTimeout(url, ms = 8000) {
+    const ctrl = new AbortController();
+    const id = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+}
+
 // ── Dark / Light mode ──────────────────────────────────────────────
 function setMode(mode) {
     document.body.dataset.mode = mode;
@@ -666,14 +672,19 @@ function renderCompare(data) {
 async function fetchCompare(city) {
     const units = getUnits();
     const q = city.replace(/\s*,\s*/, ',').trim();
+    compareBtn.disabled = true;
+    compareBtn.textContent = '…';
     try {
-        const res = await fetch(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`);
+        const res = await fetchWithTimeout(`${BASE_URL}/weather?q=${encodeURIComponent(q)}&appid=${API_KEY}&units=${units}`);
         if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'City not found.'); }
         const data = await res.json();
         lastCompareCity = data.name;
         renderCompare(data);
     } catch (err) {
         showError(`Compare failed: ${err.message}`);
+    } finally {
+        compareBtn.disabled = false;
+        compareBtn.textContent = 'Compare';
     }
 }
 
@@ -703,6 +714,7 @@ async function fetchByCity(city) {
             const err = await currentRes.json();
             throw new Error(err.message || 'City not found.');
         }
+        if (!forecastRes.ok) throw new Error('Forecast data unavailable.');
 
         const [currentData, forecastData] = await Promise.all([
             currentRes.json(),
@@ -717,11 +729,11 @@ async function fetchByCity(city) {
         if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
 
         const { lat, lon } = currentData.coord;
-        fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
             .catch(() => {});
-        fetch(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d && d.value != null) renderUVI(d.value); })
             .catch(() => {});
@@ -754,6 +766,7 @@ async function fetchByCoords(lat, lon) {
         ]);
 
         if (!currentRes.ok) throw new Error('Location lookup failed.');
+        if (!forecastRes.ok) throw new Error('Forecast data unavailable.');
 
         const [currentData, forecastData] = await Promise.all([
             currentRes.json(),
@@ -768,11 +781,11 @@ async function fetchByCoords(lat, lon) {
 
         if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
 
-        fetch(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
             .catch(() => {});
-        fetch(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
+        fetchWithTimeout(`${BASE_URL}/uvi?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d && d.value != null) renderUVI(d.value); })
             .catch(() => {});
@@ -800,9 +813,13 @@ geoBtn.addEventListener('click', () => {
         showError('Geolocation is not supported by your browser.');
         return;
     }
+    geoBtn.disabled = true;
     navigator.geolocation.getCurrentPosition(
         pos => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
-        ()  => showError('Location access denied. Please search by city name.')
+        () => {
+            geoBtn.disabled = false;
+            showError('Location access denied. Please search by city name.');
+        }
     );
 });
 

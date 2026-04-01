@@ -1164,4 +1164,7 @@ body[data-mode="light"] .moon-phase-name { color: rgba(var(--cyan), 0.8); }
     .current-top { flex-direction: column; }
     .stat-grid { grid-template-columns: repeat(3, 1fr); }
     .fc-card:nth-child(n+4) { display: none; }
+    .current-area { flex-direction: column; }
+    .hourly-section { overflow-x: auto; }
+    .history-row { flex-wrap: wrap; }
 }
