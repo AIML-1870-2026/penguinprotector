@@ -69,16 +69,23 @@ function applyFilters(neos) {
 
 function renderTable() {
   const rows = applyFilters(allNeos);
-  document.getElementById('neo-tbody').innerHTML = rows.map(n => `
-    <tr data-id="${n.id}">
-      <td>${n.name}</td>
-      <td>${n.date}</td>
-      <td>${n.ld.toFixed(3)}</td>
-      <td>${n.diameter.toFixed(0)}</td>
-      <td>${n.vel.toFixed(2)}</td>
-      <td class="${n.isPha ? 'hazard-yes' : 'hazard-no'}">${n.isPha ? '✓' : '✗'}</td>
-    </tr>
-  `).join('');
+  document.querySelectorAll('#neo-table th').forEach(th => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.col === sortCol) th.classList.add(sortDir === 1 ? 'sorted-asc' : 'sorted-desc');
+  });
+  document.getElementById('neo-tbody').innerHTML = rows.map(n => {
+    const ldClass = n.ld < 1 ? 'dist-near' : n.ld < 5 ? 'dist-close' : '';
+    return `
+      <tr data-id="${n.id}">
+        <td>${n.name}</td>
+        <td>${n.date}</td>
+        <td class="${ldClass}">${n.ld.toFixed(3)}</td>
+        <td>${n.diameter.toFixed(0)}</td>
+        <td>${n.vel.toFixed(2)}</td>
+        <td class="${n.isPha ? 'hazard-yes' : 'hazard-no'}">${n.isPha ? '✓' : '✗'}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 export async function initThisWeek(_state) {
@@ -126,9 +133,4 @@ export async function initThisWeek(_state) {
   // Filter controls
   document.getElementById('pha-only-toggle').addEventListener('change', renderTable, { signal });
   document.getElementById('max-ld').addEventListener('input', renderTable, { signal });
-  document.getElementById('sort-select').addEventListener('change', e => {
-    sortCol = e.target.value;
-    sortDir = 1;
-    renderTable();
-  }, { signal });
 }

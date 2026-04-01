@@ -220,6 +220,10 @@ body {
   gap: 1.5rem;
   align-items: center;
   flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 1rem;
 }
 
 .filter-label {
@@ -234,8 +238,7 @@ body {
 
 #filter-controls input[type="number"],
 #filter-controls select,
-#asteroid-select,
-#sentry-sort {
+#asteroid-select {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -275,6 +278,10 @@ body {
 }
 #neo-table th:hover,
 #sentry-table th:hover { color: var(--accent); }
+#neo-table th.sorted-asc::after,
+#sentry-table th.sorted-asc::after  { content: ' ▲'; color: var(--accent); font-size: 0.65rem; }
+#neo-table th.sorted-desc::after,
+#sentry-table th.sorted-desc::after { content: ' ▼'; color: var(--accent); font-size: 0.65rem; }
 
 #neo-table td,
 #sentry-table td {
@@ -446,7 +453,9 @@ body {
   transition: box-shadow 0.2s;
 }
 .cal-cell:hover { box-shadow: 0 0 8px rgba(0,212,170,0.2); }
-.cal-cell.empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+.cal-cell.empty  { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+.cal-cell.no-neos { opacity: 0.35; cursor: default; }
+.cal-cell.no-neos:hover { box-shadow: none; }
 .cal-cell .cal-date { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); }
 .cal-badge {
   display: inline-block;
@@ -488,6 +497,19 @@ body {
   width: 260px;
 }
 #sentry-search::placeholder { color: var(--muted); }
+
+#sentry-clear {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 5px 10px;
+  transition: color 0.15s, border-color 0.15s;
+}
+#sentry-clear:hover { color: var(--text); border-color: var(--muted); }
 
 .ts-0   { color: var(--muted); }
 .ts-1-3 { color: var(--amber); }
@@ -544,6 +566,8 @@ body {
 /* ===================== UTILITIES ===================== */
 .hidden { display: none !important; }
 .muted  { color: var(--muted); }
+.dist-near  { color: var(--danger) !important; font-weight: 700; }
+.dist-close { color: var(--amber)  !important; }
 
 /* ===================== FOOTER ===================== */
 #app-footer {

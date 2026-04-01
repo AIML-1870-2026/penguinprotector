@@ -35,6 +35,11 @@ function renderTable(filter = '') {
     return (av - bv) * sortDir;
   });
 
+  document.querySelectorAll('#sentry-table thead th').forEach(th => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.col === sortKey) th.classList.add(sortDir === -1 ? 'sorted-desc' : 'sorted-asc');
+  });
+
   document.getElementById('sentry-tbody').innerHTML = rows.map(r => {
     const name              = r.fullname || r.des || '—';
     // API returns a range string like "2056-2113"; guard against missing hyphen
@@ -100,16 +105,16 @@ export async function initImpactRisk(_state) {
 
   renderTable();
 
-  // Name search filter
+  // Name search filter + clear button
+  const clearBtn = document.getElementById('sentry-clear');
   document.getElementById('sentry-search').addEventListener('input', e => {
+    clearBtn.classList.toggle('hidden', !e.target.value);
     renderTable(e.target.value);
   }, { signal });
-
-  // Sort dropdown
-  document.getElementById('sentry-sort').addEventListener('change', e => {
-    sortKey = e.target.value;
-    sortDir = -1;
-    renderTable(document.getElementById('sentry-search').value);
+  clearBtn.addEventListener('click', () => {
+    document.getElementById('sentry-search').value = '';
+    clearBtn.classList.add('hidden');
+    renderTable('');
   }, { signal });
 
   // Column header sort

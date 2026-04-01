@@ -96,13 +96,15 @@ function renderTimeline(byDate) {
       <div class="timeline-date-group">
         <div class="timeline-date-header">${date} — ${neos.length} object${neos.length !== 1 ? 's' : ''}</div>
         <div class="timeline-cards">
-          ${neos.map(n => `
+          ${neos.map(n => {
+            const ldClass = n.ld < 1 ? 'dist-near' : n.ld < 5 ? 'dist-close' : '';
+            return `
             <div class="timeline-card">
               <span class="tc-name">${n.name}</span>
-              <span class="tc-dist">${n.ld.toFixed(3)} LD</span>
+              <span class="tc-dist ${ldClass}">${n.ld.toFixed(3)} LD</span>
               ${n.isPha ? '<span class="tc-pha">PHA</span>' : ''}
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
     `;

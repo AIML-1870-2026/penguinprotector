@@ -59,16 +59,6 @@
           Max miss distance (LD):
           <input type="number" id="max-ld" min="0" max="500" step="1" value="500">
         </label>
-        <label class="filter-label">
-          Sort by:
-          <select id="sort-select">
-            <option value="date">Date</option>
-            <option value="distance">Miss Distance</option>
-            <option value="diameter">Diameter</option>
-            <option value="velocity">Velocity</option>
-            <option value="name">Name</option>
-          </select>
-        </label>
       </div>
       <div id="neo-table-wrapper">
         <table id="neo-table">
@@ -132,12 +122,7 @@
     <section id="tab-impact-risk" class="tab-panel">
       <div id="sentry-controls">
         <input type="text" id="sentry-search" placeholder="Filter by name...">
-        <select id="sentry-sort">
-          <option value="ps_cum">Palermo Scale</option>
-          <option value="ip">Impact Probability</option>
-          <option value="ts_max">Torino Scale</option>
-          <option value="diameter">Diameter</option>
-        </select>
+        <button id="sentry-clear" class="hidden" title="Clear filter">×</button>
       </div>
       <div id="sentry-table-wrapper">
         <table id="sentry-table">
