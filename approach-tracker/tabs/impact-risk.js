@@ -39,9 +39,10 @@ function renderTable(filter = '') {
     // API returns a single "range" string like "2056-2113"
     const [yearMin, yearMax] = (r.range || '?-?').split('-');
     const nImp              = r.n_imp ?? '—';
-    // ip is cumulative impact probability (0–1)
-    const ipPct   = r.ip !== undefined
-      ? (parseFloat(r.ip) * 100).toExponential(2) + '%'
+    // ip is cumulative impact probability (0–1); display as "1 in N"
+    const ipRaw = r.ip !== undefined ? parseFloat(r.ip) : NaN;
+    const ipPct = (!isNaN(ipRaw) && ipRaw > 0)
+      ? `1 in ${Math.round(1 / ipRaw).toLocaleString()}`
       : '—';
     const ps      = r.ps_cum !== undefined ? parseFloat(r.ps_cum).toFixed(2) : '—';
     const ts      = parseInt(r.ts_max || r.ts || 0, 10);

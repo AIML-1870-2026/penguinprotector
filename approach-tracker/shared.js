@@ -12,10 +12,11 @@ export const WEEK_END = (() => {
 // ===================== SHARED STATE =====================
 // Mutable state object shared across all tab modules
 export const state = {
-  feedCache: null,      // cached /feed response (this week)
-  feedFetchedAt: null,  // timestamp of last feed fetch
-  scheduleCache: null,  // cached 30-day feed grouped by date
-  selectedNeo: null,    // currently selected NEO id (for cross-tab nav)
+  feedCache: null,        // cached /feed response (this week)
+  feedFetchedAt: null,    // timestamp of last feed fetch
+  scheduleCache: null,    // cached 30-day feed grouped by date
+  schedulePartial: false, // true if some 30-day chunks failed to load
+  selectedNeo: null,      // currently selected NEO id (for cross-tab nav)
 };
 
 // ===================== SPINNER =====================
@@ -43,24 +44,31 @@ export function updateLastUpdated() {
 }
 
 // ===================== FEED FETCH (this-week cache) =====================
+let _feedInflight = null;
+
 export async function fetchFeed() {
   if (state.feedCache) return state.feedCache;
+  if (_feedInflight) return _feedInflight;
   showSpinner();
-  try {
-    const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${TODAY}&end_date=${WEEK_END}&api_key=${NASA_API_KEY}`;
-    const resp = await fetch(url);
-    if (resp.status === 429) throw new Error('NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or get a free key at api.nasa.gov.');
-    if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
-    const data = await resp.json();
-    const all = [];
-    Object.values(data.near_earth_objects).forEach(list => all.push(...list));
-    state.feedCache = all;
-    state.feedFetchedAt = Date.now();
-    updateLastUpdated();
-    return all;
-  } finally {
-    hideSpinner();
-  }
+  _feedInflight = (async () => {
+    try {
+      const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${TODAY}&end_date=${WEEK_END}&api_key=${NASA_API_KEY}`;
+      const resp = await fetch(url);
+      if (resp.status === 429) throw new Error('NASA API rate limit hit (DEMO_KEY allows 30 req/hr). Wait a minute and retry, or get a free key at api.nasa.gov.');
+      if (!resp.ok) throw new Error(`NASA API error ${resp.status}`);
+      const data = await resp.json();
+      const all = [];
+      Object.values(data.near_earth_objects).forEach(list => all.push(...list));
+      state.feedCache = all;
+      state.feedFetchedAt = Date.now();
+      updateLastUpdated();
+      return all;
+    } finally {
+      hideSpinner();
+      _feedInflight = null;
+    }
+  })();
+  return _feedInflight;
 }
 
 // ===================== PARSE NEO =====================

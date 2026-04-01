@@ -507,6 +507,17 @@ body {
 }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+/* ===================== WARNING BANNER ===================== */
+.warning-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  color: var(--amber);
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
 /* ===================== ERROR STATE ===================== */
 .error-card {
   background: var(--surface);

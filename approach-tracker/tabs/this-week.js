@@ -6,6 +6,12 @@ let sortCol = 'date';
 let sortDir = 1;
 
 function renderCards(neos) {
+  if (!neos.length) {
+    document.getElementById('stat-cards').innerHTML =
+      '<div class="stat-card" style="grid-column:1/-1"><div class="card-label">No NEOs found this week.</div></div>';
+    return;
+  }
+
   const closest = [...neos].sort((a, b) => a.ld - b.ld)[0];
   const largest = [...neos].sort((a, b) => b.diameter - a.diameter)[0];
   const fastest = [...neos].sort((a, b) => b.vel - a.vel)[0];
@@ -23,7 +29,7 @@ function renderCards(neos) {
     </div>
     <div class="stat-card">
       <div class="card-label">Largest Object</div>
-      <div class="card-value">${largest ? largest.diameter.toFixed(0) : '—'}<span class="card-unit">m</span></div>
+      <div class="card-value">${largest.diameter.toFixed(0)}<span class="card-unit">m</span></div>
       <div class="card-sub">${largest.name}</div>
     </div>
     <div class="stat-card">
@@ -72,20 +78,9 @@ function renderTable() {
       <td class="${n.isPha ? 'hazard-yes' : 'hazard-no'}">${n.isPha ? '✓' : '✗'}</td>
     </tr>
   `).join('');
-
-  // Row click → switch to Size & Speed with this asteroid pre-selected
-  document.querySelectorAll('#neo-tbody tr').forEach(row => {
-    row.addEventListener('click', () => {
-      document.querySelectorAll('#neo-tbody tr').forEach(r => r.classList.remove('selected'));
-      row.classList.add('selected');
-      state.selectedNeo = row.dataset.id;
-      document.dispatchEvent(new CustomEvent('preselect-neo', { detail: row.dataset.id }));
-      document.querySelector('[data-tab="size-speed"]').click();
-    });
-  });
 }
 
-export async function initThisWeek(state) {
+export async function initThisWeek() {
   // Show skeletons
   document.getElementById('stat-cards').innerHTML =
     '<div class="skeleton" style="height:90px;grid-column:1/-1"></div>';
@@ -102,6 +97,17 @@ export async function initThisWeek(state) {
 
   renderCards(allNeos);
   renderTable();
+
+  // Delegated row click → switch to Size & Speed with this asteroid pre-selected
+  document.getElementById('neo-tbody').addEventListener('click', e => {
+    const row = e.target.closest('tr[data-id]');
+    if (!row) return;
+    document.querySelectorAll('#neo-tbody tr').forEach(r => r.classList.remove('selected'));
+    row.classList.add('selected');
+    state.selectedNeo = row.dataset.id;
+    document.dispatchEvent(new CustomEvent('preselect-neo', { detail: row.dataset.id }));
+    document.querySelector('[data-tab="size-speed"]').click();
+  });
 
   // Column header sort
   document.querySelectorAll('#neo-table th').forEach(th => {

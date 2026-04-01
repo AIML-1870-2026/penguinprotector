@@ -22,13 +22,14 @@ async function fetch30Days(state) {
   try {
     const byDate = {};
     let rateLimited = false;
+    let failedChunks = 0;
     // Fetch chunks sequentially to avoid bursting DEMO_KEY's rate limit
     for (const { start, end } of chunks) {
       try {
         const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${start}&end_date=${end}&api_key=${NASA_API_KEY}`;
         const resp = await fetch(url);
         if (resp.status === 429) { rateLimited = true; break; }
-        if (!resp.ok) continue;
+        if (!resp.ok) { failedChunks++; continue; }
         const data = await resp.json();
         Object.entries(data.near_earth_objects).forEach(([date, list]) => {
           byDate[date] = list.flatMap(neo => {
@@ -43,7 +44,7 @@ async function fetch30Days(state) {
           });
         });
       } catch {
-        continue; // network error on one chunk — keep what we have
+        failedChunks++; // network error on one chunk — keep what we have
       }
     }
 
@@ -52,6 +53,7 @@ async function fetch30Days(state) {
     }
 
     state.scheduleCache = byDate;
+    state.schedulePartial = rateLimited || failedChunks > 0;
     return byDate;
   } finally {
     hideSpinner();
@@ -172,6 +174,12 @@ export async function initSchedule(state) {
     document.getElementById('timeline-list').innerHTML =
       `<div class="error-card"><p>${msg}</p><button class="retry-btn" onclick="location.reload()">Retry</button></div>`;
     return;
+  }
+
+  if (state.schedulePartial) {
+    document.getElementById('timeline-list').insertAdjacentHTML('beforebegin',
+      '<div class="warning-banner">⚠ Some date ranges failed to load — data may be incomplete. Try refreshing.</div>'
+    );
   }
 
   renderNext5(byDate);
