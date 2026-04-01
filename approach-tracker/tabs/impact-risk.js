@@ -19,6 +19,14 @@ function torinoClass(ts) {
   return 'ts-0';
 }
 
+function palermoCls(ps) {
+  const p = parseFloat(ps);
+  if (isNaN(p)) return 'ts-0';
+  if (p > 0)  return 'ts-4p';
+  if (p > -2) return 'ts-1-3';
+  return 'ts-0';
+}
+
 function renderTable(filter = '') {
   let rows = [...sentryData];
 
@@ -42,8 +50,8 @@ function renderTable(filter = '') {
 
   document.getElementById('sentry-tbody').innerHTML = rows.map(r => {
     const name              = r.fullname || r.des || '—';
-    // API returns a range string like "2056-2113"; guard against missing hyphen
-    const rangeParts = (r.range || '').split('-');
+    // API may return "2056-2113" (hyphen) or "2056–2113" (en-dash)
+    const rangeParts = (r.range || '').split(/[-\u2013\u2014]/);
     const yearMin = rangeParts[0] || '?';
     const yearMax = rangeParts[1] || yearMin || '?';
     const nImp              = r.n_imp ?? '—';
@@ -62,7 +70,7 @@ function renderTable(filter = '') {
         <td>${yearMin}–${yearMax}</td>
         <td>${nImp}</td>
         <td>${ipPct}</td>
-        <td class="${torinoClass(ts)}">${ps}</td>
+        <td class="${palermoCls(ps)}">${ps}</td>
         <td class="${torinoClass(ts)}">${ts}</td>
         <td>${diam}</td>
       </tr>
@@ -89,6 +97,7 @@ export async function initImpactRisk(_state) {
       lastErr = null;
       break;
     } catch (err) {
+      if (signal.aborted) return;
       lastErr = err;
     } finally {
       clearTimeout(timer);

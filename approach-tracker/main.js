@@ -50,6 +50,7 @@ function startRateLimitCountdown() {
     if (remaining <= 0) {
       clearInterval(interval);
       refreshBtn.disabled = false;
+      if (luEl) luEl.textContent = '';
       updateLastUpdated();
     } else {
       if (luEl) luEl.textContent = `Rate limited — retry in ${Math.ceil(remaining / 1000)}s`;

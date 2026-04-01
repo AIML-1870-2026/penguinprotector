@@ -121,8 +121,8 @@ function renderCalendar(byDate) {
   const dates = Object.keys(byDate).sort();
   if (!dates.length) return;
 
-  const firstDate = new Date(dates[0] + 'T12:00:00');
-  const lastDate  = new Date(dates[dates.length - 1] + 'T12:00:00');
+  const firstDate = new Date(dates[0] + 'T12:00:00Z');
+  const lastDate  = new Date(dates[dates.length - 1] + 'T12:00:00Z');
 
   // Start at the Sunday of the week containing the first data date
   const calStart = new Date(firstDate);
