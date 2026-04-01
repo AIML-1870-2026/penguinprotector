@@ -139,15 +139,27 @@ export async function initGlobe(state) {
   _disposeCloudLayer();
   container.innerHTML = '';
 
+  // Color with opacity based on miss distance — closer = more vivid
+  const spikeColor = p => {
+    if (p.isMoon) return '#9ca3af';
+    const opacity = Math.max(0.45, 1 - (p.alt / (MAX_ALTITUDE + 0.05)) * 0.55).toFixed(2);
+    return p.isPha
+      ? `rgba(245,158,11,${opacity})`
+      : `rgba(0,212,170,${opacity})`;
+  };
+
+  const asteroidPoints = points.filter(p => !p.isMoon);
+
   const globe = Globe()(container)
     .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
     .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
     .atmosphereColor('#3a7bd5')
     .atmosphereAltitude(0.22)
+    // Spikes
     .pointsData(points)
     .pointAltitude('alt')
-    .pointColor('color')
+    .pointColor(spikeColor)
     .pointRadius('size')
     .pointResolution(12)
     .pointLabel(p =>
@@ -157,6 +169,30 @@ export async function initGlobe(state) {
       if (p.isMoon) return;
       state.selectedNeo = p.id;
       renderInfoPanel(p);
+    })
+    // Pulsing sonar rings at each asteroid's base
+    .ringsData(asteroidPoints)
+    .ringColor(p => t => p.isPha
+      ? `rgba(245,158,11,${Math.max(0, 0.8 * (1 - t))})`
+      : `rgba(0,212,170,${Math.max(0, 0.6 * (1 - t))})`)
+    .ringMaxRadius(p => p.isPha ? 3.5 : 2.2)
+    .ringPropagationSpeed(p => p.isPha ? 1.8 : 1.1)
+    .ringRepeatPeriod(p => p.isPha ? 700 : 1400)
+    // Glowing orb at each spike tip (Three.js — graceful fallback if THREE absent)
+    .customLayerData(asteroidPoints)
+    .customThreeObject(p => {
+      const T = window.THREE;
+      if (!T) return null;
+      const color = p.isPha ? 0xf59e0b : 0x00d4aa;
+      const radius = p.isPha ? 0.55 : 0.38;
+      const geo = new T.SphereGeometry(radius, 10, 10);
+      const mat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 });
+      return new T.Mesh(geo, mat);
+    })
+    .customThreeObjectUpdate((obj, p) => {
+      if (!obj) return;
+      const coords = globe.getCoords(p.lat, p.lng, p.alt + 0.04);
+      if (coords) Object.assign(obj.position, coords);
     })
     .width(container.offsetWidth)
     .height(container.offsetHeight);
