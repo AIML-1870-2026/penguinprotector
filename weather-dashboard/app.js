@@ -153,6 +153,10 @@ const tempRangeEl   = document.getElementById('temp-range');
 let compareActive   = false;
 let lastCompareCity = null;
 
+// Hourly chart state (for theme redraws)
+let lastHourlyEntries = null;
+let lastHourlySym     = null;
+
 // Local clock state
 let clockTimer    = null;
 let clockTimezone = null;
@@ -463,6 +467,8 @@ function renderHourly(data) {
     }).join('');
 
     hourlySection.hidden = false;
+    lastHourlyEntries = entries;
+    lastHourlySym     = sym;
     requestAnimationFrame(() => renderHourlyChart(entries, sym));
 }
 
@@ -551,7 +557,8 @@ function renderForecast(data) {
         byDay[date].push(item);
     });
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     const days = Object.keys(byDay).filter(d => d !== todayStr).slice(0, 5);
 
     // Pre-compute per-day stats so we can find the global range for the bar
@@ -728,7 +735,8 @@ async function fetchByCity(city) {
 
         if (compareActive && lastCompareCity) fetchCompare(lastCompareCity);
 
-        const { lat, lon } = currentData.coord;
+        const { lat, lon } = currentData.coord || {};
+        if (lat == null || lon == null) throw new Error('Location coordinates missing.');
         fetchWithTimeout(`${BASE_URL}/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
             .then(r => r.ok ? r.json() : null)
             .then(d => { if (d) renderAQI(d.list[0].main.aqi); })
@@ -761,8 +769,8 @@ async function fetchByCoords(lat, lon) {
 
     try {
         const [currentRes, forecastRes] = await Promise.all([
-            fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${units}`),
-            fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${units}`)
+            fetchWithTimeout(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${units}`),
+            fetchWithTimeout(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=${units}`)
         ]);
 
         if (!currentRes.ok) throw new Error('Location lookup failed.');
@@ -814,12 +822,18 @@ geoBtn.addEventListener('click', () => {
         return;
     }
     geoBtn.disabled = true;
+    setLoading(true);
     navigator.geolocation.getCurrentPosition(
-        pos => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
+        pos => {
+            setLoading(false);
+            fetchByCoords(pos.coords.latitude, pos.coords.longitude);
+        },
         () => {
             geoBtn.disabled = false;
+            setLoading(false);
             showError('Location access denied. Please search by city name.');
-        }
+        },
+        { timeout: 10000 }
     );
 });
 
@@ -871,6 +885,9 @@ function setTheme(name) {
     document.querySelectorAll('.theme-dot').forEach(d =>
         d.classList.toggle('active', d.dataset.theme === name)
     );
+    if (lastHourlyEntries && lastHourlySym) {
+        requestAnimationFrame(() => renderHourlyChart(lastHourlyEntries, lastHourlySym));
+    }
 }
 
 document.querySelectorAll('.theme-dot').forEach(dot =>
@@ -984,12 +1001,16 @@ function setWeatherEffect(id) {
     if (id >= 200 && id < 300) {
         initRain(id);
         startLightning();
+        bgAnimating = false; startBgAnim();
     } else if (id >= 300 && id < 600) {
         initRain(id);
+        bgAnimating = false; startBgAnim();
     } else if (id >= 600 && id < 700) {
         initSnow();
+        bgAnimating = false; startBgAnim();
     } else if (id >= 700 && id < 800) {
         initFog();
+        bgAnimating = false; startBgAnim();
     }
 }
 
@@ -1060,9 +1081,23 @@ function drawBg() {
         });
     }
 
-    requestAnimationFrame(drawBg);
+    if (rainDrops.length > 0 || snowFlakes.length > 0 || fogParticles.length > 0) {
+        requestAnimationFrame(drawBg);
+    } else {
+        bgAnimating = false;
+    }
 }
 
-window.addEventListener('resize', resizeBg);
+let bgAnimating = false;
+function startBgAnim() {
+    if (bgAnimating) return;
+    bgAnimating = true;
+    drawBg();
+}
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(resizeBg, 150);
+});
 resizeBg();
-drawBg();
