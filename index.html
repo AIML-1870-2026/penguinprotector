@@ -169,7 +169,7 @@
             transform: translateY(-4px);
         }
 
-        /* Weather Dashboard is now featured (1), Rat Race at 2 */
+        /* Approach Tracker is featured (1), Weather Dashboard at 2, Rat Race at 3 */
         .project-card:nth-child(1)  { --glow: 0, 200, 255; }
         .project-card:nth-child(2)  { --glow: 255, 80, 120; }
         .project-card:nth-child(3)  { --glow: 0, 255, 100; }
@@ -183,6 +183,7 @@
         .project-card:nth-child(11) { --glow: 255, 100, 200; }
         .project-card:nth-child(12) { --glow: 150, 255, 50; }
         .project-card:nth-child(13) { --glow: 212, 175, 55; }
+        .project-card:nth-child(14) { --glow: 0, 200, 255; }
 
         .project-card h2 {
             font-size: 18px;
@@ -406,39 +407,45 @@
     <div class="projects">
 
         <!-- ★ Featured: latest project -->
-        <a href="weather-dashboard/" class="project-card featured">
+        <a href="approach-tracker/" class="project-card featured">
             <div class="featured-inner">
                 <div class="featured-text">
                     <div class="featured-label">★ Latest Project</div>
-                    <h2>🌦️ Weather Dashboard</h2>
-                    <p>Real-time weather dashboard powered by OpenWeatherMap — search any city, use geolocation, toggle °C/°F, and view current conditions alongside a full 5-day forecast with search history.</p>
+                    <h2>☄️ NEO Approach Tracker</h2>
+                    <p>Mission-control NEO dashboard powered by NASA/JPL APIs — track near-Earth asteroids on an interactive 3D globe, explore size &amp; velocity charts, view a 30-day approach schedule, and monitor impact-risk objects from the JPL Sentry watch list.</p>
                     <div class="featured-pills">
-                        <span class="tag">API / DATA</span>
-                        <span class="feat-pill">Geolocation</span>
-                        <span class="feat-pill">5-Day Forecast</span>
-                        <span class="feat-pill">Search History</span>
-                        <span class="feat-pill">C/F Toggle</span>
+                        <span class="tag">NASA API</span>
+                        <span class="feat-pill">3D Globe</span>
+                        <span class="feat-pill">30-Day Schedule</span>
+                        <span class="feat-pill">Impact Risk</span>
+                        <span class="feat-pill">Live Data</span>
                     </div>
                 </div>
                 <div class="featured-stats">
                     <div class="feat-stat">
+                        <span class="feat-num">5</span>
+                        <div class="feat-lbl">Tabs</div>
+                    </div>
+                    <div class="feat-stat">
                         <span class="feat-num">2</span>
-                        <div class="feat-lbl">API Endpoints</div>
+                        <div class="feat-lbl">APIs</div>
                     </div>
                     <div class="feat-stat">
-                        <span class="feat-num">5</span>
-                        <div class="feat-lbl">Day Forecast</div>
+                        <span class="feat-num">30</span>
+                        <div class="feat-lbl">Day Range</div>
                     </div>
                     <div class="feat-stat">
-                        <span class="feat-num">6</span>
-                        <div class="feat-lbl">Live Stats</div>
-                    </div>
-                    <div class="feat-stat">
-                        <span class="feat-num">5</span>
-                        <div class="feat-lbl">History Slots</div>
+                        <span class="feat-num">3D</span>
+                        <div class="feat-lbl">Globe</div>
                     </div>
                 </div>
             </div>
+        </a>
+
+        <a href="weather-dashboard/" class="project-card">
+            <h2>🌦️ Weather Dashboard</h2>
+            <p>Real-time weather dashboard powered by OpenWeatherMap — search any city, use geolocation, toggle °C/°F, and view current conditions alongside a full 5-day forecast with search history.</p>
+            <span class="tag">API / DATA</span>
         </a>
 
         <a href="endless-runner/" class="project-card">
