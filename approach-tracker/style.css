@@ -82,6 +82,24 @@ body {
   transition: background 0.2s;
 }
 #refresh-btn:hover { background: rgba(0,212,170,0.1); }
+#refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#refresh-btn:disabled:hover { background: none; }
+
+.tab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
 
 .spinner {
   width: 18px;
@@ -299,7 +317,7 @@ body {
 #neo-table tbody tr.selected { background: rgba(0,212,170,0.12); }
 
 .hazard-yes { color: var(--amber); font-weight: 700; }
-.hazard-no  { color: var(--muted); }
+.hazard-no  { color: #9ca3af; }
 
 /* ===================== TAB 3: SIZE & SPEED ===================== */
 #asteroid-select-wrapper {

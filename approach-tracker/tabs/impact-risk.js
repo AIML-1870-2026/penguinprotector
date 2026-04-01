@@ -96,14 +96,30 @@ export async function initImpactRisk(_state) {
   }
 
   if (lastErr) {
-    document.getElementById('sentry-table-wrapper').innerHTML = `
+    const wrapper = document.getElementById('sentry-table-wrapper');
+    wrapper.innerHTML = `
       <div class="error-card">
         <p>JPL Sentry data unavailable — both CORS proxies failed.</p>
         <p class="muted" style="font-size:0.8rem;margin-top:4px">${lastErr.message}</p>
         <p class="error-time">Last attempted: ${new Date().toLocaleTimeString()}</p>
-        <button class="retry-btn" onclick="location.reload()">Retry</button>
+        <button class="retry-btn" id="sentry-retry-btn">Retry</button>
       </div>
     `;
+    wrapper.querySelector('#sentry-retry-btn').addEventListener('click', () => {
+      wrapper.innerHTML = `<table id="sentry-table">
+        <thead><tr>
+          <th data-col="fullname">Name</th>
+          <th data-col="range">Year Range</th>
+          <th data-col="n_imp">Potential Impacts</th>
+          <th data-col="ip">Impact Probability</th>
+          <th data-col="ps_cum" class="palermo-header" title="Palermo Scale &lt; −2: routine. −2 to 0: merits attention. &gt; 0: threatening.">Palermo Scale ⓘ</th>
+          <th data-col="ts_max">Torino Scale</th>
+          <th data-col="diameter">Diameter (km)</th>
+        </tr></thead>
+        <tbody id="sentry-tbody"></tbody>
+      </table>`;
+      initImpactRisk(_state);
+    });
     return;
   }
 

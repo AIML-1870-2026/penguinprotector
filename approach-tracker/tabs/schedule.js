@@ -53,8 +53,9 @@ async function fetch30Days(state) {
             }];
           });
         });
-      } catch {
+      } catch (err) {
         failedChunks++; // network error or timeout on one chunk — keep what we have
+        console.warn(`Schedule chunk ${start}–${end} failed:`, err.message);
       } finally {
         clearTimeout(timer);
       }

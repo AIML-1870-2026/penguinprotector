@@ -40,12 +40,27 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => activateTab(btn.dataset.tab));
 });
 
+const refreshBtn = document.getElementById('refresh-btn');
+const luEl = document.getElementById('last-updated');
+
+function startRateLimitCountdown() {
+  refreshBtn.disabled = true;
+  const interval = setInterval(() => {
+    const remaining = state.rateLimitedUntil - Date.now();
+    if (remaining <= 0) {
+      clearInterval(interval);
+      refreshBtn.disabled = false;
+      updateLastUpdated();
+    } else {
+      if (luEl) luEl.textContent = `Rate limited — retry in ${Math.ceil(remaining / 1000)}s`;
+    }
+  }, 1000);
+}
+
 // Refresh button — clear caches and re-init active tab
-document.getElementById('refresh-btn').addEventListener('click', () => {
+refreshBtn.addEventListener('click', () => {
   if (state.rateLimitedUntil > Date.now()) {
-    const secs = Math.ceil((state.rateLimitedUntil - Date.now()) / 1000);
-    const lu = document.getElementById('last-updated');
-    if (lu) lu.textContent = `Rate limited — retry in ${secs}s`;
+    startRateLimitCountdown();
     return;
   }
   state.feedCache = null;
