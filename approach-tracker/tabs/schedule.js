@@ -164,6 +164,13 @@ export async function initSchedule(state) {
   if (_ac) _ac.abort();
   _ac = new AbortController();
   const { signal } = _ac;
+
+  // Reset to timeline view so stale calendar data isn't left visible after refresh
+  document.getElementById('timeline-view-btn').classList.add('active');
+  document.getElementById('calendar-view-btn').classList.remove('active');
+  document.getElementById('timeline-view').classList.remove('hidden');
+  document.getElementById('calendar-view').classList.add('hidden');
+
   document.getElementById('next-5-list').innerHTML =
     '<div class="skeleton" style="height:60px;width:100%"></div>';
   document.getElementById('timeline-list').innerHTML =

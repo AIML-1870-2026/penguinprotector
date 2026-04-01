@@ -87,6 +87,10 @@ export async function initGlobe(state) {
     return;
   }
 
+  // Clear any previous WebGL canvas — Globe() appends a new canvas each time,
+  // so without this every refresh stacks canvases and leaks GPU memory.
+  container.innerHTML = '';
+
   const globe = Globe()(container)
     .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')

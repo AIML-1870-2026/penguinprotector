@@ -125,6 +125,15 @@ export async function initSizeSpeed(state) {
 
   // Populate dropdown (sorted closest first)
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
+
+  if (!sorted.length) {
+    ['size-viz', 'velocity-viz', 'distance-viz'].forEach(id => {
+      document.getElementById(id).innerHTML =
+        '<div class="hint-text muted" style="padding:1rem">No NEO data available for this week.</div>';
+    });
+    return;
+  }
+
   const sel = document.getElementById('asteroid-select');
   sel.innerHTML = sorted.map(n =>
     `<option value="${n.id}">${n.name}</option>`

@@ -37,8 +37,10 @@ function renderTable(filter = '') {
 
   document.getElementById('sentry-tbody').innerHTML = rows.map(r => {
     const name              = r.fullname || r.des || '—';
-    // API returns a single "range" string like "2056-2113"
-    const [yearMin, yearMax] = (r.range || '?-?').split('-');
+    // API returns a range string like "2056-2113"; guard against missing hyphen
+    const rangeParts = (r.range || '').split('-');
+    const yearMin = rangeParts[0] || '?';
+    const yearMax = rangeParts[1] || yearMin || '?';
     const nImp              = r.n_imp ?? '—';
     // ip is cumulative impact probability (0–1); display as "1 in N"
     const ipRaw = r.ip !== undefined ? parseFloat(r.ip) : NaN;
