@@ -8,7 +8,6 @@ export async function renderInteractions(drugA, drugB) {
   skeleton.style.display  = 'block';
   container.innerHTML     = '';
 
-  // Fetch both labels in parallel, then co-admin check
   const [labelA, labelB] = await Promise.all([
     fetchLabel(drugA).catch(e => ({ _error: e })),
     fetchLabel(drugB).catch(e => ({ _error: e }))
@@ -18,7 +17,6 @@ export async function renderInteractions(drugA, drugB) {
 
   const wrap = document.createElement('div');
 
-  // Side-by-side panels
   const row = document.createElement('div');
   row.className = 'side-by-side';
   row.appendChild(buildPanel(drugA, labelA, 'a'));
@@ -46,6 +44,7 @@ function buildPanel(drugName, label, side) {
   const panel = document.createElement('div');
   panel.className = `drug-panel drug-${side}-border`;
 
+  // Heading
   const heading = document.createElement('div');
   heading.className = 'panel-heading';
   heading.innerHTML = `
@@ -60,23 +59,86 @@ function buildPanel(drugName, label, side) {
     return panel;
   }
 
-  const text = label?.drug_interactions?.[0] ?? null;
-
-  if (!text) {
+  if (!label) {
     const p = document.createElement('p');
     p.className = 'no-data-text';
-    p.textContent = label
-      ? 'No drug interaction information found in the FDA label.'
-      : `No FDA label data found for '${drugName}'.`;
+    p.textContent = `No FDA label data found for '${drugName}'.`;
     panel.appendChild(p);
-  } else {
+    return panel;
+  }
+
+  // ── Boxed Warning ─────────────────────────────────────────────
+  const boxed = label.boxed_warning?.[0] ?? null;
+  if (boxed) {
+    const bw = document.createElement('div');
+    bw.className = 'boxed-warning';
+    bw.innerHTML = `<span class="boxed-warning-badge">BLACK BOX WARNING</span><p>${escHtml(boxed)}</p>`;
+    panel.appendChild(bw);
+  }
+
+  // ── Drug Interactions ──────────────────────────────────────────
+  const interactions = label.drug_interactions?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Drug Interactions',
+    interactions,
+    'No drug interaction information found in the FDA label.',
+    true   // expanded by default
+  ));
+
+  // ── Warnings & Cautions ────────────────────────────────────────
+  const warnings = label.warnings_and_cautions?.[0] ?? label.warnings?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Warnings & Cautions',
+    warnings,
+    'No warnings information found in the FDA label.'
+  ));
+
+  // ── Precautions ────────────────────────────────────────────────
+  const precautions = label.precautions?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Precautions',
+    precautions,
+    'No precautions information found in the FDA label.'
+  ));
+
+  return panel;
+}
+
+function buildSection(title, text, emptyMsg, startOpen = false) {
+  const section = document.createElement('div');
+  section.className = 'label-section';
+
+  const toggle = document.createElement('button');
+  toggle.className = 'label-section-toggle';
+  toggle.setAttribute('aria-expanded', startOpen);
+  toggle.innerHTML = `<span>${escHtml(title)}</span><span class="label-section-chevron">${startOpen ? '▲' : '▼'}</span>`;
+
+  const body = document.createElement('div');
+  body.className = 'label-section-body';
+  body.hidden = !startOpen;
+
+  if (text) {
     const p = document.createElement('p');
     p.className = 'interaction-text';
     p.textContent = text;
-    panel.appendChild(p);
+    body.appendChild(p);
+  } else {
+    const p = document.createElement('p');
+    p.className = 'no-data-text';
+    p.textContent = emptyMsg;
+    body.appendChild(p);
   }
 
-  return panel;
+  toggle.addEventListener('click', () => {
+    const open = body.hidden;
+    body.hidden = !open;
+    toggle.setAttribute('aria-expanded', open);
+    toggle.querySelector('.label-section-chevron').textContent = open ? '▲' : '▼';
+  });
+
+  section.appendChild(toggle);
+  section.appendChild(body);
+  return section;
 }
 
 function errorEl(err, drugName) {
