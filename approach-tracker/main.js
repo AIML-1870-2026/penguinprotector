@@ -17,6 +17,7 @@ const TAB_INITS = {
 const initialized = {};
 
 function activateTab(name) {
+  sessionStorage.setItem('neo-active-tab', name);
   // Update button states
   document.querySelectorAll('.tab-btn').forEach(btn =>
     btn.classList.toggle('active', btn.dataset.tab === name)
@@ -75,5 +76,5 @@ refreshBtn.addEventListener('click', () => {
 // Keep "last updated" text fresh every 30 s
 setInterval(updateLastUpdated, 30_000);
 
-// Boot on the Globe tab
-activateTab('globe');
+// Boot on the last active tab (or Globe if none saved)
+activateTab(sessionStorage.getItem('neo-active-tab') || 'globe');

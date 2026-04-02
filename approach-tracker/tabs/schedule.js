@@ -4,6 +4,20 @@ import { NASA_API_KEY, showSpinner, hideSpinner } from '../shared.js';
 let _ac = null; // AbortController — cancelled on re-init to prevent listener accumulation
 let _calendarRendered = false;
 
+function setProgress(done, total, label) {
+  const wrap  = document.getElementById('schedule-progress');
+  const fill  = document.getElementById('schedule-progress-fill');
+  const lbl   = document.getElementById('schedule-progress-label');
+  if (!wrap) return;
+  if (done >= total) {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+  fill.style.width = `${Math.round((done / total) * 100)}%`;
+  if (lbl) lbl.textContent = label;
+}
+
 // Fetch 30 days in weekly chunks (NeoWs max range = 7 days per request)
 async function fetch30Days(state) {
   if (state.scheduleCache) return state.scheduleCache;
@@ -32,7 +46,9 @@ async function fetch30Days(state) {
     let rateLimited = false;
     let failedChunks = 0;
     // Fetch chunks sequentially to avoid bursting DEMO_KEY's rate limit
-    for (const { start, end } of chunks) {
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const { start, end } = chunks[ci];
+      setProgress(ci, chunks.length, `Loading week ${ci + 1} of ${chunks.length}…`);
       const chunkAc = new AbortController();
       const timer = setTimeout(() => chunkAc.abort(), 10_000);
       try {
@@ -67,6 +83,7 @@ async function fetch30Days(state) {
 
     state.scheduleCache = byDate;
     state.schedulePartial = rateLimited || failedChunks > 0;
+    setProgress(chunks.length, chunks.length, '');
     return byDate;
   } finally {
     hideSpinner();
@@ -164,10 +181,16 @@ function renderCalendar(byDate) {
       expandedDate = ds;
       const div = document.createElement('div');
       div.className = 'cal-expanded';
-      div.innerHTML = `<strong>${ds}</strong><br>` +
+      div.innerHTML =
+        `<div class="cal-expanded-header"><strong>${ds}</strong><button class="cal-expanded-close" title="Close">×</button></div>` +
         neos.slice().sort((a, b) => a.ld - b.ld).map(n =>
-          `${n.name} — ${n.ld.toFixed(3)} LD ${n.isPha ? '<span class="pha-badge">PHA</span>' : ''}`
-        ).join('<br>');
+          `<div>${n.name} — ${n.ld.toFixed(3)} LD ${n.isPha ? '<span class="pha-badge">PHA</span>' : ''}</div>`
+        ).join('');
+      div.querySelector('.cal-expanded-close').addEventListener('click', e => {
+        e.stopPropagation();
+        div.remove();
+        expandedDate = null;
+      });
       cell.after(div);
     });
   });

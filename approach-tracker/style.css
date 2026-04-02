@@ -390,6 +390,35 @@ button:focus-visible {
 .dist-row .dist-val { font-family: var(--font-mono); }
 
 /* ===================== TAB 4: SCHEDULE ===================== */
+#schedule-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+#schedule-progress.hidden { display: none; }
+#schedule-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#schedule-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+#schedule-progress-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 #next-5-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -495,6 +524,22 @@ button:focus-visible {
   font-size: 0.8rem;
   line-height: 1.8;
 }
+.cal-expanded-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.cal-expanded-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.cal-expanded-close:hover { color: var(--text); }
 
 /* ===================== TAB 5: IMPACT RISK ===================== */
 #sentry-controls {

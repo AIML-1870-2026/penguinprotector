@@ -156,10 +156,17 @@ export async function initSizeSpeed(state) {
   initSizeSpeed._abortCtrl = new AbortController();
   const { signal } = initSizeSpeed._abortCtrl;
 
-  sel.addEventListener('change', () => renderAll(getSelected()), { signal });
+  sel.addEventListener('change', () => {
+    const neo = getSelected();
+    state.selectedNeo = neo.id;
+    document.dispatchEvent(new CustomEvent('preselect-neo', { detail: neo.id }));
+    renderAll(neo);
+  }, { signal });
 
   document.addEventListener('preselect-neo', e => {
     sel.value = e.detail;
-    renderAll(getSelected());
+    const neo = getSelected();
+    state.selectedNeo = neo.id;
+    renderAll(neo);
   }, { signal });
 }

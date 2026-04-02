@@ -4,6 +4,9 @@ import { fetchFeed, parseNeo } from '../shared.js';
 let _ro = null;           // ResizeObserver — disconnected on re-init to prevent leak
 let _cloudMesh = null;   // Cloud sphere — reference kept so we can dispose on re-init
 let _rafId = null;       // requestAnimationFrame for cloud rotation
+let _globeInst = null;   // globe.gl instance — kept so preselect listener can update it
+let _points = null;      // current points array — kept for re-render on selection change
+let _preselectAc = null; // AbortController for the preselect-neo listener
 
 function _addCloudLayer(globe) {
   // Access the underlying Three.js renderer globals exposed by globe.gl
@@ -127,6 +130,7 @@ export async function initGlobe(state) {
   }
 
   const points = buildPoints(neos);
+  _points = points;
 
   // Guard: globe.gl must be available as a global loaded by <script> tag
   if (typeof Globe !== 'function') {
@@ -137,6 +141,7 @@ export async function initGlobe(state) {
   // Clear any previous WebGL canvas — Globe() appends a new canvas each time,
   // so without this every refresh stacks canvases and leaks GPU memory.
   _disposeCloudLayer();
+  if (_preselectAc) { _preselectAc.abort(); _preselectAc = null; }
   container.innerHTML = '';
 
   // Color: selected spike turns white; others use distance-coded opacity
@@ -216,6 +221,8 @@ export async function initGlobe(state) {
     .width(container.offsetWidth)
     .height(container.offsetHeight);
 
+  _globeInst = globe;
+
   // Gentle auto-rotation
   globe.controls().autoRotate      = true;
   globe.controls().autoRotateSpeed = 0.25;
@@ -246,6 +253,17 @@ export async function initGlobe(state) {
         <div class="legend-item"><span class="dot gray"></span> Moon (1 LD ref.)</div>
       </div>`;
   }
+
+  // Listen for cross-tab asteroid selection (from This Week or Size & Speed)
+  _preselectAc = new AbortController();
+  document.addEventListener('preselect-neo', e => {
+    const p = _points.find(pt => pt.id === e.detail);
+    if (!p || p.isMoon) return;
+    state.selectedNeo = p.id;
+    renderInfoPanel(p);
+    globe.pointsData(_points);
+    globe.customLayerData(_points.filter(pt => !pt.isMoon));
+  }, { signal: _preselectAc.signal });
 
   // Responsive resize — disconnect previous observer before creating a new one
   if (_ro) _ro.disconnect();
