@@ -1,0 +1,76 @@
+// ── Help Modal System ────────────────────────────────────────────
+
+const POPUPS = {
+  about: {
+    title: 'About This Tool',
+    body: `<p>This tool queries publicly available FDA data for educational purposes. It is not a substitute for professional medical advice.</p>
+<p>Data quality varies by drug — some labels are detailed, others sparse. The absence of data does not mean a drug is safe.</p>
+<p>Always consult a licensed healthcare professional before making any medical decisions.</p>`
+  },
+  adverse: {
+    title: 'How to Interpret Adverse Event Data',
+    body: `<p>FAERS (FDA Adverse Event Reporting System) collects <strong>voluntary reports</strong> from patients, doctors, and pharmacists. Because reporting is voluntary, the data is incomplete.</p>
+<p>A drug with 50,000 reports isn't necessarily more dangerous than one with 500 — it may simply be prescribed to far more people.</p>
+<p><strong>Correlation in FAERS does not imply causation.</strong></p>`
+  },
+  recalls: {
+    title: 'Understanding Recall Classifications',
+    body: `<p><strong>Class I (red):</strong> The most serious type. There is a reasonable probability that using the product will cause serious health consequences or death. Example: contaminated injectable drugs.</p>
+<p><strong>Class II (amber):</strong> The product may cause temporary or reversible health consequences, or the probability of serious harm is remote. Example: mislabeled dosage strength.</p>
+<p><strong>Class III (gray):</strong> The product is unlikely to cause any health consequences, but it violates FDA regulations. Example: minor labeling errors.</p>`
+  },
+  pairs: {
+    title: 'Drug Pairs with Known Dangerous Interactions',
+    body: `<p>Classic high-risk pairs include:</p>
+<p><strong>Warfarin + NSAIDs</strong> — increased bleeding risk<br/>
+<strong>MAO inhibitors + serotonergic drugs</strong> — serotonin syndrome<br/>
+<strong>Methotrexate + NSAIDs</strong> — methotrexate toxicity</p>
+<p>These are well-established in clinical literature — this tool surfaces FDA label warnings about them.</p>`
+  },
+  labels: {
+    title: 'What Drug Labels Actually Tell You',
+    body: `<p>FDA-approved drug labels (package inserts) are the most authoritative source of prescribing information. They are reviewed by the FDA before a drug is approved and updated when new safety information emerges.</p>
+<p>The interactions section lists drugs that are known or suspected to interact based on clinical studies.</p>`
+  },
+  volume: {
+    title: 'Why Some Drugs Have More Reports Than Others',
+    body: `<p>A drug prescribed to 50 million people will accumulate far more adverse event reports than one prescribed to 50,000 — even if the rarer drug is more dangerous per patient.</p>
+<p>Always consider the drug's market prevalence when interpreting report volumes.</p>`
+  }
+};
+
+const backdrop = document.getElementById('modal-backdrop');
+const titleEl  = document.getElementById('modal-title');
+const bodyEl   = document.getElementById('modal-body');
+const closeBtn = document.getElementById('modal-close');
+
+export function openHelp(key) {
+  const popup = POPUPS[key];
+  if (!popup) return;
+  titleEl.textContent = popup.title;
+  bodyEl.innerHTML    = popup.body;
+  backdrop.hidden     = false;
+  backdrop.setAttribute('aria-hidden', 'false');
+  closeBtn.focus();
+}
+
+function closeHelp() {
+  backdrop.hidden = true;
+  backdrop.setAttribute('aria-hidden', 'true');
+}
+
+closeBtn.addEventListener('click', closeHelp);
+
+backdrop.addEventListener('click', e => {
+  if (e.target === backdrop) closeHelp();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !backdrop.hidden) closeHelp();
+});
+
+// Wire up all static help buttons (header button, etc.)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-help]');
+  if (btn) openHelp(btn.dataset.help);
+});

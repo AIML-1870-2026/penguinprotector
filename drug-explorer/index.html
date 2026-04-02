@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drug Safety Explorer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Disclaimer Banner -->
+  <div class="disclaimer-banner" role="alert">
+    <strong>Educational Use Only</strong> — This tool is for learning purposes. Always consult a healthcare professional for medical advice.
+  </div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="app-title">Drug Safety Explorer</h1>
+        <p class="app-subtitle">Compare FDA labeling, adverse events, and recall history for any two drugs</p>
+      </div>
+      <button class="help-btn" data-help="about" aria-label="How to read this data">? How to Read This Data</button>
+    </div>
+  </header>
+
+  <!-- Drug Input Section -->
+  <section class="input-section">
+    <div class="input-inner">
+      <div class="drug-inputs">
+        <!-- Drug A -->
+        <div class="drug-input-group drug-a">
+          <label class="drug-label drug-a-text">DRUG A</label>
+          <div class="input-wrapper">
+            <select class="drug-select" id="select-a" aria-label="Select Drug A from common drugs">
+              <option value="">— Select a common drug —</option>
+            </select>
+            <div class="autocomplete-wrapper">
+              <input
+                type="text"
+                class="drug-text-input"
+                id="input-a"
+                placeholder="Or type a drug name…"
+                autocomplete="off"
+                aria-label="Type Drug A name"
+                aria-autocomplete="list"
+                aria-controls="autocomplete-a"
+              />
+              <ul class="autocomplete-list" id="autocomplete-a" role="listbox" aria-label="Drug A suggestions"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="vs-label" aria-hidden="true">VS</div>
+
+        <!-- Drug B -->
+        <div class="drug-input-group drug-b">
+          <label class="drug-label drug-b-text">DRUG B</label>
+          <div class="input-wrapper">
+            <select class="drug-select" id="select-b" aria-label="Select Drug B from common drugs">
+              <option value="">— Select a common drug —</option>
+            </select>
+            <div class="autocomplete-wrapper">
+              <input
+                type="text"
+                class="drug-text-input"
+                id="input-b"
+                placeholder="Or type a drug name…"
+                autocomplete="off"
+                aria-label="Type Drug B name"
+                aria-autocomplete="list"
+                aria-controls="autocomplete-b"
+              />
+              <ul class="autocomplete-list" id="autocomplete-b" role="listbox" aria-label="Drug B suggestions"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="validation-msg" class="validation-msg" role="alert" aria-live="polite"></div>
+
+      <button class="compare-btn" id="compare-btn">
+        <span class="compare-btn-text">Compare</span>
+        <span class="compare-spinner" hidden aria-hidden="true"></span>
+      </button>
+
+      <p class="example-prompt" id="example-prompt">
+        Showing example: <strong>Warfarin + Ibuprofen</strong> — a well-known drug interaction.
+        <a href="#" id="try-own-link">Try your own comparison</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Results Area -->
+  <main class="results-section" id="results-section" hidden>
+    <div class="results-inner">
+      <!-- Tab Bar -->
+      <div class="tab-bar" role="tablist" aria-label="Drug comparison tabs">
+        <button class="tab-btn active" id="tab-interactions" role="tab" aria-selected="true" aria-controls="panel-interactions" data-tab="interactions">
+          Interaction Warnings
+        </button>
+        <button class="tab-btn" id="tab-adverse" role="tab" aria-selected="false" aria-controls="panel-adverse" data-tab="adverse">
+          Adverse Events
+        </button>
+        <button class="tab-btn" id="tab-recalls" role="tab" aria-selected="false" aria-controls="panel-recalls" data-tab="recalls">
+          Recall History
+        </button>
+      </div>
+
+      <!-- Tab Panels -->
+      <div class="tab-panel active" id="panel-interactions" role="tabpanel" aria-labelledby="tab-interactions">
+        <div class="skeleton-container" id="skeleton-interactions">
+          <div class="side-by-side">
+            <div class="skeleton-card drug-a-border"></div>
+            <div class="skeleton-card drug-b-border"></div>
+          </div>
+        </div>
+        <div id="content-interactions"></div>
+      </div>
+
+      <div class="tab-panel" id="panel-adverse" role="tabpanel" aria-labelledby="tab-adverse" hidden>
+        <div class="skeleton-container" id="skeleton-adverse">
+          <div class="side-by-side">
+            <div class="skeleton-card drug-a-border"></div>
+            <div class="skeleton-card drug-b-border"></div>
+          </div>
+        </div>
+        <div id="content-adverse"></div>
+      </div>
+
+      <div class="tab-panel" id="panel-recalls" role="tabpanel" aria-labelledby="tab-recalls" hidden>
+        <div class="skeleton-container" id="skeleton-recalls">
+          <div class="side-by-side">
+            <div class="skeleton-card drug-a-border"></div>
+            <div class="skeleton-card drug-b-border"></div>
+          </div>
+        </div>
+        <div id="content-recalls"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Help Modal -->
+  <div class="modal-backdrop" id="modal-backdrop" hidden aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <h2 class="modal-title" id="modal-title"></h2>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p><em>This product uses publicly available data from the U.S. Food and Drug Administration (FDA). FDA is not responsible for the product and does not endorse or recommend this or any other product.</em></p>
+  </footer>
+
+  <script type="module" src="help.js"></script>
+  <script type="module" src="api.js"></script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
