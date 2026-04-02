@@ -101,6 +101,81 @@ function buildPanel(drugName, label, side) {
     'No precautions information found in the FDA label.'
   ));
 
+  // ── Contraindications ──────────────────────────────────────────
+  const contraindications = label.contraindications?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Contraindications',
+    contraindications,
+    'No contraindication information found in the FDA label.'
+  ));
+
+  // ── Indications & Usage ────────────────────────────────────────
+  const indications = label.indications_and_usage?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Indications & Usage',
+    indications,
+    'No indications information found in the FDA label.'
+  ));
+
+  // ── Adverse Reactions (label) ──────────────────────────────────
+  const adverseReactions = label.adverse_reactions?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Adverse Reactions (Label)',
+    adverseReactions,
+    'No adverse reactions information found in the FDA label.'
+  ));
+
+  // ── Mechanism of Action ────────────────────────────────────────
+  const moa = label.mechanism_of_action?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Mechanism of Action',
+    moa,
+    'No mechanism of action information found in the FDA label.'
+  ));
+
+  // ── Overdosage ─────────────────────────────────────────────────
+  const overdosage = label.overdosage?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Overdosage',
+    overdosage,
+    'No overdosage information found in the FDA label.'
+  ));
+
+  // ── Special Populations ────────────────────────────────────────
+  const pregnancy  = label.pregnancy?.[0] ?? label.teratogenic_effects?.[0] ?? null;
+  const lactation  = label.nursing_mothers?.[0] ?? label.lactation?.[0] ?? null;
+  const pediatric  = label.pediatric_use?.[0] ?? null;
+  const geriatric  = label.geriatric_use?.[0] ?? null;
+
+  const specialParts = [
+    pregnancy  && `PREGNANCY\n${pregnancy}`,
+    lactation  && `NURSING MOTHERS / LACTATION\n${lactation}`,
+    pediatric  && `PEDIATRIC USE\n${pediatric}`,
+    geriatric  && `GERIATRIC USE\n${geriatric}`,
+  ].filter(Boolean).join('\n\n');
+
+  panel.appendChild(buildSection(
+    'Special Populations',
+    specialParts || null,
+    'No special populations information found in the FDA label.'
+  ));
+
+  // ── Drug Abuse & Dependence ────────────────────────────────────
+  const abuse = label.drug_abuse_and_dependence?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Drug Abuse & Dependence',
+    abuse,
+    'No drug abuse and dependence information found in the FDA label.'
+  ));
+
+  // ── Patient Counseling ─────────────────────────────────────────
+  const counseling = label.patient_counseling_information?.[0] ?? null;
+  panel.appendChild(buildSection(
+    'Patient Counseling Information',
+    counseling,
+    'No patient counseling information found in the FDA label.'
+  ));
+
   return panel;
 }
 
