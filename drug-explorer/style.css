@@ -400,6 +400,100 @@ body {
   font-style: italic;
 }
 
+/* ── Interaction Analysis Card ─────────────────────────────────── */
+.interaction-analysis-card {
+  background: var(--surface);
+  border: 1.5px solid var(--navy-mid);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(30,58,138,.1);
+}
+
+.ia-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -.01em;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ia-icon {
+  font-size: 16px;
+}
+
+.ia-none {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.65;
+}
+
+.ia-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 680px) {
+  .ia-grid { grid-template-columns: 1fr; }
+}
+
+.ia-hit-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ia-hit-group-a { border-left: 3px solid var(--drug-a); padding-left: 12px; }
+.ia-hit-group-b { border-left: 3px solid var(--drug-b); padding-left: 12px; }
+
+.ia-hit-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
+
+.ia-hit-label strong { color: var(--text); }
+
+.ia-hit-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ia-field-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--navy-light);
+  color: var(--navy-mid);
+  align-self: flex-start;
+}
+
+.ia-hit-item:has(.ia-field-badge:is([data-field="contraindications"], [data-field="boxed_warning"])) {
+  border-color: #fca5a5;
+  background: #fff1f2;
+}
+
+.ia-hit-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
 /* ── Boxed Warning ─────────────────────────────────────────────── */
 .boxed-warning {
   background: #fff1f2;

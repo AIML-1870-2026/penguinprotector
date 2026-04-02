@@ -17,6 +17,12 @@ export async function renderInteractions(drugA, drugB) {
 
   const wrap = document.createElement('div');
 
+  // Interaction Analysis card (cross-reference before side-by-side panels)
+  if (!labelA?._error && !labelB?._error && labelA && labelB) {
+    const analysisCard = buildInteractionAnalysis(drugA, labelA, drugB, labelB);
+    wrap.appendChild(analysisCard);
+  }
+
   const row = document.createElement('div');
   row.className = 'side-by-side';
   row.appendChild(buildPanel(drugA, labelA, 'a'));
@@ -38,6 +44,112 @@ export async function renderInteractions(drugA, drugB) {
       })
       .catch(() => {});
   }
+}
+
+// Fields to scan for cross-references, in priority order
+const SCAN_FIELDS = [
+  'contraindications',
+  'boxed_warning',
+  'warnings_and_cautions',
+  'warnings',
+  'drug_interactions',
+  'precautions',
+];
+
+function buildInteractionAnalysis(drugA, labelA, drugB, labelB) {
+  const card = document.createElement('div');
+  card.className = 'interaction-analysis-card';
+
+  const heading = document.createElement('div');
+  heading.className = 'ia-heading';
+  heading.innerHTML = `<span class="ia-icon">⚡</span> Interaction Analysis`;
+  card.appendChild(heading);
+
+  const hitsA = extractMentions(labelA, drugB);
+  const hitsB = extractMentions(labelB, drugA);
+
+  if (hitsA.length === 0 && hitsB.length === 0) {
+    const none = document.createElement('p');
+    none.className = 'ia-none';
+    none.textContent = `No direct mention of ${drugB} in ${drugA}'s FDA label, or ${drugA} in ${drugB}'s label. Check the FAERS co-administration data below and review each drug's full interaction section.`;
+    card.appendChild(none);
+    return card;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'ia-grid';
+
+  if (hitsA.length > 0) {
+    grid.appendChild(buildHitGroup(drugA, drugB, hitsA, 'a'));
+  }
+  if (hitsB.length > 0) {
+    grid.appendChild(buildHitGroup(drugB, drugA, hitsB, 'b'));
+  }
+
+  card.appendChild(grid);
+  return card;
+}
+
+function extractMentions(label, targetDrug) {
+  const hits = [];
+  const query = targetDrug.toLowerCase();
+
+  for (const field of SCAN_FIELDS) {
+    const text = label[field]?.[0];
+    if (!text) continue;
+
+    // Split into sentences on '. ', '.\n', or '\n'
+    const sentences = text.split(/(?<=\.)\s+|\n+/).map(s => s.trim()).filter(Boolean);
+
+    for (const sentence of sentences) {
+      if (sentence.toLowerCase().includes(query)) {
+        hits.push({ sentence, field });
+        if (hits.length >= 4) return hits; // cap at 4 most relevant
+      }
+    }
+  }
+  return hits;
+}
+
+function buildHitGroup(sourceDrug, mentionedDrug, hits, side) {
+  const group = document.createElement('div');
+  group.className = `ia-hit-group ia-hit-group-${side}`;
+
+  const label = document.createElement('p');
+  label.className = 'ia-hit-label';
+  label.innerHTML = `Found in <strong>${escHtml(sourceDrug)}</strong>'s label — mentions of <strong>${escHtml(mentionedDrug)}</strong>:`;
+  group.appendChild(label);
+
+  for (const { sentence, field } of hits) {
+    const item = document.createElement('div');
+    item.className = 'ia-hit-item';
+
+    const badge = document.createElement('span');
+    badge.className = 'ia-field-badge';
+    badge.textContent = fieldLabel(field);
+
+    const text = document.createElement('p');
+    text.className = 'ia-hit-text';
+    text.textContent = sentence;
+
+    item.appendChild(badge);
+    item.appendChild(text);
+    group.appendChild(item);
+  }
+
+  return group;
+}
+
+function fieldLabel(field) {
+  const map = {
+    contraindications:      'Contraindication',
+    boxed_warning:          'Black Box Warning',
+    warnings_and_cautions:  'Warning',
+    warnings:               'Warning',
+    drug_interactions:      'Drug Interaction',
+    precautions:            'Precaution',
+  };
+  return map[field] ?? field;
 }
 
 function buildPanel(drugName, label, side) {
