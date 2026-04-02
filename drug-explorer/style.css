@@ -392,8 +392,6 @@ body {
   line-height: 1.75;
   color: var(--text);
   white-space: pre-wrap;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .no-data-text {
@@ -430,8 +428,6 @@ body {
 .boxed-warning p {
   margin: 0;
   white-space: pre-wrap;
-  max-height: 160px;
-  overflow-y: auto;
 }
 
 /* ── Collapsible Label Sections ────────────────────────────────── */
