@@ -8,7 +8,8 @@ const COMMON_DRUGS = [
   'Warfarin', 'Ibuprofen', 'Aspirin', 'Metformin', 'Lisinopril',
   'Atorvastatin', 'Metoprolol', 'Amoxicillin', 'Omeprazole', 'Sertraline',
   'Fluoxetine', 'Methotrexate', 'Prednisone', 'Levothyroxine', 'Gabapentin',
-  'Amlodipine', 'Losartan', 'Simvastatin', 'Ciprofloxacin', 'Acetaminophen'
+  'Amlodipine', 'Losartan', 'Simvastatin', 'Ciprofloxacin', 'Acetaminophen',
+  'Escitalopram'
 ];
 
 // ── State ───────────────────────────────────────────────────────────
