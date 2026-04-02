@@ -139,13 +139,20 @@ export async function initGlobe(state) {
   _disposeCloudLayer();
   container.innerHTML = '';
 
-  // Color with opacity based on miss distance — closer = more vivid
+  // Color: selected spike turns white; others use distance-coded opacity
   const spikeColor = p => {
     if (p.isMoon) return '#9ca3af';
+    if (state.selectedNeo === p.id) return '#ffffff';
     const opacity = Math.max(0.45, 1 - (p.alt / (MAX_ALTITUDE + 0.05)) * 0.55).toFixed(2);
     return p.isPha
       ? `rgba(245,158,11,${opacity})`
       : `rgba(0,212,170,${opacity})`;
+  };
+
+  // Radius: selected spike is 2× wider
+  const spikeRadius = p => {
+    if (state.selectedNeo === p.id) return (p.isPha ? 0.55 : 0.38) * 2;
+    return p.isPha ? 0.55 : 0.38;
   };
 
   const asteroidPoints = points.filter(p => !p.isMoon);
@@ -160,7 +167,7 @@ export async function initGlobe(state) {
     .pointsData(points)
     .pointAltitude('alt')
     .pointColor(spikeColor)
-    .pointRadius('size')
+    .pointRadius(spikeRadius)
     .pointResolution(12)
     .pointLabel(p =>
       `<div style="font-family:monospace;font-size:12px;background:#111827dd;padding:4px 8px;border-radius:4px;color:#f9fafb;border:1px solid #1f2937">${p.name}</div>`
@@ -169,6 +176,9 @@ export async function initGlobe(state) {
       if (p.isMoon) return;
       state.selectedNeo = p.id;
       renderInfoPanel(p);
+      // Re-render spikes and orbs to apply selection highlight
+      globe.pointsData(points);
+      globe.customLayerData(asteroidPoints);
     })
     // Pulsing sonar rings at each asteroid's base
     .ringsData(asteroidPoints)
@@ -178,7 +188,7 @@ export async function initGlobe(state) {
     .ringMaxRadius(p => p.isPha ? 3.5 : 2.2)
     .ringPropagationSpeed(p => p.isPha ? 1.8 : 1.1)
     .ringRepeatPeriod(p => p.isPha ? 700 : 1400)
-    // Glowing orb at each spike tip (Three.js — graceful fallback if THREE absent)
+    // Glowing orb at each spike tip — white + scaled up when selected
     .customLayerData(asteroidPoints)
     .customThreeObject(p => {
       const T = window.THREE;
@@ -193,6 +203,15 @@ export async function initGlobe(state) {
       if (!obj) return;
       const coords = globe.getCoords(p.lat, p.lng, p.alt + 0.04);
       if (coords) Object.assign(obj.position, coords);
+      // Highlight selected orb: white color, 2× scale
+      const isSelected = state.selectedNeo === p.id;
+      const T = window.THREE;
+      if (T) {
+        obj.material.color.set(isSelected ? 0xffffff : (p.isPha ? 0xf59e0b : 0x00d4aa));
+        obj.material.opacity = isSelected ? 1.0 : 0.92;
+      }
+      const s = isSelected ? 2.2 : 1.0;
+      obj.scale.set(s, s, s);
     })
     .width(container.offsetWidth)
     .height(container.offsetHeight);
@@ -205,13 +224,15 @@ export async function initGlobe(state) {
   // Cloud layer — thin transparent sphere slightly above the surface
   _addCloudLayer(globe);
 
-  // Pre-select the closest NEO
+  // Pre-select the closest NEO and apply highlight
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
   if (sorted.length) {
     const first = points.find(p => p.id === sorted[0].id);
     if (first) {
       state.selectedNeo = first.id;
       renderInfoPanel(first);
+      globe.pointsData(points);
+      globe.customLayerData(asteroidPoints);
     }
   }
 
