@@ -8,8 +8,8 @@
   --border:       #dde3ec;
   --drug-a:       #2563eb;
   --drug-a-light: #eff6ff;
-  --drug-b:       #7c3aed;
-  --drug-b-light: #f5f3ff;
+  --drug-b:       #0284c7;
+  --drug-b-light: #e0f2fe;
   --danger:       #dc2626;
   --warning:      #d97706;
   --muted:        #94a3b8;
@@ -18,7 +18,7 @@
   --radius:       10px;
   --shadow:       0 1px 4px rgba(11,29,58,.07), 0 1px 2px rgba(11,29,58,.05);
   --shadow-hover: 0 6px 20px rgba(11,29,58,.12);
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   color: var(--text);
 }
 
@@ -133,7 +133,7 @@ body {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   background: var(--surface);
   color: var(--text);
   outline: none;
@@ -149,7 +149,7 @@ body {
 .drug-b .drug-select:focus,
 .drug-b .drug-text-input:focus {
   border-color: var(--drug-b);
-  box-shadow: 0 0 0 3px rgba(124,58,237,.13);
+  box-shadow: 0 0 0 3px rgba(2,132,199,.13);
 }
 
 .vs-label {
@@ -213,7 +213,7 @@ body {
   border-radius: var(--radius);
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   letter-spacing: .02em;
   cursor: pointer;
   transition: background .15s, transform .1s, box-shadow .15s;
@@ -281,7 +281,7 @@ body {
   margin-bottom: -2px;
   font-size: 14px;
   font-weight: 500;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   color: var(--text-muted);
   cursor: pointer;
   transition: color .15s, border-color .15s;
@@ -351,7 +351,7 @@ body {
   border: 1.5px solid var(--border);
   border-radius: 20px;
   font-size: 13px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   color: rgba(255,255,255,.7);
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
@@ -540,7 +540,7 @@ body {
   border: none;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -638,7 +638,7 @@ body {
 .recall-date {
   font-size: 12px;
   color: var(--text-muted);
-  font-family: 'Space Grotesk', monospace;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -653,7 +653,7 @@ body {
   border: none;
   color: var(--drug-a);
   font-size: 12px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -723,7 +723,7 @@ body {
   border: none;
   border-radius: var(--radius);
   font-size: 13px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   cursor: pointer;
 }
 
@@ -824,6 +824,6 @@ body {
 }
 
 .count-mono {
-  font-family: 'Space Grotesk', monospace;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 700;
 }
