@@ -169,7 +169,7 @@
             transform: translateY(-4px);
         }
 
-        /* Approach Tracker is featured (1), Weather Dashboard at 2, Rat Race at 3 */
+        /* Drug Explorer is featured (1), Approach Tracker at 2, Weather Dashboard at 3 */
         .project-card:nth-child(1)  { --glow: 0, 200, 255; }
         .project-card:nth-child(2)  { --glow: 255, 80, 120; }
         .project-card:nth-child(3)  { --glow: 0, 255, 100; }
@@ -407,39 +407,45 @@
     <div class="projects">
 
         <!-- ★ Featured: latest project -->
-        <a href="approach-tracker/" class="project-card featured">
+        <a href="drug-explorer/" class="project-card featured">
             <div class="featured-inner">
                 <div class="featured-text">
                     <div class="featured-label">★ Latest Project</div>
-                    <h2>☄️ NEO Approach Tracker</h2>
-                    <p>Mission-control NEO dashboard powered by NASA/JPL APIs — track near-Earth asteroids on an interactive 3D globe, explore size &amp; velocity charts, view a 30-day approach schedule, and monitor impact-risk objects from the JPL Sentry watch list.</p>
+                    <h2>💊 Drug Safety Explorer</h2>
+                    <p>Interactive FDA drug comparison tool — compare any two drugs side-by-side using live OpenFDA data. Explore interaction warnings from official drug labels, visualize top-reported adverse events from the FAERS database, and browse recall history with Class I/II/III severity badges.</p>
                     <div class="featured-pills">
-                        <span class="tag">NASA API</span>
-                        <span class="feat-pill">3D Globe</span>
-                        <span class="feat-pill">30-Day Schedule</span>
-                        <span class="feat-pill">Impact Risk</span>
+                        <span class="tag">OpenFDA API</span>
+                        <span class="feat-pill">Interaction Warnings</span>
+                        <span class="feat-pill">Adverse Events</span>
+                        <span class="feat-pill">Recall History</span>
                         <span class="feat-pill">Live Data</span>
                     </div>
                 </div>
                 <div class="featured-stats">
                     <div class="feat-stat">
-                        <span class="feat-num">5</span>
+                        <span class="feat-num">3</span>
                         <div class="feat-lbl">Tabs</div>
                     </div>
                     <div class="feat-stat">
-                        <span class="feat-num">2</span>
+                        <span class="feat-num">3</span>
                         <div class="feat-lbl">APIs</div>
                     </div>
                     <div class="feat-stat">
-                        <span class="feat-num">30</span>
-                        <div class="feat-lbl">Day Range</div>
+                        <span class="feat-num">20</span>
+                        <div class="feat-lbl">Drugs</div>
                     </div>
                     <div class="feat-stat">
-                        <span class="feat-num">3D</span>
-                        <div class="feat-lbl">Globe</div>
+                        <span class="feat-num">6</span>
+                        <div class="feat-lbl">Guides</div>
                     </div>
                 </div>
             </div>
+        </a>
+
+        <a href="approach-tracker/" class="project-card">
+            <h2>☄️ NEO Approach Tracker</h2>
+            <p>Mission-control NEO dashboard powered by NASA/JPL APIs — track near-Earth asteroids on an interactive 3D globe, explore size &amp; velocity charts, view a 30-day approach schedule, and monitor impact-risk objects from the JPL Sentry watch list.</p>
+            <span class="tag">NASA API</span>
         </a>
 
         <a href="weather-dashboard/" class="project-card">
