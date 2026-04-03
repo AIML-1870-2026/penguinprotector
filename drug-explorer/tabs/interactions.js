@@ -38,7 +38,7 @@ export async function renderInteractions(drugA, drugB) {
         if (total > 0) {
           const callout = document.createElement('div');
           callout.className = 'coadmin-callout';
-          callout.innerHTML = `⚠️ <strong>${total.toLocaleString()} FAERS report${total !== 1 ? 's' : ''}</strong> exist where both <strong>${escHtml(drugA)}</strong> and <strong>${escHtml(drugB)}</strong> were administered together. This does not imply causation.`;
+          callout.innerHTML = `<span role="img" aria-label="Warning">⚠️</span> <strong>${total.toLocaleString()} FAERS report${total !== 1 ? 's' : ''}</strong> exist where both <strong>${escHtml(drugA)}</strong> and <strong>${escHtml(drugB)}</strong> were administered together. This does not imply causation.`;
           wrap.appendChild(callout);
         }
       })
@@ -62,7 +62,7 @@ function buildInteractionAnalysis(drugA, labelA, drugB, labelB) {
 
   const heading = document.createElement('div');
   heading.className = 'ia-heading';
-  heading.innerHTML = `<span class="ia-icon">⚡</span> Interaction Analysis`;
+  heading.innerHTML = `<span class="ia-icon" role="img" aria-label="Interaction">⚡</span> Interaction Analysis`;
   card.appendChild(heading);
 
   const hitsA = extractMentions(labelA, drugB);

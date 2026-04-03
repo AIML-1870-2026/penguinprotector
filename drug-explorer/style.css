@@ -29,6 +29,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  font-weight: 500;
+  line-height: 1.65;
 }
 
 /* ── Disclaimer Banner ─────────────────────────────────────────── */
@@ -75,7 +77,7 @@ body {
 
 .app-subtitle {
   font-size: 13.5px;
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.8);
   margin-top: 5px;
   letter-spacing: .01em;
 }
@@ -115,7 +117,7 @@ body {
 }
 
 .drug-label {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -386,6 +388,17 @@ body {
   color: #fff;
 }
 
+.help-icon:focus-visible {
+  outline: 2px solid var(--drug-a);
+  outline-offset: 2px;
+}
+
+.recall-expand-btn:focus-visible {
+  outline: 2px solid var(--drug-a);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
 /* ── Interaction Text ──────────────────────────────────────────── */
 .interaction-text {
   font-size: 14px;
@@ -472,7 +485,7 @@ body {
 
 .ia-field-badge {
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -806,8 +819,8 @@ body {
 .app-footer p {
   max-width: 1100px;
   margin: 0 auto;
-  font-size: 12px;
-  color: rgba(255,255,255,.4);
+  font-size: 13px;
+  color: rgba(255,255,255,.65);
   text-align: center;
   line-height: 1.7;
 }

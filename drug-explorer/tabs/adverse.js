@@ -47,7 +47,7 @@ export async function renderAdverse(drugA, drugB) {
 
   // Render charts (after DOM is attached)
   if (!eventsA?._error && eventsA) renderChart('chart-a', drugA, eventsA, '#0d9488');
-  if (!eventsB?._error && eventsB) renderChart('chart-b', drugB, eventsB, '#7c3aed');
+  if (!eventsB?._error && eventsB) renderChart('chart-b', drugB, eventsB, '#0284c7');
 
   // Top reaction in common callout
   if (eventsA && eventsB && !eventsA._error && !eventsB._error) {
@@ -65,7 +65,7 @@ export async function renderAdverse(drugA, drugB) {
   const volumeCallout = document.createElement('div');
   volumeCallout.className = 'report-volume-callout';
   volumeCallout.innerHTML = `
-    <span>ℹ️</span>
+    <span role="img" aria-label="Information">ℹ️</span>
     <span>Report volume reflects how widely a drug is prescribed, not how dangerous it is.
       <button class="help-icon" style="margin-left:6px" data-help="volume" aria-label="Why some drugs have more reports">?</button>
     </span>
