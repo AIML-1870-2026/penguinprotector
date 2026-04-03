@@ -33,6 +33,7 @@ const compareBtn = document.getElementById('compare-btn');
 const btnText    = compareBtn.querySelector('.compare-btn-text');
 const spinner    = compareBtn.querySelector('.compare-spinner');
 const validMsg   = document.getElementById('validation-msg');
+const swapBtn    = document.getElementById('swap-btn');
 const exampleP   = document.getElementById('example-prompt');
 const tryLink    = document.getElementById('try-own-link');
 const results    = document.getElementById('results-section');
@@ -243,10 +244,11 @@ async function runCompare(drugA, drugB, isExample = false) {
   // Summary banner
   buildSummaryBanner(intSum, advSum, recSum);
 
-  // Save to recent (not for the boot example)
+  // Save to recent and update URL hash (not for the boot example)
   if (!isExample) {
     saveRecent(drugA, drugB);
     renderRecentChips();
+    location.hash = `${encodeURIComponent(drugA)}+${encodeURIComponent(drugB)}`;
   }
 }
 
@@ -286,6 +288,16 @@ function fmtNum(n) {
   return n.toString();
 }
 
+// ── Swap Button ─────────────────────────────────────────────────────
+swapBtn.addEventListener('click', () => {
+  const tmp = inputA.value;
+  inputA.value = inputB.value;
+  inputB.value = tmp;
+  const tmpSel = selectA.value;
+  selectA.value = selectB.value;
+  selectB.value = tmpSel;
+});
+
 compareBtn.addEventListener('click', () => {
   const drugA = inputA.value.trim();
   const drugB = inputB.value.trim();
@@ -294,6 +306,12 @@ compareBtn.addEventListener('click', () => {
     validMsg.textContent = 'Please enter a drug name for both fields.';
     if (!drugA) inputA.focus();
     else inputB.focus();
+    return;
+  }
+
+  if (drugA.toLowerCase() === drugB.toLowerCase()) {
+    validMsg.textContent = 'Please enter two different drug names.';
+    inputB.focus();
     return;
   }
 
@@ -323,9 +341,23 @@ tryLink.addEventListener('click', e => {
   inputA.focus();
 });
 
-// ── Boot: pre-populate Warfarin + Ibuprofen ─────────────────────────
-inputA.value = 'Warfarin';
-inputB.value = 'Ibuprofen';
-selectA.value = 'Warfarin';
-selectB.value = 'Ibuprofen';
-runCompare('Warfarin', 'Ibuprofen', true);
+// ── Boot: load from URL hash or fall back to Warfarin + Ibuprofen ──
+(function boot() {
+  const hash = location.hash.slice(1);
+  if (hash) {
+    const parts = hash.split('+').map(p => decodeURIComponent(p));
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      const [a, b] = parts;
+      inputA.value = a; selectA.value = COMMON_DRUGS.includes(a) ? a : '';
+      inputB.value = b; selectB.value = COMMON_DRUGS.includes(b) ? b : '';
+      exampleP.hidden = true;
+      runCompare(a, b, false);
+      return;
+    }
+  }
+  inputA.value = 'Warfarin';
+  inputB.value = 'Ibuprofen';
+  selectA.value = 'Warfarin';
+  selectB.value = 'Ibuprofen';
+  runCompare('Warfarin', 'Ibuprofen', true);
+}());

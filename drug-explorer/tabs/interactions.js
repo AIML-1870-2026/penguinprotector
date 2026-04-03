@@ -1,5 +1,6 @@
 import { fetchLabel, fetchCoAdmin } from '../api.js';
 import { openHelp } from '../help.js';
+import { escHtml, makeErrorEl } from '../utils.js';
 
 export async function renderInteractions(drugA, drugB) {
   const skeleton  = document.getElementById('skeleton-interactions');
@@ -7,6 +8,8 @@ export async function renderInteractions(drugA, drugB) {
 
   skeleton.style.display  = 'block';
   container.innerHTML     = '';
+
+  sectionCounter = 0; // reset per render to avoid ever-growing IDs
 
   const [labelA, labelB] = await Promise.all([
     fetchLabel(drugA).catch(e => ({ _error: e })),
@@ -25,6 +28,27 @@ export async function renderInteractions(drugA, drugB) {
     const analysisCard = buildInteractionAnalysis(drugA, hitsA, drugB, hitsB);
     wrap.appendChild(analysisCard);
   }
+
+  // Expand / Collapse all toggle row
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'expand-collapse-row';
+  const expandAllBtn = document.createElement('button');
+  expandAllBtn.className = 'expand-all-btn';
+  expandAllBtn.textContent = 'Expand all sections';
+  let allExpanded = false;
+  expandAllBtn.addEventListener('click', () => {
+    allExpanded = !allExpanded;
+    wrap.querySelectorAll('.label-section-body').forEach(body => {
+      body.hidden = !allExpanded;
+    });
+    wrap.querySelectorAll('.label-section-toggle').forEach(btn => {
+      btn.setAttribute('aria-expanded', allExpanded);
+      btn.querySelector('.label-section-chevron').textContent = allExpanded ? '▲' : '▼';
+    });
+    expandAllBtn.textContent = allExpanded ? 'Collapse all sections' : 'Expand all sections';
+  });
+  toggleRow.appendChild(expandAllBtn);
+  wrap.appendChild(toggleRow);
 
   const row = document.createElement('div');
   row.className = 'side-by-side';
@@ -156,7 +180,7 @@ function fieldLabel(field) {
   return map[field] ?? field;
 }
 
-let sectionCounter = 0;
+let sectionCounter = 0; // resets on each renderInteractions call
 
 function buildPanel(drugName, label, side) {
   const panel = document.createElement('div');
@@ -339,12 +363,5 @@ function buildSection(title, text, emptyMsg, startOpen = false) {
 }
 
 function errorEl(err, drugName) {
-  const div = document.createElement('div');
-  div.className = 'error-card';
-  div.innerHTML = `<span>Could not load label data for <strong>${escHtml(drugName)}</strong>: ${escHtml(err.message)}</span>`;
-  return div;
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return makeErrorEl(drugName, err.message);
 }

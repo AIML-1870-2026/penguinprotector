@@ -1,4 +1,5 @@
 import { fetchLabel } from '../api.js';
+import { escHtml, makeErrorEl } from '../utils.js';
 
 export async function renderDosage(drugA, drugB) {
   const skeleton  = document.getElementById('skeleton-dosage');
@@ -90,12 +91,5 @@ function buildDosagePanel(drugName, label, side) {
 }
 
 function errorEl(err, drugName) {
-  const div = document.createElement('div');
-  div.className = 'error-card';
-  div.innerHTML = `<span>Could not load dosage data for <strong>${escHtml(drugName)}</strong>: ${escHtml(err.message)}</span>`;
-  return div;
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return makeErrorEl(drugName, err.message);
 }
