@@ -35,8 +35,44 @@
   --radius:       10px;
   --shadow:       0 1px 4px rgba(11,29,58,.07), 0 1px 2px rgba(11,29,58,.05);
   --shadow-hover: 0 6px 20px rgba(11,29,58,.12);
+  --backdrop:     rgba(11,29,58,.45);
+  --shimmer:      rgba(255,255,255,.7);
+  --banner-h:     40px;
   font-family: 'Cormorant Garamond', Georgia, serif;
   color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:              #0f172a;
+    --surface:         #1e293b;
+    --border:          #334155;
+    --border-hover:    #475569;
+    --text:            #f1f5f9;
+    --text-muted:      #94a3b8;
+    --muted:           #64748b;
+    --navy:            #020617;
+    --navy-mid:        #3b82f6;
+    --navy-light:      rgba(59,130,246,.15);
+    --danger-bg:       #450a0a;
+    --danger-light:    #3b0000;
+    --danger-border:   #7f1d1d;
+    --danger-text:     #fca5a5;
+    --danger-dark:     #fecaca;
+    --warn-light:      #2c1400;
+    --warn-lighter:    #2c1f00;
+    --warn-border:     #7c2d12;
+    --warn-text:       #fed7aa;
+    --warn-dark:       #fde68a;
+    --info-border:     #1d4ed8;
+    --info-text:       #93c5fd;
+    --skeleton-bg:     #1e293b;
+    --skeleton-border: #334155;
+    --shadow:          0 1px 4px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+    --shadow-hover:    0 6px 20px rgba(0,0,0,.5);
+    --backdrop:        rgba(0,0,0,.7);
+    --shimmer:         rgba(255,255,255,.06);
+  }
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -289,16 +325,50 @@ body {
   margin: 0 auto;
 }
 
+/* ── Summary Banner ────────────────────────────────────────────── */
+.summary-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: center;
+  padding: 11px 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 28px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.summary-stat strong { color: var(--text); font-weight: 600; }
+
+.summary-sep {
+  color: var(--border);
+  font-size: 16px;
+  line-height: 1;
+}
+
 /* ── Tab Bar ───────────────────────────────────────────────────── */
 .tab-bar {
   display: flex;
   gap: 0;
   border-bottom: 2px solid var(--border);
   margin-bottom: 32px;
-  margin-top: 32px;
+  margin-top: 20px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  position: sticky;
+  top: var(--banner-h, 40px);
+  z-index: 50;
+  background: var(--bg);
 }
 
 .tab-bar::-webkit-scrollbar { display: none; }
@@ -730,11 +800,14 @@ body {
   position: relative;
 }
 
+.skeleton-card.drug-a-border { background: var(--drug-a-light); border-color: var(--drug-a-light); }
+.skeleton-card.drug-b-border { background: var(--drug-b-light); border-color: var(--drug-b-light); }
+
 .skeleton-card::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.7) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--shimmer) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -775,7 +848,7 @@ body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(11,29,58,.45);
+  background: var(--backdrop);
   backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
@@ -874,4 +947,57 @@ body {
 .count-mono {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 700;
+}
+
+/* ── Recent Comparisons ────────────────────────────────────────── */
+.recent-comparisons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.recent-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.recent-chip {
+  padding: 4px 13px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.recent-chip:hover {
+  background: var(--navy-light);
+  border-color: var(--navy-mid);
+  color: var(--navy-mid);
+}
+
+/* ── Dosage Tab ────────────────────────────────────────────────── */
+.dosage-section {
+  border-top: 1px solid var(--border);
+  padding: 14px 0 4px;
+}
+
+.dosage-section:first-of-type { border-top: none; padding-top: 0; }
+
+.dosage-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }

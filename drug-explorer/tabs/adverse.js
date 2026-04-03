@@ -72,6 +72,10 @@ export async function renderAdverse(drugA, drugB) {
   `;
   volumeCallout.querySelector('[data-help]').addEventListener('click', () => openHelp('volume'));
   wrap.appendChild(volumeCallout);
+
+  const totalA = eventsA && !eventsA._error ? eventsA.reduce((s, r) => s + (r.count ?? 0), 0) : 0;
+  const totalB = eventsB && !eventsB._error ? eventsB.reduce((s, r) => s + (r.count ?? 0), 0) : 0;
+  return { totalA, totalB };
 }
 
 function buildChartPanel(drugName, events, side, canvasId) {

@@ -2,6 +2,7 @@ import { fetchAutocomplete } from './api.js';
 import { renderInteractions } from './tabs/interactions.js';
 import { renderAdverse }      from './tabs/adverse.js';
 import { renderRecalls }      from './tabs/recalls.js';
+import { renderDosage }       from './tabs/dosage.js';
 
 // ── Common Drugs ────────────────────────────────────────────────────
 const COMMON_DRUGS = [
@@ -14,6 +15,12 @@ const COMMON_DRUGS = [
 
 // ── State ───────────────────────────────────────────────────────────
 let activeTab = 'interactions';
+
+// ── Sticky tab bar: compute banner height ────────────────────────────
+const disclaimerBanner = document.querySelector('.disclaimer-banner');
+if (disclaimerBanner) {
+  document.documentElement.style.setProperty('--banner-h', `${disclaimerBanner.offsetHeight}px`);
+}
 
 // ── Elements ────────────────────────────────────────────────────────
 const selectA    = document.getElementById('select-a');
@@ -29,6 +36,8 @@ const validMsg   = document.getElementById('validation-msg');
 const exampleP   = document.getElementById('example-prompt');
 const tryLink    = document.getElementById('try-own-link');
 const results    = document.getElementById('results-section');
+const recentEl   = document.getElementById('recent-comparisons');
+const summaryEl  = document.getElementById('summary-banner');
 
 // ── Populate Dropdowns ──────────────────────────────────────────────
 for (const name of COMMON_DRUGS) {
@@ -41,6 +50,50 @@ for (const name of COMMON_DRUGS) {
 // ── Dropdown → text input sync ──────────────────────────────────────
 selectA.addEventListener('change', () => { if (selectA.value) inputA.value = selectA.value; });
 selectB.addEventListener('change', () => { if (selectB.value) inputB.value = selectB.value; });
+
+// ── Recent Comparisons ───────────────────────────────────────────────
+const RECENT_KEY = 'drugexp_recent';
+const RECENT_MAX = 5;
+
+function loadRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY)) ?? []; }
+  catch { return []; }
+}
+
+function saveRecent(drugA, drugB) {
+  const list = loadRecent().filter(r => !(r.a === drugA && r.b === drugB));
+  list.unshift({ a: drugA, b: drugB });
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+}
+
+function renderRecentChips() {
+  const list = loadRecent();
+  if (list.length === 0) { recentEl.hidden = true; return; }
+  recentEl.hidden = false;
+  recentEl.innerHTML = '';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'recent-label';
+  lbl.textContent = 'Recent:';
+  recentEl.appendChild(lbl);
+
+  for (const { a, b } of list) {
+    const chip = document.createElement('button');
+    chip.className = 'recent-chip';
+    chip.textContent = `${a} + ${b}`;
+    chip.addEventListener('click', () => {
+      inputA.value = a;
+      inputB.value = b;
+      selectA.value = COMMON_DRUGS.includes(a) ? a : '';
+      selectB.value = COMMON_DRUGS.includes(b) ? b : '';
+      exampleP.hidden = true;
+      runCompare(a, b);
+    });
+    recentEl.appendChild(chip);
+  }
+}
+
+renderRecentChips();
 
 // ── Autocomplete ────────────────────────────────────────────────────
 function setupAutocomplete(input, listEl) {
@@ -154,9 +207,13 @@ function switchTab(tab) {
 }
 
 // ── Compare Logic ───────────────────────────────────────────────────
-async function runCompare(drugA, drugB) {
+async function runCompare(drugA, drugB, isExample = false) {
   validMsg.textContent = '';
   setLoading(true);
+  summaryEl.hidden = true;
+
+  // Reset recall tab badge
+  document.getElementById('tab-recalls').textContent = 'Recall History';
 
   results.hidden = false;
   switchTab('interactions');
@@ -166,12 +223,67 @@ async function runCompare(drugA, drugB) {
   document.querySelectorAll('[id^="content-"]').forEach(c => c.innerHTML = '');
 
   // Render each tab independently (stagger reveal as data arrives)
-  const p1 = renderInteractions(drugA, drugB).catch(showGlobalError);
-  const p2 = renderAdverse(drugA, drugB).catch(showGlobalError);
-  const p3 = renderRecalls(drugA, drugB).catch(showGlobalError);
+  const [intSum, advSum, recSum] = await Promise.all([
+    renderInteractions(drugA, drugB).catch(() => null),
+    renderAdverse(drugA, drugB).catch(() => null),
+    renderRecalls(drugA, drugB).catch(() => null),
+    renderDosage(drugA, drugB).catch(showGlobalError),
+  ]);
 
-  await Promise.all([p1, p2, p3]);
   setLoading(false);
+
+  // Recall tab badge
+  if (recSum) {
+    const total = (recSum.countA ?? 0) + (recSum.countB ?? 0);
+    if (total > 0) {
+      document.getElementById('tab-recalls').textContent = `Recall History · ${total}`;
+    }
+  }
+
+  // Summary banner
+  buildSummaryBanner(intSum, advSum, recSum);
+
+  // Save to recent (not for the boot example)
+  if (!isExample) {
+    saveRecent(drugA, drugB);
+    renderRecentChips();
+  }
+}
+
+function buildSummaryBanner(intSum, advSum, recSum) {
+  const mentions = (intSum?.hitsA ?? 0) + (intSum?.hitsB ?? 0);
+  const reports  = (advSum?.totalA  ?? 0) + (advSum?.totalB  ?? 0);
+  const recalls  = (recSum?.countA  ?? 0) + (recSum?.countB  ?? 0);
+
+  summaryEl.innerHTML = '';
+
+  const stats = [
+    { icon: '⚡', label: 'Interaction mentions', value: mentions.toString() },
+    { icon: '📊', label: 'Adverse reports',      value: fmtNum(reports) },
+    { icon: '⚠️',  label: 'Recalls',              value: recalls.toString() },
+  ];
+
+  stats.forEach((s, i) => {
+    const stat = document.createElement('span');
+    stat.className = 'summary-stat';
+    stat.innerHTML = `<span aria-hidden="true">${s.icon}</span> ${s.label}: <strong>${s.value}</strong>`;
+    summaryEl.appendChild(stat);
+    if (i < stats.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'summary-sep';
+      sep.setAttribute('aria-hidden', 'true');
+      sep.textContent = '·';
+      summaryEl.appendChild(sep);
+    }
+  });
+
+  summaryEl.hidden = false;
+}
+
+function fmtNum(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
+  return n.toString();
 }
 
 compareBtn.addEventListener('click', () => {
@@ -186,7 +298,7 @@ compareBtn.addEventListener('click', () => {
   }
 
   exampleP.hidden = true;
-  runCompare(drugA, drugB);
+  runCompare(drugA, drugB, false);
 });
 
 function setLoading(on) {
@@ -207,6 +319,7 @@ tryLink.addEventListener('click', e => {
   selectA.value = '';
   selectB.value = '';
   exampleP.hidden = true;
+  summaryEl.hidden = true;
   inputA.focus();
 });
 
@@ -215,4 +328,4 @@ inputA.value = 'Warfarin';
 inputB.value = 'Ibuprofen';
 selectA.value = 'Warfarin';
 selectB.value = 'Ibuprofen';
-runCompare('Warfarin', 'Ibuprofen');
+runCompare('Warfarin', 'Ibuprofen', true);

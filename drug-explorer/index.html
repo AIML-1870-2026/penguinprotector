@@ -87,6 +87,8 @@
         <span class="compare-spinner" hidden aria-hidden="true"></span>
       </button>
 
+      <div id="recent-comparisons" class="recent-comparisons" hidden aria-label="Recent comparisons"></div>
+
       <p class="example-prompt" id="example-prompt">
         Showing example: <strong>Warfarin + Ibuprofen</strong> — a well-known drug interaction.
         <a href="#" id="try-own-link">Try your own comparison</a>
@@ -97,6 +99,9 @@
   <!-- Results Area -->
   <main class="results-section" id="results-section" hidden>
     <div class="results-inner">
+      <!-- Summary Banner -->
+      <div id="summary-banner" class="summary-banner" hidden aria-live="polite"></div>
+
       <!-- Tab Bar -->
       <div class="tab-bar" role="tablist" aria-label="Drug comparison tabs">
         <button class="tab-btn active" id="tab-interactions" role="tab" aria-selected="true" aria-controls="panel-interactions" data-tab="interactions">
@@ -107,6 +112,9 @@
         </button>
         <button class="tab-btn" id="tab-recalls" role="tab" aria-selected="false" aria-controls="panel-recalls" data-tab="recalls">
           Recall History
+        </button>
+        <button class="tab-btn" id="tab-dosage" role="tab" aria-selected="false" aria-controls="panel-dosage" data-tab="dosage">
+          Dosage &amp; Forms
         </button>
       </div>
 
@@ -139,6 +147,16 @@
           </div>
         </div>
         <div id="content-recalls"></div>
+      </div>
+
+      <div class="tab-panel" id="panel-dosage" role="tabpanel" aria-labelledby="tab-dosage" hidden>
+        <div class="skeleton-container" id="skeleton-dosage">
+          <div class="side-by-side">
+            <div class="skeleton-card drug-a-border"></div>
+            <div class="skeleton-card drug-b-border"></div>
+          </div>
+        </div>
+        <div id="content-dosage"></div>
       </div>
     </div>
   </main>

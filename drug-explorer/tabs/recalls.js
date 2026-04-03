@@ -35,6 +35,10 @@ export async function renderRecalls(drugA, drugB) {
   wrap.appendChild(row);
 
   container.appendChild(wrap);
+
+  const countA = recallsA && !recallsA._error ? recallsA.length : 0;
+  const countB = recallsB && !recallsB._error ? recallsB.length : 0;
+  return { countA, countB };
 }
 
 function buildRecallPanel(drugName, recalls, side) {

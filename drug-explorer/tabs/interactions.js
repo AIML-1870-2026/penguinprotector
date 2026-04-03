@@ -18,8 +18,11 @@ export async function renderInteractions(drugA, drugB) {
   const wrap = document.createElement('div');
 
   // Interaction Analysis card (cross-reference before side-by-side panels)
+  let hitsA = [], hitsB = [];
   if (!labelA?._error && !labelB?._error && labelA && labelB) {
-    const analysisCard = buildInteractionAnalysis(drugA, labelA, drugB, labelB);
+    hitsA = extractMentions(labelA, drugB);
+    hitsB = extractMentions(labelB, drugA);
+    const analysisCard = buildInteractionAnalysis(drugA, hitsA, drugB, hitsB);
     wrap.appendChild(analysisCard);
   }
 
@@ -30,6 +33,8 @@ export async function renderInteractions(drugA, drugB) {
   wrap.appendChild(row);
 
   container.appendChild(wrap);
+
+  const summary = { hitsA: hitsA.length, hitsB: hitsB.length };
 
   // Co-admin callout (async, non-blocking)
   if (!labelA?._error && !labelB?._error) {
@@ -44,6 +49,8 @@ export async function renderInteractions(drugA, drugB) {
       })
       .catch(() => {});
   }
+
+  return summary;
 }
 
 // Fields to scan for cross-references, in priority order
@@ -56,7 +63,7 @@ const SCAN_FIELDS = [
   'precautions',
 ];
 
-function buildInteractionAnalysis(drugA, labelA, drugB, labelB) {
+function buildInteractionAnalysis(drugA, hitsA, drugB, hitsB) {
   const card = document.createElement('div');
   card.className = 'interaction-analysis-card';
 
@@ -64,9 +71,6 @@ function buildInteractionAnalysis(drugA, labelA, drugB, labelB) {
   heading.className = 'ia-heading';
   heading.innerHTML = `<span class="ia-icon" role="img" aria-label="Interaction">⚡</span> Interaction Analysis`;
   card.appendChild(heading);
-
-  const hitsA = extractMentions(labelA, drugB);
-  const hitsB = extractMentions(labelB, drugA);
 
   if (hitsA.length === 0 && hitsB.length === 0) {
     const none = document.createElement('p');
