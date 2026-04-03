@@ -38,7 +38,7 @@
   --backdrop:     rgba(11,29,58,.45);
   --shimmer:      rgba(255,255,255,.7);
   --banner-h:     40px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color: var(--text);
 }
 
@@ -125,7 +125,8 @@ body {
   font-size: 26px;
   font-weight: 700;
   color: #fff;
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
+  font-family: 'Cormorant Garamond', Georgia, serif;
 }
 
 .app-subtitle {
@@ -188,7 +189,7 @@ body {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   font-size: 14px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   background: var(--surface);
   color: var(--text);
   outline: none;
@@ -274,8 +275,8 @@ body {
   border-radius: var(--radius);
   font-size: 15px;
   font-weight: 600;
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  letter-spacing: .02em;
+  font-family: inherit;
+  letter-spacing: .01em;
   cursor: pointer;
   transition: background .15s, transform .1s, box-shadow .15s;
 }
@@ -379,14 +380,14 @@ body {
   border: none;
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
   transition: color .15s, border-color .15s;
   white-space: nowrap;
-  letter-spacing: .01em;
+  letter-spacing: 0;
   flex-shrink: 0;
 }
 
@@ -452,7 +453,7 @@ body {
   border: 1.5px solid var(--border);
   border-radius: 20px;
   font-size: 13px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   color: rgba(255,255,255,.7);
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
@@ -652,11 +653,11 @@ body {
   border: none;
   font-size: 13px;
   font-weight: 600;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  letter-spacing: .01em;
+  letter-spacing: 0;
   transition: color .15s;
 }
 
@@ -750,8 +751,7 @@ body {
 .recall-date {
   font-size: 12px;
   color: var(--text-muted);
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -765,7 +765,7 @@ body {
   border: none;
   color: var(--drug-a);
   font-size: 12px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -838,7 +838,7 @@ body {
   border: none;
   border-radius: var(--radius);
   font-size: 13px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   cursor: pointer;
 }
 
@@ -945,7 +945,7 @@ body {
 }
 
 .count-mono {
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
@@ -973,7 +973,7 @@ body {
   border: 1.5px solid var(--border);
   border-radius: 20px;
   font-size: 13px;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: inherit;
   color: var(--text-muted);
   cursor: pointer;
   transition: background .15s, border-color .15s, color .15s;
