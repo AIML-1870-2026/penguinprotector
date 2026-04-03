@@ -152,6 +152,8 @@ function fieldLabel(field) {
   return map[field] ?? field;
 }
 
+let sectionCounter = 0;
+
 function buildPanel(drugName, label, side) {
   const panel = document.createElement('div');
   panel.className = `drug-panel drug-${side}-border`;
@@ -295,13 +297,17 @@ function buildSection(title, text, emptyMsg, startOpen = false) {
   const section = document.createElement('div');
   section.className = 'label-section';
 
+  const sectionId = `ls-${++sectionCounter}`;
+
   const toggle = document.createElement('button');
   toggle.className = 'label-section-toggle';
   toggle.setAttribute('aria-expanded', startOpen);
+  toggle.setAttribute('aria-controls', sectionId);
   toggle.innerHTML = `<span>${escHtml(title)}</span><span class="label-section-chevron">${startOpen ? '▲' : '▼'}</span>`;
 
   const body = document.createElement('div');
   body.className = 'label-section-body';
+  body.id = sectionId;
   body.hidden = !startOpen;
 
   if (text) {

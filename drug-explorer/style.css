@@ -6,15 +6,32 @@
   --bg:           #f8fafc;
   --surface:      #ffffff;
   --border:       #dde3ec;
-  --drug-a:       #2563eb;
-  --drug-a-light: #eff6ff;
+  --border-hover: #b0bbcc;
+  --drug-a:       #0d9488;
+  --drug-a-light: #f0fdfa;
+  --drug-a-shadow: rgba(13,148,136,.15);
   --drug-b:       #0284c7;
   --drug-b-light: #e0f2fe;
+  --drug-b-shadow: rgba(2,132,199,.15);
   --danger:       #dc2626;
+  --danger-bg:    #fee2e2;
+  --danger-light: #fff1f2;
+  --danger-border: #fca5a5;
+  --danger-text:  #991b1b;
+  --danger-dark:  #7f1d1d;
+  --warn-light:   #fff7ed;
+  --warn-lighter: #fef3c7;
+  --warn-border:  #fed7aa;
+  --warn-text:    #92400e;
+  --warn-dark:    #7c2d12;
   --warning:      #d97706;
+  --info-border:  #bfdbfe;
+  --info-text:    #1e40af;
   --muted:        #94a3b8;
   --text:         #0f172a;
   --text-muted:   #64748b;
+  --skeleton-bg:  #edf1fb;
+  --skeleton-border: #d5dcee;
   --radius:       10px;
   --shadow:       0 1px 4px rgba(11,29,58,.07), 0 1px 2px rgba(11,29,58,.05);
   --shadow-hover: 0 6px 20px rgba(11,29,58,.12);
@@ -145,13 +162,18 @@ body {
 .drug-select:focus,
 .drug-text-input:focus {
   border-color: var(--drug-a);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.13);
+  box-shadow: 0 0 0 3px var(--drug-a-shadow);
 }
 
 .drug-b .drug-select:focus,
 .drug-b .drug-text-input:focus {
   border-color: var(--drug-b);
-  box-shadow: 0 0 0 3px rgba(2,132,199,.13);
+  box-shadow: 0 0 0 3px var(--drug-b-shadow);
+}
+
+.drug-text-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .vs-label {
@@ -179,7 +201,7 @@ body {
   box-shadow: var(--shadow-hover);
   list-style: none;
   z-index: 200;
-  max-height: 200px;
+  max-height: min(200px, 40vh);
   overflow-y: auto;
 }
 
@@ -194,7 +216,8 @@ body {
 }
 
 .autocomplete-list li:last-child { border-bottom: none; }
-.autocomplete-list li:hover { background: var(--navy-light); }
+.autocomplete-list li:hover,
+.autocomplete-list li.autocomplete-highlighted { background: var(--navy-light); }
 
 /* ── Validation & Compare ──────────────────────────────────────── */
 .validation-msg {
@@ -273,7 +296,12 @@ body {
   border-bottom: 2px solid var(--border);
   margin-bottom: 32px;
   margin-top: 32px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+
+.tab-bar::-webkit-scrollbar { display: none; }
 
 .tab-btn {
   padding: 12px 22px;
@@ -289,6 +317,7 @@ body {
   transition: color .15s, border-color .15s;
   white-space: nowrap;
   letter-spacing: .01em;
+  flex-shrink: 0;
 }
 
 .tab-btn:hover { color: var(--text); }
@@ -497,8 +526,8 @@ body {
 }
 
 .ia-hit-item:has(.ia-field-badge:is([data-field="contraindications"], [data-field="boxed_warning"])) {
-  border-color: #fca5a5;
-  background: #fff1f2;
+  border-color: var(--danger-border);
+  background: var(--danger-light);
 }
 
 .ia-hit-text {
@@ -509,14 +538,14 @@ body {
 
 /* ── Boxed Warning ─────────────────────────────────────────────── */
 .boxed-warning {
-  background: #fff1f2;
-  border: 2px solid #fca5a5;
+  background: var(--danger-light);
+  border: 2px solid var(--danger-border);
   border-radius: var(--radius);
   padding: 14px 16px;
   margin-bottom: 14px;
   font-size: 13px;
   line-height: 1.65;
-  color: #7f1d1d;
+  color: var(--danger-dark);
 }
 
 .boxed-warning-badge {
@@ -577,11 +606,11 @@ body {
 .coadmin-callout {
   margin-top: 20px;
   padding: 14px 18px;
-  background: #fff7ed;
-  border: 1.5px solid #fed7aa;
+  background: var(--warn-light);
+  border: 1.5px solid var(--warn-border);
   border-radius: var(--radius);
   font-size: 14px;
-  color: #7c2d12;
+  color: var(--warn-dark);
   line-height: 1.65;
 }
 
@@ -605,7 +634,7 @@ body {
   margin-top: 16px;
   padding: 10px 14px;
   background: var(--navy-light);
-  border: 1.5px solid #bfdbfe;
+  border: 1.5px solid var(--info-border);
   border-radius: var(--radius);
   font-size: 13px;
   color: var(--navy-mid);
@@ -615,11 +644,11 @@ body {
 .report-volume-callout {
   margin-top: 24px;
   padding: 14px 18px;
-  background: var(--drug-a-light);
-  border: 1.5px solid #bfdbfe;
+  background: var(--navy-light);
+  border: 1.5px solid var(--info-border);
   border-radius: var(--radius);
   font-size: 14px;
-  color: #1e40af;
+  color: var(--info-text);
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -638,7 +667,7 @@ body {
   transition: border-color .15s;
 }
 
-.recall-card:hover { border-color: #b0bbcc; }
+.recall-card:hover { border-color: var(--border-hover); }
 
 .recall-card-header {
   display: flex;
@@ -685,16 +714,16 @@ body {
   text-transform: uppercase;
 }
 
-.badge-i    { background: #fee2e2; color: #991b1b; }
-.badge-ii   { background: #fef3c7; color: #92400e; }
-.badge-iii  { background: #f1f5f9; color: var(--text-muted); }
+.badge-i    { background: var(--danger-bg);    color: var(--danger-text); }
+.badge-ii   { background: var(--warn-lighter); color: var(--warn-text);   }
+.badge-iii  { background: #f1f5f9;             color: var(--text-muted);  }
 
 /* ── Skeleton / Loading ────────────────────────────────────────── */
 .skeleton-container { display: block; }
 
 .skeleton-card {
-  background: #edf1fb;
-  border: 1.5px solid #d5dcee;
+  background: var(--skeleton-bg);
+  border: 1.5px solid var(--skeleton-border);
   border-radius: var(--radius);
   height: 260px;
   overflow: hidden;
@@ -790,6 +819,12 @@ body {
 }
 
 .modal-close:hover { color: var(--text); }
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--navy-mid);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 .modal-title {
   font-size: 19px;

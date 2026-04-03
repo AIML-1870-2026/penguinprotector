@@ -45,30 +45,84 @@ selectB.addEventListener('change', () => { if (selectB.value) inputB.value = sel
 // ── Autocomplete ────────────────────────────────────────────────────
 function setupAutocomplete(input, listEl) {
   let timer = null;
+  let activeIdx = -1;
+
+  function setActive(idx) {
+    const items = listEl.querySelectorAll('li');
+    if (activeIdx >= 0 && activeIdx < items.length) {
+      items[activeIdx].classList.remove('autocomplete-highlighted');
+      items[activeIdx].setAttribute('aria-selected', 'false');
+    }
+    activeIdx = idx;
+    if (activeIdx >= 0 && activeIdx < items.length) {
+      const item = items[activeIdx];
+      item.classList.add('autocomplete-highlighted');
+      item.setAttribute('aria-selected', 'true');
+      input.setAttribute('aria-activedescendant', item.id);
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
 
   input.addEventListener('input', () => {
     clearTimeout(timer);
+    activeIdx = -1;
     const q = input.value.trim();
     if (q.length < 3) { listEl.innerHTML = ''; return; }
     timer = setTimeout(async () => {
       const suggestions = await fetchAutocomplete(q).catch(() => []);
       listEl.innerHTML = '';
-      for (const name of suggestions) {
+      activeIdx = -1;
+      input.removeAttribute('aria-activedescendant');
+      const prefix = listEl.id;
+      for (let i = 0; i < suggestions.length; i++) {
+        const name = suggestions[i];
         const li = document.createElement('li');
+        li.id = `${prefix}-opt-${i}`;
         li.textContent = name;
         li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', 'false');
         li.addEventListener('mousedown', e => {
           e.preventDefault();
           input.value = name;
           listEl.innerHTML = '';
+          activeIdx = -1;
+          input.removeAttribute('aria-activedescendant');
         });
         listEl.appendChild(li);
       }
     }, 300);
   });
 
+  input.addEventListener('keydown', e => {
+    const items = listEl.querySelectorAll('li');
+    if (!items.length) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActive(Math.min(activeIdx + 1, items.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActive(Math.max(activeIdx - 1, 0));
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      input.value = items[activeIdx].textContent;
+      listEl.innerHTML = '';
+      activeIdx = -1;
+      input.removeAttribute('aria-activedescendant');
+    } else if (e.key === 'Escape') {
+      listEl.innerHTML = '';
+      activeIdx = -1;
+      input.removeAttribute('aria-activedescendant');
+    }
+  });
+
   input.addEventListener('blur', () => {
-    setTimeout(() => { listEl.innerHTML = ''; }, 200);
+    setTimeout(() => {
+      listEl.innerHTML = '';
+      activeIdx = -1;
+    }, 200);
   });
 }
 

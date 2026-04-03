@@ -100,6 +100,8 @@ function buildChartPanel(drugName, events, side, canvasId) {
   chartWrap.className = 'chart-wrapper';
   const canvas = document.createElement('canvas');
   canvas.id = canvasId;
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', `Bar chart of top 10 adverse event reactions reported for ${escHtml(drugName)}`);
   chartWrap.appendChild(canvas);
   panel.appendChild(chartWrap);
 

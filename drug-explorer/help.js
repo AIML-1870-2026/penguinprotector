@@ -40,13 +40,19 @@ const POPUPS = {
 };
 
 const backdrop = document.getElementById('modal-backdrop');
+const modal    = backdrop.querySelector('.modal');
 const titleEl  = document.getElementById('modal-title');
 const bodyEl   = document.getElementById('modal-body');
 const closeBtn = document.getElementById('modal-close');
 
+const FOCUSABLE_SEL = 'a[href], button:not([disabled]), input, textarea, select, [tabindex]:not([tabindex="-1"])';
+
+let openerEl = null;
+
 export function openHelp(key) {
   const popup = POPUPS[key];
   if (!popup) return;
+  openerEl = document.activeElement;
   titleEl.textContent = popup.title;
   bodyEl.innerHTML    = popup.body;
   backdrop.hidden     = false;
@@ -57,6 +63,7 @@ export function openHelp(key) {
 function closeHelp() {
   backdrop.hidden = true;
   backdrop.setAttribute('aria-hidden', 'true');
+  openerEl?.focus();
 }
 
 closeBtn.addEventListener('click', closeHelp);
@@ -65,8 +72,29 @@ backdrop.addEventListener('click', e => {
   if (e.target === backdrop) closeHelp();
 });
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !backdrop.hidden) closeHelp();
+// Focus trap
+backdrop.addEventListener('keydown', e => {
+  if (backdrop.hidden) return;
+  if (e.key === 'Escape') { closeHelp(); return; }
+  if (e.key !== 'Tab') return;
+
+  const focusable = [...modal.querySelectorAll(FOCUSABLE_SEL)].filter(el => !el.closest('[hidden]'));
+  if (focusable.length === 0) return;
+
+  const first = focusable[0];
+  const last  = focusable[focusable.length - 1];
+
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 });
 
 // Wire up all static help buttons (header button, etc.)
