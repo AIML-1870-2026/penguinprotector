@@ -21,14 +21,27 @@ function cached(key, fn) {
 }
 
 async function fetchJSON(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    if (res.status === 404) return null;          // "not found" is a valid empty state
-    const err = new Error(`HTTP ${res.status}`);
-    err.status = res.status;
-    throw err;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) {
+      if (res.status === 404) return null;          // "not found" is a valid empty state
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') {
+      const err = new Error('Request timed out — FDA API did not respond in time');
+      err.status = 408;
+      throw err;
+    }
+    throw e;
   }
-  return res.json();
 }
 
 // ── Label (drug_interactions field) ────────────────────────────────
@@ -104,7 +117,7 @@ export function fetchReportingTimeline(drug) {
     const byYear = {};
     for (const { term, count } of data.results ?? []) {
       const year = String(term).slice(0, 4);
-      if (year >= '2004' && year <= '2025') {
+      if (year >= '2004' && year <= String(new Date().getFullYear())) {
         byYear[year] = (byYear[year] ?? 0) + count;
       }
     }

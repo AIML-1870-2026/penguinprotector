@@ -87,7 +87,7 @@ function buildRecallCard(recall) {
   const card = document.createElement('div');
   card.className = 'recall-card';
 
-  const classNum = (recall.classification ?? '').replace('Class ', '').trim();
+  const classNum = (recall.classification ?? '').replace(/class\s+/i, '').trim();
   const badgeClass = classNum === 'I' ? 'badge-i' : classNum === 'II' ? 'badge-ii' : 'badge-iii';
   const dateStr = formatDate(recall.recall_initiation_date);
   const fullReason = recall.reason_for_recall ?? 'Reason not specified';

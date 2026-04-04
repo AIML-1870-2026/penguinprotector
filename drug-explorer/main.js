@@ -66,7 +66,7 @@ function loadRecent() {
 function saveRecent(drugA, drugB) {
   const list = loadRecent().filter(r => !(r.a === drugA && r.b === drugB));
   list.unshift({ a: drugA, b: drugB });
-  localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX))); } catch { /* storage full */ }
 }
 
 function renderRecentChips() {
@@ -328,6 +328,7 @@ function setLoading(on) {
   compareBtn.disabled = on;
   btnText.textContent = on ? 'Comparing…' : 'Compare';
   spinner.hidden = !on;
+  recentEl.querySelectorAll('.recent-chip').forEach(c => { c.disabled = on; });
 }
 
 function showGlobalError(err) {

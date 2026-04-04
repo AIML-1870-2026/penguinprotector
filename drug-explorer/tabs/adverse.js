@@ -78,7 +78,7 @@ export async function renderAdverse(drugA, drugB) {
       Severity Profile
       <button class="help-icon" data-help="severity" aria-label="What serious means in FAERS">?</button>
     `;
-    sevHeading.querySelector('[data-help]').addEventListener('click', () => openHelp('adverse'));
+    sevHeading.querySelector('[data-help]').addEventListener('click', () => openHelp('severity'));
     sevSection.appendChild(sevHeading);
 
     const sevNote = document.createElement('p');
