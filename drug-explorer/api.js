@@ -163,8 +163,8 @@ export async function fetchAutocomplete(query) {
   const key = `ac:${query.toLowerCase()}`;
   return cached(key, async () => {
     const [brandData, genericData] = await Promise.all([
-      fetchJSON(`${BASE}/drug/label.json?search=openfda.brand_name:"${encodeURIComponent(query)}"&limit=5${keyParam()}`).catch(() => null),
-      fetchJSON(`${BASE}/drug/label.json?search=openfda.generic_name:"${encodeURIComponent(query)}"&limit=5${keyParam()}`).catch(() => null),
+      fetchJSON(`${BASE}/drug/label.json?search=openfda.brand_name:${encodeURIComponent(query)}*&limit=5${keyParam()}`).catch(() => null),
+      fetchJSON(`${BASE}/drug/label.json?search=openfda.generic_name:${encodeURIComponent(query)}*&limit=5${keyParam()}`).catch(() => null),
     ]);
 
     const names = new Set();

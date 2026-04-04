@@ -1,4 +1,4 @@
-import { fetchAdverseEvents, fetchSeverityBreakdown, fetchReportingTimeline } from '../api.js';
+import { fetchAdverseEvents, fetchAdverseCount, fetchSeverityBreakdown, fetchReportingTimeline } from '../api.js';
 import { escHtml, makeErrorEl, fmtNum } from '../utils.js';
 
 // Track Chart instances so we can destroy them on re-render
@@ -17,13 +17,15 @@ export async function renderAdverse(drugA, drugB) {
     delete charts[key];
   }
 
-  const [eventsA, eventsB, sevA, sevB, timelineA, timelineB] = await Promise.all([
+  const [eventsA, eventsB, sevA, sevB, timelineA, timelineB, totalA, totalB] = await Promise.all([
     fetchAdverseEvents(drugA).catch(e => ({ _error: e })),
     fetchAdverseEvents(drugB).catch(e => ({ _error: e })),
     fetchSeverityBreakdown(drugA).catch(() => null),
     fetchSeverityBreakdown(drugB).catch(() => null),
     fetchReportingTimeline(drugA).catch(() => null),
     fetchReportingTimeline(drugB).catch(() => null),
+    fetchAdverseCount(drugA).catch(() => 0),
+    fetchAdverseCount(drugB).catch(() => 0),
   ]);
 
   skeleton.style.display = 'none';
@@ -133,8 +135,6 @@ export async function renderAdverse(drugA, drugB) {
   `;
   wrap.appendChild(volumeCallout);
 
-  const totalA = eventsA && !eventsA._error ? eventsA.reduce((s, r) => s + (r.count ?? 0), 0) : 0;
-  const totalB = eventsB && !eventsB._error ? eventsB.reduce((s, r) => s + (r.count ?? 0), 0) : 0;
   return { totalA, totalB };
 }
 

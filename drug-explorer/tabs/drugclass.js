@@ -1,5 +1,5 @@
 import { fetchDrugsByClass, fetchAdverseCount, fetchRecallCount } from '../api.js';
-import { escHtml } from '../utils.js';
+import { escHtml, fmtNum } from '../utils.js';
 
 // Predefined drug classes mapped to their OpenFDA pharm_class_epc search strings
 export const DRUG_CLASSES = {
@@ -169,10 +169,7 @@ async function exploreClass(label, pharmClassEpc, resultsEl) {
     tr.classList.remove('dc-row-loading');
     tr.querySelector('.dc-td-ae').classList.remove('dc-shimmer');
     tr.querySelector('.dc-td-recalls').classList.remove('dc-shimmer');
-    tr.querySelector('.dc-td-ae').textContent = ae >= 1_000_000
-      ? `${(ae / 1_000_000).toFixed(1)}M`
-      : ae >= 1_000 ? `${(ae / 1_000).toFixed(0)}K`
-      : ae.toLocaleString();
+    tr.querySelector('.dc-td-ae').textContent = fmtNum(ae);
     tr.querySelector('.dc-td-recalls').textContent = recalls.toLocaleString();
     tr.querySelector('.dc-td-ae').setAttribute('data-val', ae);
   };

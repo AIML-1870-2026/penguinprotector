@@ -188,6 +188,12 @@ function setupAutocomplete(input, listEl) {
 setupAutocomplete(inputA, acA);
 setupAutocomplete(inputB, acB);
 
+[inputA, inputB].forEach(input => {
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.defaultPrevented) compareBtn.click();
+  });
+});
+
 // ── Tab Routing ─────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
