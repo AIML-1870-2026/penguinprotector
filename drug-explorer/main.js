@@ -3,6 +3,7 @@ import { renderInteractions } from './tabs/interactions.js';
 import { renderAdverse }      from './tabs/adverse.js';
 import { renderRecalls }      from './tabs/recalls.js';
 import { renderDosage }       from './tabs/dosage.js';
+import { initDrugClass }      from './tabs/drugclass.js';
 
 // ── Common Drugs ────────────────────────────────────────────────────
 const COMMON_DRUGS = [
@@ -206,6 +207,8 @@ function switchTab(tab) {
     panel.classList.toggle('active', isActive);
     panel.hidden = !isActive;
   });
+
+  if (tab === 'drugclass') initDrugClass();
 }
 
 // ── Compare Logic ───────────────────────────────────────────────────

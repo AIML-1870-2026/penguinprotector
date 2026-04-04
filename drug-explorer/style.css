@@ -1078,6 +1078,278 @@ body {
   color: var(--navy-mid);
 }
 
+/* ── Severity Breakdown ────────────────────────────────────────── */
+.sev-section {
+  margin-top: 32px;
+}
+
+.sev-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.sev-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sev-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 680px) {
+  .sev-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.sev-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sev-bar-track {
+  height: 14px;
+  background: var(--skeleton-bg);
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.sev-bar-fill {
+  height: 100%;
+  border-radius: 7px;
+  transition: width .6s ease;
+}
+
+.sev-bar-a { background: var(--drug-a); }
+.sev-bar-b { background: var(--drug-b); }
+
+.sev-meta {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sev-meta strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ── Reporting Timeline ─────────────────────────────────────────── */
+.timeline-section {
+  margin-top: 32px;
+}
+
+.timeline-chart-wrapper {
+  position: relative;
+  height: 260px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* ── Drug Class Explorer ───────────────────────────────────────── */
+.dc-intro {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  max-width: 700px;
+}
+
+.dc-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.dc-class-select {
+  flex: 1;
+  min-width: 220px;
+  max-width: 400px;
+  padding: 10px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.dc-class-select:focus {
+  border-color: var(--navy-mid);
+  box-shadow: 0 0 0 3px rgba(30,58,138,.12);
+}
+
+.dc-explore-btn {
+  padding: 10px 24px;
+  background: var(--navy-mid);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+}
+
+.dc-explore-btn:hover { background: var(--navy); }
+
+.dc-loading {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 16px 0;
+}
+
+.dc-error {
+  font-size: 14px;
+  color: var(--danger);
+  padding: 12px 0;
+}
+
+.dc-results-heading {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.dc-results-heading strong {
+  color: var(--text);
+}
+
+.dc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.dc-table thead th {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dc-th-rank    { width: 36px; }
+.dc-th-ae,
+.dc-th-recalls { width: 110px; }
+.dc-th-action  { width: 100px; }
+
+.dc-row td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.dc-row:last-child td { border-bottom: none; }
+.dc-row:hover td { background: var(--bg); }
+
+.dc-td-rank {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dc-td-drug {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dc-td-ae,
+.dc-td-recalls {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.dc-shimmer {
+  color: transparent;
+  background: var(--skeleton-bg);
+  border-radius: 4px;
+  animation: shimmer 1.5s infinite;
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, var(--skeleton-bg) 0%, var(--shimmer) 50%, var(--skeleton-bg) 100%);
+}
+
+.dc-td-action {
+  display: flex;
+  gap: 6px;
+}
+
+.dc-set-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: background .15s, color .15s;
+  line-height: 1;
+}
+
+.dc-set-a {
+  border-color: var(--drug-a);
+  color: var(--drug-a);
+  background: transparent;
+}
+
+.dc-set-a:hover {
+  background: var(--drug-a);
+  color: #fff;
+}
+
+.dc-set-b {
+  border-color: var(--drug-b);
+  color: var(--drug-b);
+  background: transparent;
+}
+
+.dc-set-b:hover {
+  background: var(--drug-b);
+  color: #fff;
+}
+
+.dc-insight {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--navy-light);
+  border: 1.5px solid var(--info-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--info-text);
+  line-height: 1.65;
+}
+
+.dc-insight strong {
+  color: var(--navy-mid);
+}
+
 /* ── Dosage Tab ────────────────────────────────────────────────── */
 .dosage-section-title {
   font-size: 12px;

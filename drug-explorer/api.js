@@ -80,6 +80,71 @@ export function fetchCoAdmin(drugA, drugB) {
   });
 }
 
+// ── Severity Breakdown (serious vs. not serious) ─────────────────────
+export function fetchSeverityBreakdown(drug) {
+  const key = `severity:${drug.toLowerCase()}`;
+  return cached(key, async () => {
+    const url = `${BASE}/drug/event.json?search=patient.drug.medicinalproduct:"${encodeURIComponent(drug)}"&count=serious&limit=5${keyParam()}`;
+    const data = await fetchJSON(url);
+    if (!data) return null;
+    // term "1" = serious, term "2" = not serious
+    const serious    = data.results?.find(r => r.term === '1')?.count ?? 0;
+    const notSerious = data.results?.find(r => r.term === '2')?.count ?? 0;
+    return { serious, notSerious };
+  });
+}
+
+// ── Reporting Timeline (reports grouped by year) ──────────────────────
+export function fetchReportingTimeline(drug) {
+  const key = `timeline:${drug.toLowerCase()}`;
+  return cached(key, async () => {
+    const url = `${BASE}/drug/event.json?search=patient.drug.medicinalproduct:"${encodeURIComponent(drug)}"&count=receivedate${keyParam()}`;
+    const data = await fetchJSON(url);
+    if (!data) return null;
+    const byYear = {};
+    for (const { term, count } of data.results ?? []) {
+      const year = String(term).slice(0, 4);
+      if (year >= '2004' && year <= '2025') {
+        byYear[year] = (byYear[year] ?? 0) + count;
+      }
+    }
+    return Object.entries(byYear)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([year, count]) => ({ year, count }));
+  });
+}
+
+// ── Drug Class — drugs by pharmacologic class ─────────────────────────
+export function fetchDrugsByClass(pharmClassEpc) {
+  const key = `drugclass:${pharmClassEpc.toLowerCase()}`;
+  return cached(key, async () => {
+    const url = `${BASE}/drug/label.json?search=openfda.pharm_class_epc:"${encodeURIComponent(pharmClassEpc)}"&count=openfda.generic_name.exact&limit=12${keyParam()}`;
+    const data = await fetchJSON(url);
+    if (!data) return [];
+    return (data.results ?? []).map(r => r.term).filter(Boolean).slice(0, 10);
+  });
+}
+
+// ── Adverse event total count (for drug class ranking) ───────────────
+export function fetchAdverseCount(drug) {
+  const key = `aecount:${drug.toLowerCase()}`;
+  return cached(key, async () => {
+    const url = `${BASE}/drug/event.json?search=patient.drug.medicinalproduct:"${encodeURIComponent(drug)}"&limit=1${keyParam()}`;
+    const data = await fetchJSON(url);
+    return data?.meta?.results?.total ?? 0;
+  });
+}
+
+// ── Recall total count (for drug class ranking) ──────────────────────
+export function fetchRecallCount(drug) {
+  const key = `recallcount:${drug.toLowerCase()}`;
+  return cached(key, async () => {
+    const url = `${BASE}/drug/enforcement.json?search=product_description:"${encodeURIComponent(drug)}"&limit=1${keyParam()}`;
+    const data = await fetchJSON(url);
+    return data?.meta?.results?.total ?? 0;
+  });
+}
+
 // ── Autocomplete (brand + generic names) ────────────────────────────
 export async function fetchAutocomplete(query) {
   const key = `ac:${query.toLowerCase()}`;
