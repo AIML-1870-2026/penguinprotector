@@ -1,5 +1,4 @@
 import { fetchLabel, fetchCoAdmin } from '../api.js';
-import { openHelp } from '../help.js';
 import { escHtml, makeErrorEl } from '../utils.js';
 
 export async function renderInteractions(drugA, drugB) {
@@ -195,7 +194,6 @@ function buildPanel(drugName, label, side, retryFn) {
     <h3 class="drug-${side}-heading">${escHtml(drugName)}</h3>
     <button class="help-icon" data-help="labels" aria-label="What drug labels tell you">?</button>
   `;
-  heading.querySelector('[data-help]').addEventListener('click', () => openHelp('labels'));
   panel.appendChild(heading);
 
   if (label?._error) {

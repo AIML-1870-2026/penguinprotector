@@ -1,4 +1,5 @@
 import { fetchAutocomplete } from './api.js';
+import { fmtNum } from './utils.js';
 import { renderInteractions } from './tabs/interactions.js';
 import { renderAdverse }      from './tabs/adverse.js';
 import { renderRecalls }      from './tabs/recalls.js';
@@ -20,7 +21,9 @@ let activeTab = 'interactions';
 // ── Sticky tab bar: compute banner height ────────────────────────────
 const disclaimerBanner = document.querySelector('.disclaimer-banner');
 if (disclaimerBanner) {
-  document.documentElement.style.setProperty('--banner-h', `${disclaimerBanner.offsetHeight}px`);
+  const updateBannerH = () => document.documentElement.style.setProperty('--banner-h', `${disclaimerBanner.offsetHeight}px`);
+  updateBannerH();
+  new ResizeObserver(updateBannerH).observe(disclaimerBanner);
 }
 
 // ── Elements ────────────────────────────────────────────────────────
@@ -241,8 +244,9 @@ async function runCompare(drugA, drugB, isExample = false) {
   // Recall tab badge
   if (recSum) {
     const total = (recSum.countA ?? 0) + (recSum.countB ?? 0);
+    const capped = recSum.capA || recSum.capB;
     if (total > 0) {
-      document.getElementById('tab-recalls').textContent = `Recall History · ${total}`;
+      document.getElementById('tab-recalls').textContent = `Recall History · ${total}${capped ? '+' : ''}`;
     }
   }
 
@@ -287,12 +291,6 @@ function buildSummaryBanner(intSum, advSum, recSum) {
   summaryEl.hidden = false;
 }
 
-function fmtNum(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
-  return n.toString();
-}
-
 // ── Swap Button ─────────────────────────────────────────────────────
 swapBtn.addEventListener('click', () => {
   const tmp = inputA.value;
@@ -326,6 +324,7 @@ compareBtn.addEventListener('click', () => {
 
 function setLoading(on) {
   compareBtn.disabled = on;
+  swapBtn.disabled = on;
   btnText.textContent = on ? 'Comparing…' : 'Compare';
   spinner.hidden = !on;
   recentEl.querySelectorAll('.recent-chip').forEach(c => { c.disabled = on; });

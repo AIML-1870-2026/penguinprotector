@@ -36,6 +36,18 @@ const POPUPS = {
     title: 'Why Some Drugs Have More Reports Than Others',
     body: `<p>A drug prescribed to 50 million people will accumulate far more adverse event reports than one prescribed to 50,000 — even if the rarer drug is more dangerous per patient.</p>
 <p>Always consider the drug's market prevalence when interpreting report volumes.</p>`
+  },
+  severity: {
+    title: 'What "Serious" Means in FAERS',
+    body: `<p>FAERS classifies a report as <strong>serious</strong> if it involved one or more of the following outcomes: hospitalization, disability or permanent damage, life-threatening situation, congenital anomaly, or death.</p>
+<p>A high serious-report percentage does not automatically mean a drug is more dangerous — it may reflect the severity of the underlying condition being treated, or the population using the drug.</p>
+<p>Always interpret severity data alongside prescription volume and patient demographics.</p>`
+  },
+  dosage: {
+    title: 'About Dosage & Forms Data',
+    body: `<p>Dosage and administration information comes directly from the FDA-approved drug label (package insert).</p>
+<p>This includes approved dosage forms (tablet, capsule, injection), available strengths, and standard dosing regimens.</p>
+<p>Actual dosing should always be determined by a licensed healthcare provider based on the individual patient.</p>`
   }
 };
 

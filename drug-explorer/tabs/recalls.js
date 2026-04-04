@@ -1,5 +1,4 @@
 import { fetchRecalls } from '../api.js';
-import { openHelp } from '../help.js';
 import { escHtml, makeErrorEl } from '../utils.js';
 
 export async function renderRecalls(drugA, drugB) {
@@ -25,7 +24,6 @@ export async function renderRecalls(drugA, drugB) {
     Recall History
     <button class="help-icon" data-help="recalls" aria-label="Understanding recall classifications">?</button>
   `;
-  headingRow.querySelector('[data-help]').addEventListener('click', () => openHelp('recalls'));
   wrap.appendChild(headingRow);
 
   // Side-by-side panels
@@ -40,7 +38,7 @@ export async function renderRecalls(drugA, drugB) {
 
   const countA = recallsA && !recallsA._error ? recallsA.length : 0;
   const countB = recallsB && !recallsB._error ? recallsB.length : 0;
-  return { countA, countB };
+  return { countA, countB, capA: countA >= 10, capB: countB >= 10 };
 }
 
 function buildRecallPanel(drugName, recalls, side, retryFn) {
@@ -92,7 +90,7 @@ function buildRecallCard(recall) {
   const dateStr = formatDate(recall.recall_initiation_date);
   const fullReason = recall.reason_for_recall ?? 'Reason not specified';
   const truncated = fullReason.length > 120;
-  const preview = truncated ? fullReason.slice(0, 120) + '…' : fullReason;
+  const preview = truncated ? truncateAtWord(fullReason, 120) + '…' : fullReason;
 
   const header = document.createElement('div');
   header.className = 'recall-card-header';
@@ -121,6 +119,11 @@ function buildRecallCard(recall) {
   }
 
   return card;
+}
+
+function truncateAtWord(str, max) {
+  const cut = str.lastIndexOf(' ', max);
+  return cut > 0 ? str.slice(0, cut) : str.slice(0, max);
 }
 
 function formatDate(raw) {

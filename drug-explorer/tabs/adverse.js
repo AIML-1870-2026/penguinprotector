@@ -1,6 +1,5 @@
 import { fetchAdverseEvents, fetchSeverityBreakdown, fetchReportingTimeline } from '../api.js';
-import { openHelp } from '../help.js';
-import { escHtml, makeErrorEl } from '../utils.js';
+import { escHtml, makeErrorEl, fmtNum } from '../utils.js';
 
 // Track Chart instances so we can destroy them on re-render
 const charts = {};
@@ -38,7 +37,6 @@ export async function renderAdverse(drugA, drugB) {
     Adverse Events (Top 10 Reported Reactions)
     <button class="help-icon" data-help="adverse" aria-label="How to interpret adverse event data">?</button>
   `;
-  headingRow.querySelector('[data-help]').addEventListener('click', () => openHelp('adverse'));
   wrap.appendChild(headingRow);
 
   // Charts side-by-side
@@ -53,7 +51,7 @@ export async function renderAdverse(drugA, drugB) {
 
   // Render frequency charts (after DOM is attached)
   if (!eventsA?._error && eventsA) renderChart('chart-a', drugA, eventsA, '#0d9488');
-  if (!eventsB?._error && eventsB) renderChart('chart-b', drugB, eventsB, '#0284c7');
+  if (!eventsB?._error && eventsB) renderChart('chart-b', drugB, eventsB, '#7c3aed');
 
   // Top reaction in common callout
   if (eventsA && eventsB && !eventsA._error && !eventsB._error) {
@@ -78,7 +76,6 @@ export async function renderAdverse(drugA, drugB) {
       Severity Profile
       <button class="help-icon" data-help="severity" aria-label="What serious means in FAERS">?</button>
     `;
-    sevHeading.querySelector('[data-help]').addEventListener('click', () => openHelp('severity'));
     sevSection.appendChild(sevHeading);
 
     const sevNote = document.createElement('p');
@@ -134,7 +131,6 @@ export async function renderAdverse(drugA, drugB) {
       <button class="help-icon" style="margin-left:6px" data-help="volume" aria-label="Why some drugs have more reports">?</button>
     </span>
   `;
-  volumeCallout.querySelector('[data-help]').addEventListener('click', () => openHelp('volume'));
   wrap.appendChild(volumeCallout);
 
   const totalA = eventsA && !eventsA._error ? eventsA.reduce((s, r) => s + (r.count ?? 0), 0) : 0;
@@ -303,8 +299,8 @@ function renderTimelineChart(canvasId, drugA, timelineA, drugB, timelineB) {
         {
           label: drugB,
           data: mapCounts(timelineB),
-          borderColor: '#0284c7',
-          backgroundColor: 'rgba(2,132,199,.1)',
+          borderColor: '#7c3aed',
+          backgroundColor: 'rgba(124,58,237,.1)',
           borderWidth: 2,
           pointRadius: 3,
           tension: 0.3,
@@ -345,12 +341,6 @@ function renderTimelineChart(canvasId, drugA, timelineA, drugB, timelineB) {
       }
     }
   });
-}
-
-function fmtNum(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString();
 }
 
 function errorEl(err, drugName, retryFn) {

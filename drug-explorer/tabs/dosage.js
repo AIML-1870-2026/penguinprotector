@@ -19,7 +19,7 @@ export async function renderDosage(drugA, drugB) {
 
   const headingRow = document.createElement('div');
   headingRow.className = 'section-heading-row';
-  headingRow.textContent = 'Dosage & Forms';
+  headingRow.innerHTML = `Dosage &amp; Forms <button class="help-icon" data-help="dosage" aria-label="About dosage and forms data">?</button>`;
   wrap.appendChild(headingRow);
 
   const row = document.createElement('div');
