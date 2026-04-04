@@ -57,8 +57,8 @@ export async function renderAdverse(drugA, drugB) {
 
   // Top reaction in common callout
   if (eventsA && eventsB && !eventsA._error && !eventsB._error) {
-    const setA = new Set((eventsA).map(r => r.term?.toLowerCase()));
-    const common = (eventsB).find(r => setA.has(r.term?.toLowerCase()));
+    const setA = new Set((eventsA).map(r => r.term?.toLowerCase()).filter(Boolean));
+    const common = (eventsB).find(r => r.term && setA.has(r.term.toLowerCase()));
     if (common) {
       const callout = document.createElement('div');
       callout.className = 'common-reaction-callout';

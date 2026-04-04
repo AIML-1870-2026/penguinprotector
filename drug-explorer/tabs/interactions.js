@@ -120,7 +120,8 @@ function buildInteractionAnalysis(drugA, hitsA, drugB, hitsB) {
 
 function extractMentions(label, targetDrug) {
   const hits = [];
-  const query = targetDrug.toLowerCase();
+  const safeQuery = targetDrug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b${safeQuery}\\b`, 'i');
 
   for (const field of SCAN_FIELDS) {
     const text = label[field]?.[0];
@@ -130,13 +131,20 @@ function extractMentions(label, targetDrug) {
     const sentences = text.split(/(?<=\.)\s+|\n+/).map(s => s.trim()).filter(Boolean);
 
     for (const sentence of sentences) {
-      if (sentence.toLowerCase().includes(query)) {
+      if (regex.test(sentence)) {
         hits.push({ sentence, field });
         if (hits.length >= 4) return hits; // cap at 4 most relevant
       }
     }
   }
   return hits;
+}
+
+function highlightMention(sentence, drugName) {
+  const escaped = escHtml(sentence);
+  const safePattern = drugName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b(${safePattern})\\b`, 'gi');
+  return escaped.replace(regex, '<mark class="ia-highlight">$1</mark>');
 }
 
 function buildHitGroup(sourceDrug, mentionedDrug, hits, side) {
@@ -159,7 +167,7 @@ function buildHitGroup(sourceDrug, mentionedDrug, hits, side) {
 
     const text = document.createElement('p');
     text.className = 'ia-hit-text';
-    text.textContent = sentence;
+    text.innerHTML = highlightMention(sentence, mentionedDrug);
 
     item.appendChild(badge);
     item.appendChild(text);

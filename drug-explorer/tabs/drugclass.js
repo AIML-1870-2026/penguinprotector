@@ -149,15 +149,22 @@ async function exploreClass(label, pharmClassEpc, resultsEl) {
     const btn = e.target.closest('.dc-set-btn');
     if (!btn) return;
     const drug = btn.dataset.drug;
-    if (btn.classList.contains('dc-set-a')) {
-      document.getElementById('input-a').value = drug;
-      document.getElementById('select-a').value = '';
-      document.getElementById('input-a').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      document.getElementById('input-b').value = drug;
-      document.getElementById('select-b').value = '';
-      document.getElementById('input-b').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    const isA = btn.classList.contains('dc-set-a');
+    const inputId = isA ? 'input-a' : 'input-b';
+    const selectId = isA ? 'select-a' : 'select-b';
+    document.getElementById(inputId).value = drug;
+    document.getElementById(selectId).value = '';
+    document.getElementById(inputId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.disabled = true;
+    btn.classList.add('dc-set-confirmed');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.disabled = false;
+      btn.classList.remove('dc-set-confirmed');
+    }, 900);
   });
 
   // Fetch AE + recall counts for each drug concurrently, update rows as they arrive

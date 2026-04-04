@@ -617,6 +617,17 @@ body {
   background: var(--danger-light);
 }
 
+.ia-highlight {
+  background: #fef08a;
+  color: #713f12;
+  border-radius: 2px;
+  padding: 0 2px;
+  font-style: normal;
+}
+@media (prefers-color-scheme: dark) {
+  .ia-highlight { background: #854d0e; color: #fef9c3; }
+}
+
 .ia-hit-text {
   font-size: 13.5px;
   line-height: 1.65;
@@ -1333,6 +1344,11 @@ body {
 .dc-set-b:hover {
   background: var(--drug-b);
   color: #fff;
+}
+.dc-set-confirmed {
+  background: #16a34a !important;
+  color: #fff !important;
+  border-color: #16a34a !important;
 }
 
 .dc-insight {
