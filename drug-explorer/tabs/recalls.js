@@ -31,8 +31,9 @@ export async function renderRecalls(drugA, drugB) {
   // Side-by-side panels
   const row = document.createElement('div');
   row.className = 'side-by-side';
-  row.appendChild(buildRecallPanel(drugA, recallsA, 'a'));
-  row.appendChild(buildRecallPanel(drugB, recallsB, 'b'));
+  const retryFn = () => renderRecalls(drugA, drugB);
+  row.appendChild(buildRecallPanel(drugA, recallsA, 'a', retryFn));
+  row.appendChild(buildRecallPanel(drugB, recallsB, 'b', retryFn));
   wrap.appendChild(row);
 
   container.appendChild(wrap);
@@ -42,7 +43,7 @@ export async function renderRecalls(drugA, drugB) {
   return { countA, countB };
 }
 
-function buildRecallPanel(drugName, recalls, side) {
+function buildRecallPanel(drugName, recalls, side, retryFn) {
   const panel = document.createElement('div');
   panel.className = `drug-panel drug-${side}-border`;
 
@@ -52,7 +53,7 @@ function buildRecallPanel(drugName, recalls, side) {
   panel.appendChild(heading);
 
   if (recalls?._error) {
-    panel.appendChild(errorEl(recalls._error, drugName));
+    panel.appendChild(errorEl(recalls._error, drugName, retryFn));
     return panel;
   }
 
@@ -128,6 +129,6 @@ function formatDate(raw) {
   return `${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`;
 }
 
-function errorEl(err, drugName) {
-  return makeErrorEl(drugName, err.message);
+function errorEl(err, drugName, retryFn) {
+  return makeErrorEl(drugName, err.message, retryFn);
 }

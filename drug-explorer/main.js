@@ -36,9 +36,10 @@ const validMsg   = document.getElementById('validation-msg');
 const swapBtn    = document.getElementById('swap-btn');
 const exampleP   = document.getElementById('example-prompt');
 const tryLink    = document.getElementById('try-own-link');
-const results    = document.getElementById('results-section');
-const recentEl   = document.getElementById('recent-comparisons');
-const summaryEl  = document.getElementById('summary-banner');
+const results       = document.getElementById('results-section');
+const recentEl      = document.getElementById('recent-comparisons');
+const summaryEl     = document.getElementById('summary-banner');
+const globalErrEl   = document.getElementById('global-error-banner');
 
 // ── Populate Dropdowns ──────────────────────────────────────────────
 for (const name of COMMON_DRUGS) {
@@ -212,6 +213,7 @@ async function runCompare(drugA, drugB, isExample = false) {
   validMsg.textContent = '';
   setLoading(true);
   summaryEl.hidden = true;
+  globalErrEl.hidden = true;
 
   // Reset recall tab badge
   document.getElementById('tab-recalls').textContent = 'Recall History';
@@ -225,10 +227,10 @@ async function runCompare(drugA, drugB, isExample = false) {
 
   // Render each tab independently (stagger reveal as data arrives)
   const [intSum, advSum, recSum] = await Promise.all([
-    renderInteractions(drugA, drugB).catch(() => null),
-    renderAdverse(drugA, drugB).catch(() => null),
-    renderRecalls(drugA, drugB).catch(() => null),
-    renderDosage(drugA, drugB).catch(showGlobalError),
+    renderInteractions(drugA, drugB).catch(e => { showGlobalError(e); return null; }),
+    renderAdverse(drugA, drugB).catch(e => { showGlobalError(e); return null; }),
+    renderRecalls(drugA, drugB).catch(e => { showGlobalError(e); return null; }),
+    renderDosage(drugA, drugB).catch(e => { showGlobalError(e); return null; }),
   ]);
 
   setLoading(false);
@@ -327,6 +329,7 @@ function setLoading(on) {
 
 function showGlobalError(err) {
   console.error('Tab render error:', err);
+  globalErrEl.hidden = false;
 }
 
 // ── "Try your own" link ─────────────────────────────────────────────

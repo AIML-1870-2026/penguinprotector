@@ -52,8 +52,9 @@ export async function renderInteractions(drugA, drugB) {
 
   const row = document.createElement('div');
   row.className = 'side-by-side';
-  row.appendChild(buildPanel(drugA, labelA, 'a'));
-  row.appendChild(buildPanel(drugB, labelB, 'b'));
+  const retryFn = () => renderInteractions(drugA, drugB);
+  row.appendChild(buildPanel(drugA, labelA, 'a', retryFn));
+  row.appendChild(buildPanel(drugB, labelB, 'b', retryFn));
   wrap.appendChild(row);
 
   container.appendChild(wrap);
@@ -154,6 +155,7 @@ function buildHitGroup(sourceDrug, mentionedDrug, hits, side) {
 
     const badge = document.createElement('span');
     badge.className = 'ia-field-badge';
+    badge.setAttribute('data-field', field);
     badge.textContent = fieldLabel(field);
 
     const text = document.createElement('p');
@@ -182,7 +184,7 @@ function fieldLabel(field) {
 
 let sectionCounter = 0; // resets on each renderInteractions call
 
-function buildPanel(drugName, label, side) {
+function buildPanel(drugName, label, side, retryFn) {
   const panel = document.createElement('div');
   panel.className = `drug-panel drug-${side}-border`;
 
@@ -197,7 +199,7 @@ function buildPanel(drugName, label, side) {
   panel.appendChild(heading);
 
   if (label?._error) {
-    panel.appendChild(errorEl(label._error, drugName));
+    panel.appendChild(errorEl(label._error, drugName, retryFn));
     return panel;
   }
 
@@ -362,6 +364,6 @@ function buildSection(title, text, emptyMsg, startOpen = false) {
   return section;
 }
 
-function errorEl(err, drugName) {
-  return makeErrorEl(drugName, err.message);
+function errorEl(err, drugName, retryFn) {
+  return makeErrorEl(drugName, err.message, retryFn);
 }

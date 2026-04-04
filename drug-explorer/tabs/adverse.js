@@ -40,8 +40,9 @@ export async function renderAdverse(drugA, drugB) {
   // Charts side-by-side
   const row = document.createElement('div');
   row.className = 'side-by-side';
-  row.appendChild(buildChartPanel(drugA, eventsA, 'a', 'chart-a'));
-  row.appendChild(buildChartPanel(drugB, eventsB, 'b', 'chart-b'));
+  const retryFn = () => renderAdverse(drugA, drugB);
+  row.appendChild(buildChartPanel(drugA, eventsA, 'a', 'chart-a', retryFn));
+  row.appendChild(buildChartPanel(drugB, eventsB, 'b', 'chart-b', retryFn));
   wrap.appendChild(row);
 
   container.appendChild(wrap);
@@ -79,7 +80,7 @@ export async function renderAdverse(drugA, drugB) {
   return { totalA, totalB };
 }
 
-function buildChartPanel(drugName, events, side, canvasId) {
+function buildChartPanel(drugName, events, side, canvasId, retryFn) {
   const panel = document.createElement('div');
   panel.className = `drug-panel drug-${side}-border`;
 
@@ -89,7 +90,7 @@ function buildChartPanel(drugName, events, side, canvasId) {
   panel.appendChild(heading);
 
   if (events?._error) {
-    panel.appendChild(errorEl(events._error, drugName));
+    panel.appendChild(errorEl(events._error, drugName, retryFn));
     return panel;
   }
 
@@ -119,6 +120,10 @@ function renderChart(canvasId, drugName, events, color) {
 
   const labels = events.map(r => r.term ?? '');
   const counts = events.map(r => r.count ?? 0);
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor  = isDark ? '#334155' : '#e2e8f0';
+  const tickColor  = isDark ? '#94a3b8' : '#64748b';
 
   charts[canvasId] = new Chart(canvas, {
     type: 'bar',
@@ -150,12 +155,13 @@ function renderChart(canvasId, drugName, events, color) {
           beginAtZero: true,
           ticks: {
             callback: v => v.toLocaleString(),
+            color: tickColor,
             font: { family: 'monospace', size: 11 }
           },
-          grid: { color: '#e2e8f0' }
+          grid: { color: gridColor }
         },
         y: {
-          ticks: { font: { size: 11 } },
+          ticks: { color: tickColor, font: { size: 11 } },
           grid: { display: false }
         }
       }
@@ -163,6 +169,6 @@ function renderChart(canvasId, drugName, events, color) {
   });
 }
 
-function errorEl(err, drugName) {
-  return makeErrorEl(drugName, err.message);
+function errorEl(err, drugName, retryFn) {
+  return makeErrorEl(drugName, err.message, retryFn);
 }

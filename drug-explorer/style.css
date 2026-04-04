@@ -596,6 +596,22 @@ body {
   align-self: flex-start;
 }
 
+.ia-field-badge[data-field="contraindications"] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.ia-field-badge[data-field="boxed_warning"] {
+  background: var(--danger);
+  color: #fff;
+}
+
+.ia-field-badge[data-field="warnings_and_cautions"],
+.ia-field-badge[data-field="warnings"] {
+  background: var(--warn-lighter);
+  color: var(--warn-text);
+}
+
 .ia-hit-item:has(.ia-field-badge:is([data-field="contraindications"], [data-field="boxed_warning"])) {
   border-color: var(--danger-border);
   background: var(--danger-light);
@@ -816,6 +832,19 @@ body {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* ── Global Error Banner ───────────────────────────────────────── */
+.global-error-banner {
+  background: var(--warn-lighter);
+  border: 1.5px solid var(--warn-border);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--warn-text);
+}
+
+.global-error-banner[hidden] { display: none; }
 
 /* ── Error Card ────────────────────────────────────────────────── */
 .error-card {
