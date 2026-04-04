@@ -94,7 +94,7 @@ function buildInteractionAnalysis(drugA, hitsA, drugB, hitsB) {
 
   const heading = document.createElement('div');
   heading.className = 'ia-heading';
-  heading.innerHTML = `<span class="ia-icon" role="img" aria-label="Interaction">⚡</span> Interaction Analysis`;
+  heading.innerHTML = `<span class="ia-icon" role="img" aria-label="Interaction">⚡</span> Interaction Analysis <button class="help-icon" data-help="pairs" aria-label="Drug pairs with known dangerous interactions">?</button>`;
   card.appendChild(heading);
 
   if (hitsA.length === 0 && hitsB.length === 0) {
