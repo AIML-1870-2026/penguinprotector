@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switchboard Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="prompt-char">&gt;_</span>
+      <span class="brand-name">SWITCHBOARD EXPLORER</span>
+      <span class="brand-sub">llm comparison terminal</span>
+    </div>
+    <div class="header-actions">
+      <button id="btn-library" class="hdr-btn">⊞ library</button>
+    </div>
+  </header>
+
+  <!-- ── BODY ── -->
+  <div class="app-body">
+
+    <!-- ════ LEFT PANEL ════ -->
+    <aside class="left-panel">
+
+      <!-- API KEYS -->
+      <section class="psec">
+        <div class="psec-header">
+          <span class="psec-title">🔑 API KEYS</span>
+          <span class="badge-secure">memory-only</span>
+        </div>
+        <p class="key-notice">Keys are never saved to disk, localStorage, or cookies. They clear automatically when you close or refresh this page.</p>
+
+        <div class="key-row" id="kr-openai">
+          <div class="key-label"><span class="dot dot-oai">●</span> OpenAI</div>
+          <div class="key-val" id="kv-openai"><span class="unset-text">not set</span></div>
+          <div class="key-btns">
+            <button class="xbtn" id="btn-set-openai">set</button>
+            <label class="xbtn">↑ file<input type="file" id="file-openai" accept=".env,.csv,.txt" hidden></label>
+            <button class="xbtn xbtn-danger hidden" id="btn-clr-openai">×</button>
+          </div>
+        </div>
+
+        <div class="key-row" id="kr-anthropic">
+          <div class="key-label"><span class="dot dot-ant">●</span> Anthropic</div>
+          <div class="key-val" id="kv-anthropic"><span class="unset-text">not set</span></div>
+          <div class="key-btns">
+            <button class="xbtn" id="btn-set-anthropic">set</button>
+            <label class="xbtn">↑ file<input type="file" id="file-anthropic" accept=".env,.csv,.txt" hidden></label>
+            <button class="xbtn xbtn-danger hidden" id="btn-clr-anthropic">×</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROVIDER & MODEL -->
+      <section class="psec">
+        <div class="psec-header">
+          <span class="psec-title">⚡ PROVIDER & MODEL</span>
+        </div>
+        <div class="segtabs" id="provider-tabs">
+          <button class="segtab active" data-provider="openai">OpenAI</button>
+          <button class="segtab" data-provider="anthropic">Anthropic</button>
+        </div>
+        <select id="model-select" class="mono-select"></select>
+      </section>
+
+      <!-- OUTPUT MODE -->
+      <section class="psec">
+        <div class="psec-header">
+          <span class="psec-title">⚙ OUTPUT MODE</span>
+        </div>
+        <div class="segtabs" id="mode-tabs">
+          <button class="segtab active" data-mode="unstructured">Free Text</button>
+          <button class="segtab" data-mode="structured">JSON Schema</button>
+        </div>
+      </section>
+
+      <!-- EXAMPLES -->
+      <section class="psec">
+        <div class="psec-header">
+          <span class="psec-title">📋 EXAMPLES</span>
+        </div>
+        <select id="example-select" class="mono-select">
+          <option value="">— load an example —</option>
+        </select>
+      </section>
+
+      <!-- PROMPT -->
+      <section class="psec psec-grow">
+        <div class="psec-header">
+          <span class="psec-title">▶ PROMPT</span>
+        </div>
+        <textarea id="prompt-input" class="mono-textarea" placeholder="Enter your prompt...&#10;&#10;Tip: load an example above to get started."></textarea>
+
+        <div id="schema-block" class="hidden">
+          <div class="psec-header" style="margin-top:10px">
+            <span class="psec-title">{} JSON SCHEMA</span>
+          </div>
+          <textarea id="schema-input" class="mono-textarea schema-textarea" placeholder='{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}'></textarea>
+        </div>
+
+        <div class="prompt-actions">
+          <button id="btn-send" class="btn-run">▶ RUN</button>
+          <button id="btn-compare-toggle" class="btn-compare">⇄ COMPARE</button>
+          <button id="btn-save-prompt" class="btn-save">+ SAVE</button>
+        </div>
+
+        <div id="compare-cfg" class="hidden compare-cfg">
+          <div class="cmp-label">compare against:</div>
+          <div class="segtabs segtabs-sm" id="compare-provider-tabs">
+            <button class="segtab active" data-provider2="openai">OpenAI</button>
+            <button class="segtab" data-provider2="anthropic">Anthropic</button>
+          </div>
+          <select id="compare-model-select" class="mono-select"></select>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- ════ RIGHT PANEL ════ -->
+    <main class="right-panel" id="right-panel">
+
+      <!-- Placeholder -->
+      <div id="out-placeholder" class="out-placeholder">
+        <div class="ph-inner">
+          <div class="ph-cursor">█</div>
+          <p class="ph-line">Set an API key, write a prompt, and press <strong>RUN</strong>.</p>
+          <p class="ph-line ph-small">Supports free text and structured JSON output modes.<br>Use ⇄ COMPARE to run two models side by side.</p>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="out-loading" class="hidden out-loading">
+        <div class="loading-blink">█</div>
+        <p class="loading-text" id="loading-text">Sending request<span class="ellipsis">...</span></p>
+      </div>
+
+      <!-- Single output -->
+      <div id="out-single" class="hidden out-panel">
+        <div class="out-meta">
+          <span class="out-model-tag" id="out-model-tag">model</span>
+          <div class="metrics-row" id="metrics-row">
+            <span class="metric-chip" id="m-time" title="Response time">—</span>
+            <span class="metric-chip" id="m-tokens" title="Total tokens">—</span>
+            <span class="metric-chip" id="m-words" title="Response length">—</span>
+          </div>
+        </div>
+        <div class="out-content" id="out-content"></div>
+        <div id="validator-panel" class="hidden validator-panel">
+          <div class="validator-hdr">⊞ Schema Validation Report</div>
+          <div id="validator-results" class="validator-results"></div>
+        </div>
+      </div>
+
+      <!-- Compare output -->
+      <div id="out-compare" class="hidden out-compare">
+        <div class="cmp-col" id="cmp-col-a">
+          <div class="out-meta">
+            <span class="out-model-tag" id="cmp-tag-a">Model A</span>
+            <div class="metrics-row" id="cmp-metrics-a"></div>
+          </div>
+          <div class="out-content" id="cmp-content-a"></div>
+          <div id="cmp-validator-a" class="hidden validator-panel"></div>
+        </div>
+        <div class="cmp-divider"></div>
+        <div class="cmp-col" id="cmp-col-b">
+          <div class="out-meta">
+            <span class="out-model-tag" id="cmp-tag-b">Model B</span>
+            <div class="metrics-row" id="cmp-metrics-b"></div>
+          </div>
+          <div class="out-content" id="cmp-content-b"></div>
+          <div id="cmp-validator-b" class="hidden validator-panel"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ── STATUS BAR ── -->
+  <footer class="status-bar">
+    <span id="sb-status" class="sb-status">READY</span>
+    <span class="sb-sep">│</span>
+    <span id="sb-provider">openai</span>
+    <span class="sb-sep">│</span>
+    <span id="sb-model">gpt-4o</span>
+    <span class="sb-sep">│</span>
+    <span id="sb-mode">free text</span>
+    <div class="sb-right">
+      <span id="sb-oai" class="sb-key sb-unset">○ openai</span>
+      <span id="sb-ant" class="sb-key sb-unset">○ anthropic</span>
+    </div>
+  </footer>
+
+  <!-- ── KEY MODAL ── -->
+  <div id="key-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-hdr">
+        <span id="key-modal-title" class="modal-title">Set API Key</span>
+        <button id="key-modal-close" class="modal-x">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-notice">🔒 Stored in memory only. Cleared when this page closes. Sent directly to the provider — nothing passes through any intermediate server.</p>
+        <input type="password" id="key-modal-input" class="mono-input" placeholder="Paste your API key here..." autocomplete="off" spellcheck="false">
+        <div class="modal-actions">
+          <button id="key-modal-confirm" class="btn-run">SAVE KEY</button>
+          <button id="key-modal-cancel" class="btn-save">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROMPT LIBRARY MODAL ── -->
+  <div id="lib-modal-overlay" class="modal-overlay hidden">
+    <div class="modal modal-wide">
+      <div class="modal-hdr">
+        <span class="modal-title">⊞ PROMPT LIBRARY</span>
+        <button id="lib-close" class="modal-x">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="lib-empty" class="lib-empty">No saved prompts yet. Use <strong>+ SAVE</strong> to add prompts to your library.</div>
+        <ul id="lib-list" class="lib-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
