@@ -6,7 +6,7 @@
   <title>Switchboard Explorer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,12 +14,14 @@
   <!-- ── HEADER ── -->
   <header class="app-header">
     <div class="header-brand">
-      <span class="prompt-char">&gt;_</span>
-      <span class="brand-name">SWITCHBOARD EXPLORER</span>
-      <span class="brand-sub">llm comparison terminal</span>
+      <div class="brand-icon">⇄</div>
+      <div class="brand-text">
+        <span class="brand-name">Switchboard Explorer</span>
+        <span class="brand-sub">LLM Comparison Workbench</span>
+      </div>
     </div>
     <div class="header-actions">
-      <button id="btn-library" class="hdr-btn">⊞ library</button>
+      <button id="btn-library" class="hdr-btn">⊞ Prompt Library</button>
     </div>
   </header>
 
@@ -129,9 +131,9 @@
       <!-- Placeholder -->
       <div id="out-placeholder" class="out-placeholder">
         <div class="ph-inner">
-          <div class="ph-cursor">█</div>
+          <div class="ph-icon">⇄</div>
           <p class="ph-line">Set an API key, write a prompt, and press <strong>RUN</strong>.</p>
-          <p class="ph-line ph-small">Supports free text and structured JSON output modes.<br>Use ⇄ COMPARE to run two models side by side.</p>
+          <p class="ph-line ph-small">Supports free text and structured JSON schema modes.<br>Use <strong>⇄ Compare</strong> to run two models side by side.</p>
         </div>
       </div>
 
