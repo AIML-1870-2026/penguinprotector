@@ -954,5 +954,77 @@ body {
   white-space: pre;
 }
 
+/* ── Temperature slider ── */
+
+.temp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.temp-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--sky);
+  cursor: pointer;
+  height: 4px;
+}
+
+.temp-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Prompt counter + hint ── */
+
+.prompt-counter-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+}
+
+.prompt-counter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.kbd-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  margin-left: auto;
+  align-self: center;
+  letter-spacing: 0.5px;
+}
+
+/* ── Cancel button ── */
+
+.btn-cancel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 18px;
+  background: transparent;
+  color: var(--red);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cancel:hover { background: var(--red-bg); border-color: var(--red); }
+
 /* ── Utility ── */
 .hidden { display: none !important; }

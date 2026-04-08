@@ -86,7 +86,9 @@ const state = {
   mode: 'unstructured',        // 'unstructured' | 'structured'
   compareActive: false,
   cmpProvider: 'anthropic',
-  cmpModel: 'claude-sonnet-4-5',
+  cmpModel: 'claude-sonnet-4-6',
+  temperature: 1.0,
+  abortController: null,
   library: [],                 // in-memory prompt library
   modalTarget: null,           // 'openai' | 'anthropic'
   history: [],                 // response history entries
@@ -125,11 +127,17 @@ const el = {
   btnSend:       $('btn-send'),
   btnCompare:    $('btn-compare-toggle'),
   btnSave:       $('btn-save-prompt'),
+  // Temperature
+  tempSlider:    $('temp-slider'),
+  tempVal:       $('temp-val'),
+  // Prompt counter
+  promptCounter: $('prompt-counter'),
   // Compare cfg
   compareCfg:    $('compare-cfg'),
   cmpProvTabs:   $('compare-provider-tabs'),
   cmpModelSel:   $('compare-model-select'),
   // Output
+  btnCancel:     $('btn-cancel'),
   outPlaceholder:$('out-placeholder'),
   outLoading:    $('out-loading'),
   outSingle:     $('out-single'),
@@ -364,7 +372,7 @@ function toggleCompare() {
 //  API CALLS
 // ════════════════════════════════════════════════════════
 
-async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt) {
+async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
   const messages = [];
 
   const sysContent = isStructured
@@ -381,6 +389,7 @@ async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt
     model,
     messages,
     max_tokens: 2048,
+    temperature,
     ...(isStructured ? { response_format: { type: 'json_object' } } : {}),
   };
 
@@ -392,6 +401,7 @@ async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   });
   const elapsed = Math.round(performance.now() - start);
 
@@ -408,7 +418,7 @@ async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt
   };
 }
 
-async function callAnthropic(key, model, prompt, schema, isStructured, systemPrompt) {
+async function callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
   const system = isStructured
     ? `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`
     : (systemPrompt || null);
@@ -417,6 +427,7 @@ async function callAnthropic(key, model, prompt, schema, isStructured, systemPro
     model,
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 2048,
+    temperature: Math.min(temperature, 1.0), // Anthropic caps at 1.0
     ...(system ? { system } : {}),
   };
 
@@ -430,6 +441,7 @@ async function callAnthropic(key, model, prompt, schema, isStructured, systemPro
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   });
   const elapsed = Math.round(performance.now() - start);
 
@@ -444,12 +456,12 @@ async function callAnthropic(key, model, prompt, schema, isStructured, systemPro
   return { text, tokens, elapsed };
 }
 
-async function callModel(provider, model, prompt, schema, isStructured, systemPrompt) {
+async function callModel(provider, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
   const key = state.keys[provider];
   if (!key) throw new Error(`No ${provider} API key set. Click "set" next to the ${provider} key.`);
   return provider === 'openai'
-    ? callOpenAI(key, model, prompt, schema, isStructured, systemPrompt)
-    : callAnthropic(key, model, prompt, schema, isStructured, systemPrompt);
+    ? callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal)
+    : callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal);
 }
 
 // ════════════════════════════════════════════════════════
@@ -586,6 +598,8 @@ function renderResult(result, isStructured, schema,
 
   // Content
   if (result.error) {
+    if (metricsEl) metricsEl.innerHTML = '';
+    else { el.mTime.textContent = '—'; el.mTokens.textContent = '—'; el.mWords.textContent = '—'; }
     contentEl.className = 'out-content';
     contentEl.innerHTML = `<div class="error-card"><strong>Error</strong>${escHtml(result.error)}</div>`;
     if (validatorEl) validatorEl.classList.add('hidden');
@@ -605,7 +619,6 @@ function renderResult(result, isStructured, schema,
         const results = validateSchema(parsed, schema);
         if (results) {
           validatorEl.classList.remove('hidden');
-          const inner = validatorEl.querySelector('.validator-results') || validatorEl;
           if (!validatorEl.querySelector('.validator-hdr')) {
             validatorEl.innerHTML =
               '<div class="validator-hdr">⊞ Schema Validation Report</div>' +
@@ -704,6 +717,14 @@ async function send() {
   const schema       = isStructured ? el.schemaInput.value.trim() : null;
   const systemPrompt = el.systemInput.value.trim() || null;
 
+  if (state.compareActive &&
+      state.provider === state.cmpProvider &&
+      state.model === state.cmpModel) {
+    showToast('Both sides are set to the same model — comparison will be identical.');
+  }
+
+  state.abortController = new AbortController();
+
   showOutput('loading');
   el.btnSend.disabled = true;
   updateStatus('RUNNING');
@@ -714,6 +735,7 @@ async function send() {
     await sendSingle(prompt, schema, isStructured, systemPrompt);
   }
 
+  state.abortController = null;
   el.btnSend.disabled = false;
   updateStatus('READY');
 }
@@ -721,9 +743,11 @@ async function send() {
 async function sendSingle(prompt, schema, isStructured, systemPrompt) {
   let result;
   try {
-    const raw = await callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt);
+    const raw = await callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt,
+                                state.temperature, state.abortController.signal);
     result = { ...raw, model: state.model, error: null };
   } catch (err) {
+    if (err.name === 'AbortError') { showOutput('placeholder'); return; }
     result = { text: '', tokens: null, elapsed: 0, model: state.model, error: err.message };
   }
 
@@ -759,10 +783,16 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
 
   showOutput('compare');
 
+  const sig = state.abortController.signal;
   const [resA, resB] = await Promise.allSettled([
-    callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt),
-    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured, systemPrompt),
+    callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt, state.temperature, sig),
+    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured, systemPrompt, state.temperature, sig),
   ]);
+
+  if (resA.reason?.name === 'AbortError' && resB.reason?.name === 'AbortError') {
+    showOutput('placeholder');
+    return;
+  }
 
   const resultA = resA.status === 'fulfilled'
     ? { ...resA.value, model: state.model, error: null }
@@ -1019,6 +1049,20 @@ function wire() {
   el.btnToggleSys.addEventListener('click', () => {
     const hidden = el.systemWrap.classList.toggle('hidden');
     el.btnToggleSys.textContent = hidden ? 'show' : 'hide';
+  });
+
+  // Cancel
+  el.btnCancel.addEventListener('click', () => state.abortController?.abort());
+
+  // Temperature
+  el.tempSlider.addEventListener('input', () => {
+    state.temperature = parseFloat(el.tempSlider.value);
+    el.tempVal.textContent = state.temperature.toFixed(2);
+  });
+
+  // Prompt counter
+  el.promptInput.addEventListener('input', () => {
+    el.promptCounter.textContent = `${el.promptInput.value.length} chars`;
   });
 
   // Copy & history

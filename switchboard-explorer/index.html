@@ -70,6 +70,11 @@
           <button class="segtab" data-provider="anthropic">Anthropic</button>
         </div>
         <select id="model-select" class="mono-select"></select>
+        <div class="temp-row">
+          <span class="temp-label">TEMPERATURE</span>
+          <input type="range" id="temp-slider" min="0" max="2" step="0.05" value="1">
+          <span id="temp-val" class="temp-val">1.00</span>
+        </div>
       </section>
 
       <!-- OUTPUT MODE -->
@@ -118,10 +123,14 @@
           <textarea id="schema-input" class="mono-textarea schema-textarea" placeholder='{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}'></textarea>
         </div>
 
+        <div class="prompt-counter-row">
+          <span id="prompt-counter" class="prompt-counter">0 chars</span>
+        </div>
         <div class="prompt-actions">
           <button id="btn-send" class="btn-run">▶ RUN</button>
           <button id="btn-compare-toggle" class="btn-compare">⇄ COMPARE</button>
           <button id="btn-save-prompt" class="btn-save">+ SAVE</button>
+          <span class="kbd-hint">⌘↵</span>
         </div>
 
         <div id="compare-cfg" class="hidden compare-cfg">
@@ -152,6 +161,7 @@
       <div id="out-loading" class="hidden out-loading">
         <div class="loading-blink">█</div>
         <p class="loading-text" id="loading-text">Sending request<span class="ellipsis">...</span></p>
+        <button id="btn-cancel" class="btn-cancel">✕ CANCEL</button>
       </div>
 
       <!-- Single output -->
