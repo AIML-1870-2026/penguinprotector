@@ -40,8 +40,8 @@
   --yellow-bg:  #fef3c7;
 
   /* typography */
-  --font-ui:   'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-ui:   'Nunito', system-ui, sans-serif;
+  --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
 
   /* layout */
   --r:       8px;
