@@ -120,6 +120,7 @@
         <div id="schema-block" class="hidden">
           <div class="psec-header" style="margin-top:10px">
             <span class="psec-title">{} JSON SCHEMA</span>
+            <button id="btn-clear-schema" class="xbtn" style="font-size:11px">clear</button>
           </div>
           <textarea id="schema-input" class="mono-textarea schema-textarea" placeholder='{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}'></textarea>
         </div>
@@ -189,7 +190,13 @@
       </div>
 
       <!-- Compare output -->
-      <div id="out-compare" class="hidden out-compare">
+      <div id="out-compare" class="hidden out-compare-wrap">
+        <div class="cmp-hist-bar">
+          <button class="xbtn hist-btn" id="btn-cmp-hist-prev" title="Previous compare" disabled>‹</button>
+          <span class="hist-pos" id="cmp-hist-pos"></span>
+          <button class="xbtn hist-btn" id="btn-cmp-hist-next" title="Next compare" disabled>›</button>
+        </div>
+        <div id="out-compare-grid" class="out-compare">
         <div class="cmp-col" id="cmp-col-a">
           <div class="out-meta">
             <span class="out-model-tag" id="cmp-tag-a">Model A</span>
@@ -213,6 +220,7 @@
           <div class="out-content" id="cmp-content-b"></div>
           <div id="cmp-validator-b" class="hidden validator-panel"></div>
         </div>
+      </div>
       </div>
 
     </main>

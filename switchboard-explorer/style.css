@@ -653,6 +653,24 @@ body {
 
 /* ── Compare output ── */
 
+.out-compare-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cmp-hist-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
 .out-compare {
   flex: 1;
   display: grid;
@@ -848,7 +866,15 @@ body {
 .mode-json { background: var(--violet-bg); color: var(--violet); border: 1px solid rgba(192,132,252,0.25); }
 
 .lib-item-body { flex: 1; min-width: 0; }
-.lib-item-prompt { font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-item-prompt {
+  font-size: 15px;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
 .lib-item-meta { font-size: 13px; color: var(--dim); margin-top: 3px; font-family: var(--font-mono); }
 
 .lib-item-del {

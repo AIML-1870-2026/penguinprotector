@@ -96,7 +96,7 @@ const state = {
   abortController: null,
   library: [],                 // in-memory prompt library
   modalTarget: null,           // 'openai' | 'anthropic'
-  history: [],                 // response history entries
+  history: [],                 // response history entries { type:'single'|'compare', ... }
   histIdx: -1,                 // index into history (-1 = none)
 };
 
@@ -121,6 +121,7 @@ const el = {
   modeTabs:      $('mode-tabs'),
   schemaBlock:   $('schema-block'),
   schemaInput:   $('schema-input'),
+  btnClearSchema:$('btn-clear-schema'),
   // Examples
   exampleSelect: $('example-select'),
   // System prompt
@@ -147,7 +148,10 @@ const el = {
   outPlaceholder:$('out-placeholder'),
   outLoading:    $('out-loading'),
   outSingle:     $('out-single'),
-  outCompare:    $('out-compare'),
+  outCompareWrap:$('out-compare'),
+  btnCmpHistPrev:$('btn-cmp-hist-prev'),
+  btnCmpHistNext:$('btn-cmp-hist-next'),
+  cmpHistPos:    $('cmp-hist-pos'),
   loadingText:   $('loading-text'),
   // Single output
   outModelTag:   $('out-model-tag'),
@@ -667,7 +671,7 @@ function renderMarkdown(text) {
   let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   // Fenced code blocks (``` or ~~~)
-  s = s.replace(/^```(\w*)\n?([\s\S]*?)```$/gm, (_match, _lang, code) =>
+  s = s.replace(/^(?:```|~~~)(\w*)\n?([\s\S]*?)(?:```|~~~)$/gm, (_match, _lang, code) =>
     `<pre class="md-code-block"><code>${code.trimEnd()}</code></pre>`);
 
   // Headings
@@ -698,11 +702,14 @@ function renderMarkdown(text) {
     return `<ol class="md-ol">${items}</ol>`;
   });
 
-  // Inline: bold, italic, code
-  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  s = s.replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>');
-  s = s.replace(/\*(.+?)\*/g,         '<em>$1</em>');
-  s = s.replace(/`([^`]+)`/g,         '<code class="md-code">$1</code>');
+  // Inline: bold, italic, code (both * and _ variants)
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g,   '<strong><em>$1</em></strong>');
+  s = s.replace(/___(.+?)___/g,          '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g,        '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g,            '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,            '<em>$1</em>');
+  s = s.replace(/(?<!\w)_(.+?)_(?!\w)/g, '<em>$1</em>');
+  s = s.replace(/`([^`]+)`/g,            '<code class="md-code">$1</code>');
 
   // Paragraphs: blank-line-separated blocks not already tagged
   s = s.replace(/\n{2,}/g, '\n\n');
@@ -728,6 +735,13 @@ async function send() {
   const isStructured = state.mode === 'structured';
   const schema       = isStructured ? el.schemaInput.value.trim() : null;
   const systemPrompt = el.systemInput.value.trim() || null;
+
+  if (isStructured && schema) {
+    try { JSON.parse(schema); } catch {
+      showToast('Invalid JSON schema — fix it before sending.');
+      return;
+    }
+  }
 
   if (state.compareActive &&
       state.provider === state.cmpProvider &&
@@ -766,7 +780,7 @@ async function sendSingle(prompt, schema, isStructured, systemPrompt) {
   if (!result.error) {
     // Push to history, discarding any forward entries if we branched
     state.history = state.history.slice(0, state.histIdx + 1);
-    state.history.push({ result, isStructured, schema });
+    state.history.push({ type: 'single', result, isStructured, schema });
     state.histIdx = state.history.length - 1;
   }
 
@@ -818,6 +832,13 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
     el.cmpContentA, el.cmpValA, el.cmpTagA, el.cmpMetricsA);
   renderResult(resultB, isStructured, schema,
     el.cmpContentB, el.cmpValB, el.cmpTagB, el.cmpMetricsB);
+
+  if (!resultA.error || !resultB.error) {
+    state.history = state.history.slice(0, state.histIdx + 1);
+    state.history.push({ type: 'compare', resultA, resultB, isStructured, schema });
+    state.histIdx = state.history.length - 1;
+  }
+  updateHistoryNav();
 }
 
 // ════════════════════════════════════════════════════════
@@ -827,20 +848,49 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
 function updateHistoryNav() {
   const len = state.history.length;
   const idx = state.histIdx;
-  el.btnHistPrev.disabled = idx <= 0;
-  el.btnHistNext.disabled = idx >= len - 1;
-  el.histPos.textContent  = len > 0 ? `${idx + 1}/${len}` : '';
+
+  // Single nav bar
+  const singleEntries = state.history.filter(h => h.type === 'single');
+  const singleIdx     = state.history.slice(0, idx + 1).filter(h => h.type === 'single').length;
+  el.btnHistPrev.disabled = idx <= 0 || state.history[idx]?.type !== 'single';
+  el.btnHistNext.disabled = idx >= len - 1 || state.history[idx]?.type !== 'single';
+  el.histPos.textContent  = singleEntries.length > 0 && state.history[idx]?.type === 'single'
+    ? `${singleIdx}/${singleEntries.length}` : '';
+
+  // Compare nav bar
+  const cmpEntries = state.history.filter(h => h.type === 'compare');
+  const cmpIdx     = state.history.slice(0, idx + 1).filter(h => h.type === 'compare').length;
+  el.btnCmpHistPrev.disabled = idx <= 0 || state.history[idx]?.type !== 'compare';
+  el.btnCmpHistNext.disabled = idx >= len - 1 || state.history[idx]?.type !== 'compare';
+  el.cmpHistPos.textContent  = cmpEntries.length > 0 && state.history[idx]?.type === 'compare'
+    ? `${cmpIdx}/${cmpEntries.length}` : '';
 }
 
 function navigateHistory(dir) {
-  const next = state.histIdx + dir;
+  // Find the next entry of the same type in the given direction
+  const currentType = state.history[state.histIdx]?.type;
+  let next = state.histIdx + dir;
+  while (next >= 0 && next < state.history.length && state.history[next].type !== currentType) {
+    next += dir;
+  }
   if (next < 0 || next >= state.history.length) return;
   state.histIdx = next;
-  const { result, isStructured, schema } = state.history[next];
-  showOutput('single');
-  renderResult(result, isStructured, schema,
-    el.outContent, el.validatorPanel, el.outModelTag, null);
-  if (!isStructured) el.validatorPanel.classList.add('hidden');
+  const entry = state.history[next];
+
+  if (entry.type === 'single') {
+    const { result, isStructured, schema } = entry;
+    showOutput('single');
+    renderResult(result, isStructured, schema,
+      el.outContent, el.validatorPanel, el.outModelTag, null);
+    if (!isStructured) el.validatorPanel.classList.add('hidden');
+  } else {
+    const { resultA, resultB, isStructured, schema } = entry;
+    showOutput('compare');
+    renderResult(resultA, isStructured, schema,
+      el.cmpContentA, el.cmpValA, el.cmpTagA, el.cmpMetricsA);
+    renderResult(resultB, isStructured, schema,
+      el.cmpContentB, el.cmpValB, el.cmpTagB, el.cmpMetricsB);
+  }
   updateHistoryNav();
 }
 
@@ -870,7 +920,7 @@ function savePrompt() {
     prompt,
     schema:  state.mode === 'structured' ? el.schemaInput.value.trim() : '',
     model:   state.model,
-    ts:      new Date().toLocaleTimeString(),
+    ts:      new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
   };
 
   state.library.unshift(entry);
@@ -945,12 +995,12 @@ function showOutput(which) {
   el.outPlaceholder.classList.add('hidden');
   el.outLoading.classList.add('hidden');
   el.outSingle.classList.add('hidden');
-  el.outCompare.classList.add('hidden');
+  el.outCompareWrap.classList.add('hidden');
 
   if (which === 'placeholder') el.outPlaceholder.classList.remove('hidden');
   if (which === 'loading')     el.outLoading.classList.remove('hidden');
   if (which === 'single')      el.outSingle.classList.remove('hidden');
-  if (which === 'compare')     el.outCompare.classList.remove('hidden');
+  if (which === 'compare')     el.outCompareWrap.classList.remove('hidden');
 }
 
 function updatePromptCounter() {
@@ -1107,6 +1157,11 @@ function wire() {
   el.btnCopyB.addEventListener('click', () => copyCol(el.cmpContentB, el.btnCopyB));
   el.btnHistPrev.addEventListener('click', () => navigateHistory(-1));
   el.btnHistNext.addEventListener('click', () => navigateHistory(1));
+  el.btnCmpHistPrev.addEventListener('click', () => navigateHistory(-1));
+  el.btnCmpHistNext.addEventListener('click', () => navigateHistory(1));
+
+  // Clear schema
+  el.btnClearSchema.addEventListener('click', () => { el.schemaInput.value = ''; });
 
   // Save prompt
   el.btnSave.addEventListener('click', savePrompt);
