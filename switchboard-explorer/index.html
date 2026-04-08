@@ -93,6 +93,17 @@
         </select>
       </section>
 
+      <!-- SYSTEM PROMPT -->
+      <section class="psec" id="system-prompt-sec">
+        <div class="psec-header">
+          <span class="psec-title">⚙ SYSTEM PROMPT</span>
+          <button id="btn-toggle-system" class="xbtn" style="font-size:12px">show</button>
+        </div>
+        <div id="system-prompt-wrap" class="hidden">
+          <textarea id="system-input" class="mono-textarea" style="min-height:64px;font-size:13px" placeholder="Optional system instructions sent before the user prompt..."></textarea>
+        </div>
+      </section>
+
       <!-- PROMPT -->
       <section class="psec psec-grow">
         <div class="psec-header">
@@ -151,6 +162,12 @@
             <span class="metric-chip" id="m-time" title="Response time">—</span>
             <span class="metric-chip" id="m-tokens" title="Total tokens">—</span>
             <span class="metric-chip" id="m-words" title="Response length">—</span>
+          </div>
+          <div class="out-meta-actions">
+            <button class="xbtn hist-btn" id="btn-hist-prev" title="Previous response" disabled>‹</button>
+            <span class="hist-pos" id="hist-pos"></span>
+            <button class="xbtn hist-btn" id="btn-hist-next" title="Next response" disabled>›</button>
+            <button class="xbtn" id="btn-copy" title="Copy response">⎘ copy</button>
           </div>
         </div>
         <div class="out-content" id="out-content"></div>

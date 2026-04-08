@@ -89,6 +89,8 @@ const state = {
   cmpModel: 'claude-sonnet-4-5',
   library: [],                 // in-memory prompt library
   modalTarget: null,           // 'openai' | 'anthropic'
+  history: [],                 // response history entries
+  histIdx: -1,                 // index into history (-1 = none)
 };
 
 // ── DOM refs ───────────────────────────────────────────
@@ -114,6 +116,10 @@ const el = {
   schemaInput:   $('schema-input'),
   // Examples
   exampleSelect: $('example-select'),
+  // System prompt
+  systemInput:   $('system-input'),
+  btnToggleSys:  $('btn-toggle-system'),
+  systemWrap:    $('system-prompt-wrap'),
   // Prompt
   promptInput:   $('prompt-input'),
   btnSend:       $('btn-send'),
@@ -138,6 +144,10 @@ const el = {
   outContent:    $('out-content'),
   validatorPanel:$('validator-panel'),
   validatorRes:  $('validator-results'),
+  btnCopy:       $('btn-copy'),
+  btnHistPrev:   $('btn-hist-prev'),
+  btnHistNext:   $('btn-hist-next'),
+  histPos:       $('hist-pos'),
   // Compare output
   cmpTagA:       $('cmp-tag-a'),
   cmpTagB:       $('cmp-tag-b'),
@@ -352,14 +362,15 @@ function toggleCompare() {
 //  API CALLS
 // ════════════════════════════════════════════════════════
 
-async function callOpenAI(key, model, prompt, schema, isStructured) {
+async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt) {
   const messages = [];
 
-  if (isStructured) {
-    messages.push({
-      role: 'system',
-      content: `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`,
-    });
+  const sysContent = isStructured
+    ? `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`
+    : (systemPrompt || null);
+
+  if (sysContent) {
+    messages.push({ role: 'system', content: sysContent });
   }
 
   messages.push({ role: 'user', content: prompt });
@@ -395,10 +406,10 @@ async function callOpenAI(key, model, prompt, schema, isStructured) {
   };
 }
 
-async function callAnthropic(key, model, prompt, schema, isStructured) {
+async function callAnthropic(key, model, prompt, schema, isStructured, systemPrompt) {
   const system = isStructured
     ? `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`
-    : null;
+    : (systemPrompt || null);
 
   const body = {
     model,
@@ -431,12 +442,12 @@ async function callAnthropic(key, model, prompt, schema, isStructured) {
   return { text, tokens, elapsed };
 }
 
-async function callModel(provider, model, prompt, schema, isStructured) {
+async function callModel(provider, model, prompt, schema, isStructured, systemPrompt) {
   const key = state.keys[provider];
   if (!key) throw new Error(`No ${provider} API key set. Click "set" next to the ${provider} key.`);
   return provider === 'openai'
-    ? callOpenAI(key, model, prompt, schema, isStructured)
-    : callAnthropic(key, model, prompt, schema, isStructured);
+    ? callOpenAI(key, model, prompt, schema, isStructured, systemPrompt)
+    : callAnthropic(key, model, prompt, schema, isStructured, systemPrompt);
 }
 
 // ════════════════════════════════════════════════════════
@@ -610,14 +621,73 @@ function renderResult(result, isStructured, schema,
       if (validatorEl) validatorEl.classList.add('hidden');
     }
   } else {
-    contentEl.className = 'out-content';
-    contentEl.textContent = result.text;
+    contentEl.className = 'out-content md-content';
+    contentEl.innerHTML = renderMarkdown(result.text);
     if (validatorEl) validatorEl.classList.add('hidden');
   }
 }
 
 function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ════════════════════════════════════════════════════════
+//  MARKDOWN RENDERER (lightweight, no dependencies)
+// ════════════════════════════════════════════════════════
+
+function renderMarkdown(text) {
+  // Escape HTML first, then selectively re-introduce markup
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Fenced code blocks (``` or ~~~)
+  s = s.replace(/^```(\w*)\n?([\s\S]*?)```$/gm, (_, lang, code) =>
+    `<pre class="md-code-block"><code>${code.trimEnd()}</code></pre>`);
+
+  // Headings
+  s = s.replace(/^######\s+(.+)$/gm, '<h6 class="md-h">$1</h6>');
+  s = s.replace(/^#####\s+(.+)$/gm,  '<h5 class="md-h">$1</h5>');
+  s = s.replace(/^####\s+(.+)$/gm,   '<h4 class="md-h">$1</h4>');
+  s = s.replace(/^###\s+(.+)$/gm,    '<h3 class="md-h">$1</h3>');
+  s = s.replace(/^##\s+(.+)$/gm,     '<h2 class="md-h">$1</h2>');
+  s = s.replace(/^#\s+(.+)$/gm,      '<h1 class="md-h">$1</h1>');
+
+  // Horizontal rule
+  s = s.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr class="md-hr">');
+
+  // Blockquote
+  s = s.replace(/^&gt;\s?(.+)$/gm, '<blockquote class="md-bq">$1</blockquote>');
+
+  // Unordered lists — wrap consecutive items
+  s = s.replace(/((?:^[-*+]\s.+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l =>
+      `<li>${l.replace(/^[-*+]\s/, '')}</li>`).join('');
+    return `<ul class="md-ul">${items}</ul>`;
+  });
+
+  // Ordered lists
+  s = s.replace(/((?:^\d+\.\s.+\n?)+)/gm, block => {
+    const items = block.trim().split('\n').map(l =>
+      `<li>${l.replace(/^\d+\.\s/, '')}</li>`).join('');
+    return `<ol class="md-ol">${items}</ol>`;
+  });
+
+  // Inline: bold, italic, code
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,         '<em>$1</em>');
+  s = s.replace(/`([^`]+)`/g,         '<code class="md-code">$1</code>');
+
+  // Paragraphs: blank-line-separated blocks not already tagged
+  s = s.replace(/\n{2,}/g, '\n\n');
+  const lines = s.split('\n\n');
+  s = lines.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+    if (/^<(h[1-6]|ul|ol|pre|blockquote|hr)/.test(trimmed)) return trimmed;
+    return `<p class="md-p">${trimmed.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+
+  return s;
 }
 
 // ════════════════════════════════════════════════════════
@@ -630,28 +700,36 @@ async function send() {
 
   const isStructured = state.mode === 'structured';
   const schema       = isStructured ? el.schemaInput.value.trim() : null;
+  const systemPrompt = el.systemInput.value.trim() || null;
 
   showOutput('loading');
   el.btnSend.disabled = true;
   updateStatus('RUNNING');
 
   if (state.compareActive) {
-    await sendCompare(prompt, schema, isStructured);
+    await sendCompare(prompt, schema, isStructured, systemPrompt);
   } else {
-    await sendSingle(prompt, schema, isStructured);
+    await sendSingle(prompt, schema, isStructured, systemPrompt);
   }
 
   el.btnSend.disabled = false;
   updateStatus('READY');
 }
 
-async function sendSingle(prompt, schema, isStructured) {
+async function sendSingle(prompt, schema, isStructured, systemPrompt) {
   let result;
   try {
-    const raw = await callModel(state.provider, state.model, prompt, schema, isStructured);
+    const raw = await callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt);
     result = { ...raw, model: state.model, error: null };
   } catch (err) {
     result = { text: '', tokens: null, elapsed: 0, model: state.model, error: err.message };
+  }
+
+  if (!result.error) {
+    // Push to history, discarding any forward entries if we branched
+    state.history = state.history.slice(0, state.histIdx + 1);
+    state.history.push({ result, isStructured, schema });
+    state.histIdx = state.history.length - 1;
   }
 
   showOutput('single');
@@ -661,9 +739,11 @@ async function sendSingle(prompt, schema, isStructured) {
   if (!result.error && !isStructured) {
     el.validatorPanel.classList.add('hidden');
   }
+
+  updateHistoryNav();
 }
 
-async function sendCompare(prompt, schema, isStructured) {
+async function sendCompare(prompt, schema, isStructured, systemPrompt) {
   el.cmpTagA.textContent = state.model;
   el.cmpTagB.textContent = state.cmpModel;
   el.cmpContentA.className = 'out-content';
@@ -678,8 +758,8 @@ async function sendCompare(prompt, schema, isStructured) {
   showOutput('compare');
 
   const [resA, resB] = await Promise.allSettled([
-    callModel(state.provider, state.model, prompt, schema, isStructured),
-    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured),
+    callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt),
+    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured, systemPrompt),
   ]);
 
   const resultA = resA.status === 'fulfilled'
@@ -694,6 +774,38 @@ async function sendCompare(prompt, schema, isStructured) {
     el.cmpContentA, el.cmpValA, el.cmpTagA, el.cmpMetricsA);
   renderResult(resultB, isStructured, schema,
     el.cmpContentB, el.cmpValB, el.cmpTagB, el.cmpMetricsB);
+}
+
+// ════════════════════════════════════════════════════════
+//  HISTORY & COPY
+// ════════════════════════════════════════════════════════
+
+function updateHistoryNav() {
+  const len = state.history.length;
+  const idx = state.histIdx;
+  el.btnHistPrev.disabled = idx <= 0;
+  el.btnHistNext.disabled = idx >= len - 1;
+  el.histPos.textContent  = len > 0 ? `${idx + 1}/${len}` : '';
+}
+
+function navigateHistory(dir) {
+  const next = state.histIdx + dir;
+  if (next < 0 || next >= state.history.length) return;
+  state.histIdx = next;
+  const { result, isStructured, schema } = state.history[next];
+  showOutput('single');
+  renderResult(result, isStructured, schema,
+    el.outContent, el.validatorPanel, el.outModelTag, null);
+  if (!isStructured) el.validatorPanel.classList.add('hidden');
+  updateHistoryNav();
+}
+
+function copyOutput() {
+  const text = el.outContent.innerText || el.outContent.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    el.btnCopy.textContent = '✓ copied';
+    setTimeout(() => { el.btnCopy.textContent = '⎘ copy'; }, 1500);
+  }).catch(() => showToast('Copy failed — check browser permissions.'));
 }
 
 // ════════════════════════════════════════════════════════
@@ -891,6 +1003,17 @@ function wire() {
 
   // Compare toggle
   el.btnCompare.addEventListener('click', toggleCompare);
+
+  // System prompt toggle
+  el.btnToggleSys.addEventListener('click', () => {
+    const hidden = el.systemWrap.classList.toggle('hidden');
+    el.btnToggleSys.textContent = hidden ? 'show' : 'hide';
+  });
+
+  // Copy & history
+  el.btnCopy.addEventListener('click', copyOutput);
+  el.btnHistPrev.addEventListener('click', () => navigateHistory(-1));
+  el.btnHistNext.addEventListener('click', () => navigateHistory(1));
 
   // Save prompt
   el.btnSave.addEventListener('click', savePrompt);
