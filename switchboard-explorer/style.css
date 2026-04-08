@@ -4,40 +4,40 @@
 
 :root {
   /* backgrounds */
-  --bg:         #07111f;
-  --surface:    #0b1927;
-  --card:       #0f2236;
-  --card-2:     #132840;
+  --bg:         #f0f7ff;
+  --surface:    #e2f0fb;
+  --card:       #d4e8f7;
+  --card-2:     #c4ddf3;
 
   /* borders */
-  --border:     #1a3a5c;
-  --border-hi:  #2a5a8c;
+  --border:     #9ec9e8;
+  --border-hi:  #5ba3d4;
 
   /* text */
-  --text:       #c8dff7;
-  --muted:      #6b8caa;
-  --dim:        #3d5a78;
+  --text:       #0a1f35;
+  --muted:      #3a6080;
+  --dim:        #7aaec8;
 
   /* OpenAI — sky blue */
-  --sky:        #38bdf8;
-  --sky-dim:    #0284c7;
-  --sky-bg:     #061520;
-  --sky-glow:   rgba(56, 189, 248, 0.12);
+  --sky:        #0284c7;
+  --sky-dim:    #0369a1;
+  --sky-bg:     #dbeeff;
+  --sky-glow:   rgba(2, 132, 199, 0.15);
 
   /* Anthropic — violet */
-  --violet:     #c084fc;
-  --violet-dim: #9333ea;
-  --violet-bg:  #0d0820;
+  --violet:     #7c3aed;
+  --violet-dim: #6d28d9;
+  --violet-bg:  #ede9fe;
 
   /* semantic */
-  --green:      #34d399;
-  --green-dim:  #059669;
-  --green-bg:   #071810;
-  --red:        #f87171;
-  --red-dim:    #dc2626;
-  --red-bg:     #1a0808;
-  --yellow:     #fbbf24;
-  --yellow-bg:  #1a1008;
+  --green:      #059669;
+  --green-dim:  #047857;
+  --green-bg:   #d1fae5;
+  --red:        #dc2626;
+  --red-dim:    #b91c1c;
+  --red-bg:     #fee2e2;
+  --yellow:     #d97706;
+  --yellow-bg:  #fef3c7;
 
   /* typography */
   --font-ui:   'Inter', system-ui, sans-serif;
@@ -714,7 +714,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 10, 20, 0.8);
+  background: rgba(10, 31, 53, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -728,7 +728,7 @@ body {
   border-radius: 12px;
   width: 440px;
   max-width: calc(100vw - 40px);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.06);
+  box-shadow: 0 24px 64px rgba(10, 31, 53, 0.2), 0 0 0 1px rgba(2, 132, 199, 0.1);
 }
 
 .modal-wide { width: 580px; }
