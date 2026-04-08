@@ -321,6 +321,8 @@ body {
   border-color: rgba(192, 132, 252, 0.25);
 }
 
+.segtabs-sm .segtab { font-size: 13px; padding: 4px 8px; }
+
 /* ── Selects ── */
 
 .mono-select {

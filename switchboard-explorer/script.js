@@ -6,7 +6,7 @@
 
 const MODELS = {
   openai:    ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
 };
 
 const EXAMPLES = {
@@ -157,6 +157,8 @@ const el = {
   cmpContentB:   $('cmp-content-b'),
   cmpValA:       $('cmp-validator-a'),
   cmpValB:       $('cmp-validator-b'),
+  btnCopyA:      $('btn-copy-a'),
+  btnCopyB:      $('btn-copy-b'),
   // Status bar
   sbStatus:      $('sb-status'),
   sbProvider:    $('sb-provider'),
@@ -378,7 +380,7 @@ async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt
   const body = {
     model,
     messages,
-    max_tokens: 1024,
+    max_tokens: 2048,
     ...(isStructured ? { response_format: { type: 'json_object' } } : {}),
   };
 
@@ -414,7 +416,7 @@ async function callAnthropic(key, model, prompt, schema, isStructured, systemPro
   const body = {
     model,
     messages: [{ role: 'user', content: prompt }],
-    max_tokens: 1024,
+    max_tokens: 2048,
     ...(system ? { system } : {}),
   };
 
@@ -609,7 +611,7 @@ function renderResult(result, isStructured, schema,
               '<div class="validator-hdr">⊞ Schema Validation Report</div>' +
               '<div class="validator-results"></div>';
           }
-          renderValidation(results, validatorEl.querySelector('.validator-results'));
+          renderValidation(results, validatorEl.querySelector('.validator-results') || validatorEl);
         }
       }
     } else {
@@ -640,7 +642,7 @@ function renderMarkdown(text) {
   let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   // Fenced code blocks (``` or ~~~)
-  s = s.replace(/^```(\w*)\n?([\s\S]*?)```$/gm, (_, lang, code) =>
+  s = s.replace(/^```(\w*)\n?([\s\S]*?)```$/gm, (_match, _lang, code) =>
     `<pre class="md-code-block"><code>${code.trimEnd()}</code></pre>`);
 
   // Headings
@@ -801,10 +803,14 @@ function navigateHistory(dir) {
 }
 
 function copyOutput() {
-  const text = el.outContent.innerText || el.outContent.textContent;
+  copyCol(el.outContent, el.btnCopy);
+}
+
+function copyCol(contentEl, btnEl) {
+  const text = contentEl.innerText || contentEl.textContent;
   navigator.clipboard.writeText(text).then(() => {
-    el.btnCopy.textContent = '✓ copied';
-    setTimeout(() => { el.btnCopy.textContent = '⎘ copy'; }, 1500);
+    btnEl.textContent = '✓ copied';
+    setTimeout(() => { btnEl.textContent = '⎘ copy'; }, 1500);
   }).catch(() => showToast('Copy failed — check browser permissions.'));
 }
 
@@ -922,10 +928,10 @@ function showToast(msg) {
     Object.assign(toast.style, {
       position: 'fixed', bottom: '40px', left: '50%',
       transform: 'translateX(-50%)',
-      background: 'var(--surface-2)',
+      background: 'var(--surface)',
       border: '1px solid var(--border-hi)',
       color: 'var(--text)',
-      fontFamily: 'var(--font)',
+      fontFamily: 'var(--font-ui)',
       fontSize: '12px',
       padding: '8px 16px',
       borderRadius: '6px',
@@ -966,6 +972,11 @@ function wire() {
   el.keyModalClose.addEventListener('click', closeKeyModal);
   el.keyModalInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmKeyModal(); });
   el.keyModalOverlay.addEventListener('click', e => { if (e.target === el.keyModalOverlay) closeKeyModal(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!el.keyModalOverlay.classList.contains('hidden')) closeKeyModal();
+    else if (!el.libOverlay.classList.contains('hidden')) closeLibrary();
+  });
 
   // Provider tabs
   el.providerTabs.addEventListener('click', e => {
@@ -1012,6 +1023,8 @@ function wire() {
 
   // Copy & history
   el.btnCopy.addEventListener('click', copyOutput);
+  el.btnCopyA.addEventListener('click', () => copyCol(el.cmpContentA, el.btnCopyA));
+  el.btnCopyB.addEventListener('click', () => copyCol(el.cmpContentB, el.btnCopyB));
   el.btnHistPrev.addEventListener('click', () => navigateHistory(-1));
   el.btnHistNext.addEventListener('click', () => navigateHistory(1));
 
