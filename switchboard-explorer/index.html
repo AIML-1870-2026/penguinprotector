@@ -21,6 +21,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="btn-export" class="hdr-btn">↓ Export</button>
       <button id="btn-library" class="hdr-btn">⊞ Prompt Library</button>
     </div>
   </header>
@@ -76,6 +77,11 @@
           <span id="temp-val" class="temp-val">1.00</span>
         </div>
         <div id="temp-cap-note" class="temp-cap-note hidden">⚠ Anthropic caps temperature at 1.0</div>
+        <div class="temp-row">
+          <span class="temp-label">MAX TOKENS</span>
+          <input type="range" id="max-tokens-slider" min="256" max="4096" step="256" value="2048">
+          <span id="max-tokens-val" class="temp-val">2048</span>
+        </div>
       </section>
 
       <!-- OUTPUT MODE -->
@@ -103,9 +109,15 @@
       <section class="psec" id="system-prompt-sec">
         <div class="psec-header">
           <span class="psec-title">⚙ SYSTEM PROMPT</span>
-          <button id="btn-toggle-system" class="xbtn" style="font-size:12px">show</button>
+          <div style="display:flex;gap:4px">
+            <button id="btn-save-sys-preset" class="xbtn" style="font-size:11px" title="Save current system prompt as preset">+ preset</button>
+            <button id="btn-toggle-system" class="xbtn" style="font-size:12px">show</button>
+          </div>
         </div>
         <div id="system-prompt-wrap" class="hidden">
+          <select id="sys-preset-select" class="mono-select hidden" style="font-size:12px;margin-bottom:4px">
+            <option value="">— load preset —</option>
+          </select>
           <textarea id="system-input" class="mono-textarea" style="min-height:64px;font-size:13px" placeholder="Optional system instructions sent before the user prompt..."></textarea>
         </div>
       </section>
@@ -131,6 +143,7 @@
         <div class="prompt-actions">
           <button id="btn-send" class="btn-run">▶ RUN</button>
           <button id="btn-compare-toggle" class="btn-compare">⇄ COMPARE</button>
+          <button id="btn-conv-toggle" class="btn-compare">💬 CHAT</button>
           <button id="btn-save-prompt" class="btn-save">+ SAVE</button>
           <span class="kbd-hint">⌘↵</span>
         </div>
@@ -174,6 +187,7 @@
             <span class="metric-chip" id="m-time" title="Response time">—</span>
             <span class="metric-chip" id="m-tokens" title="Total tokens">—</span>
             <span class="metric-chip" id="m-words" title="Response length">—</span>
+            <span class="metric-chip cost-chip" id="m-cost" title="Estimated cost" style="display:none"></span>
           </div>
           <div class="out-meta-actions">
             <button class="xbtn hist-btn" id="btn-hist-prev" title="Previous response" disabled>‹</button>
@@ -202,6 +216,7 @@
             <span class="out-model-tag" id="cmp-tag-a">Model A</span>
             <div class="metrics-row" id="cmp-metrics-a"></div>
             <div class="out-meta-actions">
+              <button class="xbtn win-btn" id="btn-win-a" title="Mark A as winner">👑 pick</button>
               <button class="xbtn" id="btn-copy-a" title="Copy response">⎘ copy</button>
             </div>
           </div>
@@ -214,6 +229,7 @@
             <span class="out-model-tag" id="cmp-tag-b">Model B</span>
             <div class="metrics-row" id="cmp-metrics-b"></div>
             <div class="out-meta-actions">
+              <button class="xbtn win-btn" id="btn-win-b" title="Mark B as winner">👑 pick</button>
               <button class="xbtn" id="btn-copy-b" title="Copy response">⎘ copy</button>
             </div>
           </div>
@@ -221,6 +237,15 @@
           <div id="cmp-validator-b" class="hidden validator-panel"></div>
         </div>
       </div>
+      </div>
+
+      <!-- Conversation thread -->
+      <div id="out-conversation" class="hidden out-panel conv-panel">
+        <div class="conv-header">
+          <span class="psec-title">💬 CONVERSATION</span>
+          <button id="btn-clear-conv" class="xbtn xbtn-danger" style="font-size:12px">🗑 clear</button>
+        </div>
+        <div id="conv-thread" class="conv-thread"></div>
       </div>
 
     </main>

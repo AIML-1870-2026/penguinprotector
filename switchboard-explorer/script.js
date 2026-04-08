@@ -14,6 +14,16 @@ const MODEL_LABELS = {
   'claude-haiku-4-5-20251001': 'claude-haiku-4-5',
 };
 
+// Pricing per 1M tokens (input, output) in USD
+const PRICING = {
+  'gpt-4o':                    { in: 2.50,  out: 10.00 },
+  'gpt-4o-mini':               { in: 0.15,  out: 0.60  },
+  'gpt-4-turbo':               { in: 10.00, out: 30.00 },
+  'claude-opus-4-6':           { in: 15.00, out: 75.00 },
+  'claude-sonnet-4-6':         { in: 3.00,  out: 15.00 },
+  'claude-haiku-4-5-20251001': { in: 0.80,  out: 4.00  },
+};
+
 const EXAMPLES = {
   unstructured: [
     {
@@ -93,11 +103,15 @@ const state = {
   cmpProvider: 'anthropic',
   cmpModel: 'claude-sonnet-4-6',
   temperature: 1.0,
+  maxTokens: 2048,
   abortController: null,
   library: [],                 // in-memory prompt library
+  sysPresets: [],              // saved system prompt presets
   modalTarget: null,           // 'openai' | 'anthropic'
   history: [],                 // response history entries { type:'single'|'compare', ... }
   histIdx: -1,                 // index into history (-1 = none)
+  convMode: false,             // conversation (multi-turn) mode
+  messages: [],                // conversation message history
 };
 
 // ── DOM refs ───────────────────────────────────────────
@@ -124,19 +138,24 @@ const el = {
   btnClearSchema:$('btn-clear-schema'),
   // Examples
   exampleSelect: $('example-select'),
-  // System prompt
+  // System prompt + presets
   systemInput:   $('system-input'),
   btnToggleSys:  $('btn-toggle-system'),
   systemWrap:    $('system-prompt-wrap'),
+  btnSaveSysPre: $('btn-save-sys-preset'),
+  sysPresetSel:  $('sys-preset-select'),
   // Prompt
   promptInput:   $('prompt-input'),
   btnSend:       $('btn-send'),
   btnCompare:    $('btn-compare-toggle'),
+  btnConvToggle: $('btn-conv-toggle'),
   btnSave:       $('btn-save-prompt'),
-  // Temperature
+  // Temperature + max tokens
   tempSlider:    $('temp-slider'),
   tempVal:       $('temp-val'),
   tempCapNote:   $('temp-cap-note'),
+  maxTokensSlider: $('max-tokens-slider'),
+  maxTokensVal:    $('max-tokens-val'),
   // Prompt counter
   promptCounter: $('prompt-counter'),
   // Compare cfg
@@ -159,6 +178,7 @@ const el = {
   mTime:         $('m-time'),
   mTokens:       $('m-tokens'),
   mWords:        $('m-words'),
+  mCost:         $('m-cost'),
   outContent:    $('out-content'),
   validatorPanel:$('validator-panel'),
   validatorRes:  $('validator-results'),
@@ -177,6 +197,8 @@ const el = {
   cmpValB:       $('cmp-validator-b'),
   btnCopyA:      $('btn-copy-a'),
   btnCopyB:      $('btn-copy-b'),
+  btnWinA:       $('btn-win-a'),
+  btnWinB:       $('btn-win-b'),
   // Status bar
   sbStatus:      $('sb-status'),
   sbProvider:    $('sb-provider'),
@@ -191,8 +213,13 @@ const el = {
   keyModalConfirm: $('key-modal-confirm'),
   keyModalCancel:  $('key-modal-cancel'),
   keyModalClose:   $('key-modal-close'),
-  // Library
+  // Header buttons
+  btnExport:     $('btn-export'),
   btnLibrary:    $('btn-library'),
+  // Conversation
+  outConversation: $('out-conversation'),
+  convThread:      $('conv-thread'),
+  btnClearConv:    $('btn-clear-conv'),
   libOverlay:    $('lib-modal-overlay'),
   libClose:      $('lib-close'),
   libEmpty:      $('lib-empty'),
@@ -340,6 +367,7 @@ function setCompareProvider(provider) {
 // ════════════════════════════════════════════════════════
 
 function setMode(mode) {
+  if (mode === 'unstructured') el.schemaInput.value = '';
   state.mode = mode;
 
   document.querySelectorAll('#mode-tabs .segtab').forEach(t =>
@@ -388,63 +416,105 @@ function toggleCompare() {
 //  API CALLS
 // ════════════════════════════════════════════════════════
 
-async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
+async function callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, maxTokens, signal, onChunk = null, prevMessages = []) {
   const messages = [];
 
   const sysContent = isStructured
     ? `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`
     : (systemPrompt || null);
 
-  if (sysContent) {
-    messages.push({ role: 'system', content: sysContent });
-  }
-
+  if (sysContent) messages.push({ role: 'system', content: sysContent });
+  for (const m of prevMessages) messages.push({ role: m.role, content: m.content });
   messages.push({ role: 'user', content: prompt });
 
+  const streaming = !!onChunk && !isStructured;
   const body = {
     model,
     messages,
-    max_tokens: 2048,
+    max_tokens: maxTokens,
     temperature,
     ...(isStructured ? { response_format: { type: 'json_object' } } : {}),
+    ...(streaming ? { stream: true, stream_options: { include_usage: true } } : {}),
   };
 
   const start = performance.now();
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal,
   });
-  const elapsed = Math.round(performance.now() - start);
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
     throw new Error(err.error?.message || `OpenAI error ${resp.status}`);
   }
 
+  if (streaming) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', fullText = '', inputTokens = null, outputTokens = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(raw);
+            const chunk = parsed.choices?.[0]?.delta?.content || '';
+            if (chunk) { fullText += chunk; onChunk(chunk); }
+            if (parsed.usage) {
+              inputTokens  = parsed.usage.prompt_tokens     ?? null;
+              outputTokens = parsed.usage.completion_tokens ?? null;
+            }
+          } catch {}
+        }
+      }
+    } finally { reader.releaseLock(); }
+
+    const elapsed = Math.round(performance.now() - start);
+    return {
+      text: fullText,
+      tokens: inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null,
+      inputTokens, outputTokens, elapsed,
+    };
+  }
+
   const data = await resp.json();
+  const elapsed = Math.round(performance.now() - start);
   return {
-    text:    data.choices[0].message.content,
-    tokens:  data.usage?.total_tokens ?? null,
+    text:         data.choices[0].message.content,
+    tokens:       data.usage?.total_tokens    ?? null,
+    inputTokens:  data.usage?.prompt_tokens   ?? null,
+    outputTokens: data.usage?.completion_tokens ?? null,
     elapsed,
   };
 }
 
-async function callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
+async function callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, maxTokens, signal, onChunk = null, prevMessages = []) {
   const system = isStructured
     ? `You must respond with a JSON object that exactly matches this schema:\n\n${schema}\n\nReturn ONLY valid JSON. No explanation, no markdown, no code fences.`
     : (systemPrompt || null);
 
+  const msgs = [];
+  for (const m of prevMessages) msgs.push({ role: m.role, content: m.content });
+  msgs.push({ role: 'user', content: prompt });
+
+  const streaming = !!onChunk && !isStructured;
   const body = {
     model,
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 2048,
-    temperature: Math.min(temperature, 1.0), // Anthropic caps at 1.0
-    ...(system ? { system } : {}),
+    messages: msgs,
+    max_tokens: maxTokens,
+    temperature: Math.min(temperature, 1.0),
+    ...(system  ? { system }  : {}),
+    ...(streaming ? { stream: true } : {}),
   };
 
   const start = performance.now();
@@ -459,25 +529,72 @@ async function callAnthropic(key, model, prompt, schema, isStructured, systemPro
     body: JSON.stringify(body),
     signal,
   });
-  const elapsed = Math.round(performance.now() - start);
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
     throw new Error(err.error?.message || `Anthropic error ${resp.status}`);
   }
 
+  if (streaming) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', fullText = '', inputTokens = null, outputTokens = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+              const chunk = parsed.delta.text || '';
+              if (chunk) { fullText += chunk; onChunk(chunk); }
+            }
+            if (parsed.type === 'message_start')   inputTokens  = parsed.message?.usage?.input_tokens  ?? null;
+            if (parsed.type === 'message_delta')    outputTokens = parsed.usage?.output_tokens           ?? null;
+          } catch {}
+        }
+      }
+    } finally { reader.releaseLock(); }
+
+    const elapsed = Math.round(performance.now() - start);
+    return {
+      text: fullText,
+      tokens: inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null,
+      inputTokens, outputTokens, elapsed,
+    };
+  }
+
   const data = await resp.json();
-  const text = data.content[0]?.text ?? '';
-  const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0);
-  return { text, tokens, elapsed };
+  const elapsed = Math.round(performance.now() - start);
+  const inputTokens  = data.usage?.input_tokens  ?? null;
+  const outputTokens = data.usage?.output_tokens ?? null;
+  return {
+    text:   data.content[0]?.text ?? '',
+    tokens: inputTokens != null && outputTokens != null ? inputTokens + outputTokens : null,
+    inputTokens, outputTokens, elapsed,
+  };
 }
 
-async function callModel(provider, model, prompt, schema, isStructured, systemPrompt, temperature, signal) {
+async function callModel(provider, model, prompt, schema, isStructured, systemPrompt, temperature, maxTokens, signal, onChunk = null, prevMessages = []) {
   const key = state.keys[provider];
   if (!key) throw new Error(`No ${provider} API key set. Click "set" next to the ${provider} key.`);
   return provider === 'openai'
-    ? callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal)
-    : callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, signal);
+    ? callOpenAI(key, model, prompt, schema, isStructured, systemPrompt, temperature, maxTokens, signal, onChunk, prevMessages)
+    : callAnthropic(key, model, prompt, schema, isStructured, systemPrompt, temperature, maxTokens, signal, onChunk, prevMessages);
+}
+
+function calcCost(model, inputTokens, outputTokens) {
+  const p = PRICING[model];
+  if (!p || inputTokens == null || outputTokens == null) return null;
+  const cost = (inputTokens / 1e6) * p.in + (outputTokens / 1e6) * p.out;
+  if (cost < 0.0001) return '<$0.0001';
+  return '$' + cost.toFixed(4);
 }
 
 // ════════════════════════════════════════════════════════
@@ -601,15 +718,19 @@ function renderResult(result, isStructured, schema,
 
   // Metrics
   const wordCount = result.text.trim().split(/\s+/).filter(Boolean).length;
+  const cost      = calcCost(result.model, result.inputTokens, result.outputTokens);
   if (metricsEl) {
     metricsEl.innerHTML =
       `<span class="metric-chip" title="Response time">${result.elapsed} ms</span>` +
       `<span class="metric-chip" title="Total tokens">${result.tokens != null ? result.tokens + ' tok' : '— tok'}</span>` +
-      `<span class="metric-chip" title="Word count">${wordCount} words</span>`;
+      `<span class="metric-chip" title="Word count">${wordCount} words</span>` +
+      (cost ? `<span class="metric-chip cost-chip" title="Estimated cost">${cost}</span>` : '');
   } else {
     el.mTime.textContent   = `${result.elapsed} ms`;
     el.mTokens.textContent = result.tokens != null ? `${result.tokens} tok` : '— tok';
     el.mWords.textContent  = `${wordCount} words`;
+    el.mCost.textContent   = cost ?? '';
+    el.mCost.style.display = cost ? '' : 'none';
   }
 
   // Content
@@ -750,12 +871,14 @@ async function send() {
   }
 
   state.abortController = new AbortController();
-
-  showOutput('loading');
   el.btnSend.disabled = true;
   updateStatus('RUNNING');
 
-  if (state.compareActive) {
+  if (state.convMode) {
+    // Show loading only for compare/structured; streaming shows inline
+    await sendConversation(prompt, systemPrompt);
+  } else if (state.compareActive) {
+    showOutput('loading');
     await sendCompare(prompt, schema, isStructured, systemPrompt);
   } else {
     await sendSingle(prompt, schema, isStructured, systemPrompt);
@@ -767,10 +890,21 @@ async function send() {
 }
 
 async function sendSingle(prompt, schema, isStructured, systemPrompt) {
+  // Set up output early so streaming text appears immediately
+  showOutput('single');
+  el.outModelTag.textContent = MODEL_LABELS[state.model] || state.model;
+  el.metricsRow.innerHTML = '';
+  el.outContent.className = 'out-content' + (isStructured ? ' json-content' : ' md-content');
+  el.outContent.textContent = '';
+  el.validatorPanel.classList.add('hidden');
+
   let result;
   try {
-    const raw = await callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt,
-                                state.temperature, state.abortController.signal);
+    const raw = await callModel(
+      state.provider, state.model, prompt, schema, isStructured, systemPrompt,
+      state.temperature, state.maxTokens, state.abortController.signal,
+      isStructured ? null : chunk => { el.outContent.textContent += chunk; }
+    );
     result = { ...raw, model: state.model, error: null };
   } catch (err) {
     if (err.name === 'AbortError') { showOutput('placeholder'); return; }
@@ -800,8 +934,13 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
   el.cmpTagB.textContent = MODEL_LABELS[state.cmpModel] || state.cmpModel;
   el.cmpContentA.className = 'out-content';
   el.cmpContentB.className = 'out-content';
-  el.cmpContentA.textContent = '...';
-  el.cmpContentB.textContent = '...';
+  el.cmpContentA.textContent = '';
+  el.cmpContentB.textContent = '';
+  // Reset winner state
+  document.getElementById('cmp-col-a').classList.remove('cmp-winner','cmp-loser');
+  document.getElementById('cmp-col-b').classList.remove('cmp-winner','cmp-loser');
+  el.btnWinA.classList.remove('win-active');
+  el.btnWinB.classList.remove('win-active');
   el.cmpMetricsA.innerHTML = '';
   el.cmpMetricsB.innerHTML = '';
   el.cmpValA.classList.add('hidden');
@@ -811,8 +950,12 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
 
   const sig = state.abortController.signal;
   const [resA, resB] = await Promise.allSettled([
-    callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt, state.temperature, sig),
-    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured, systemPrompt, state.temperature, sig),
+    callModel(state.provider, state.model, prompt, schema, isStructured, systemPrompt,
+              state.temperature, state.maxTokens, sig,
+              isStructured ? null : chunk => { el.cmpContentA.textContent += chunk; }),
+    callModel(state.cmpProvider, state.cmpModel, prompt, schema, isStructured, systemPrompt,
+              state.temperature, state.maxTokens, sig,
+              isStructured ? null : chunk => { el.cmpContentB.textContent += chunk; }),
   ]);
 
   if (resA.reason?.name === 'AbortError' && resB.reason?.name === 'AbortError') {
@@ -842,28 +985,243 @@ async function sendCompare(prompt, schema, isStructured, systemPrompt) {
 }
 
 // ════════════════════════════════════════════════════════
+//  CONVERSATION MODE
+// ════════════════════════════════════════════════════════
+
+function toggleConvMode() {
+  state.convMode = !state.convMode;
+  el.btnConvToggle.classList.toggle('active', state.convMode);
+  // Disable compare when in conv mode
+  if (state.convMode && state.compareActive) toggleCompare();
+  el.btnCompare.disabled = state.convMode;
+  if (state.convMode) {
+    showOutput('conversation');
+    renderConvThread();
+  } else {
+    showOutput('placeholder');
+  }
+}
+
+function renderConvThread() {
+  el.convThread.innerHTML = '';
+  for (const msg of state.messages) {
+    const div = document.createElement('div');
+    div.className = `conv-msg conv-msg-${msg.role}`;
+    if (msg.role === 'user') {
+      div.innerHTML =
+        `<div class="conv-bubble conv-user-bubble"><div class="conv-role">You</div>` +
+        `<div class="conv-text">${escHtml(msg.content)}</div></div>`;
+    } else {
+      const modelLabel = MODEL_LABELS[msg.model] || msg.model || '';
+      const cost = calcCost(msg.model, msg.inputTokens, msg.outputTokens);
+      div.innerHTML =
+        `<div class="conv-bubble conv-asst-bubble">` +
+        `<div class="conv-meta-row">` +
+        `<span class="out-model-tag conv-model-tag">${escHtml(modelLabel)}</span>` +
+        (msg.elapsed  ? `<span class="metric-chip">${msg.elapsed} ms</span>` : '') +
+        (msg.tokens   ? `<span class="metric-chip">${msg.tokens} tok</span>` : '') +
+        (cost         ? `<span class="metric-chip cost-chip">${cost}</span>` : '') +
+        `</div>` +
+        `<div class="conv-text md-content">${renderMarkdown(msg.content)}</div>` +
+        `</div>`;
+    }
+    el.convThread.appendChild(div);
+  }
+  el.convThread.scrollTop = el.convThread.scrollHeight;
+}
+
+async function sendConversation(prompt, systemPrompt) {
+  state.messages.push({ role: 'user', content: prompt });
+  showOutput('conversation');
+  renderConvThread();
+  el.promptInput.value = '';
+  updatePromptCounter();
+
+  // Add a live typing bubble
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'conv-msg conv-msg-assistant';
+  const modelLabel = MODEL_LABELS[state.model] || state.model;
+  typingDiv.innerHTML =
+    `<div class="conv-bubble conv-asst-bubble">` +
+    `<div class="conv-meta-row"><span class="out-model-tag conv-model-tag">${escHtml(modelLabel)}</span></div>` +
+    `<div class="conv-text conv-streaming"></div>` +
+    `</div>`;
+  el.convThread.appendChild(typingDiv);
+  el.convThread.scrollTop = el.convThread.scrollHeight;
+
+  const textEl = typingDiv.querySelector('.conv-text');
+  const prevMessages = state.messages.slice(0, -1); // everything except the new user message
+
+  let result;
+  try {
+    const raw = await callModel(
+      state.provider, state.model, prompt, null, false, systemPrompt,
+      state.temperature, state.maxTokens, state.abortController.signal,
+      chunk => {
+        textEl.textContent += chunk;
+        el.convThread.scrollTop = el.convThread.scrollHeight;
+      },
+      prevMessages
+    );
+    result = { ...raw, model: state.model, error: null };
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      typingDiv.remove();
+      state.messages.pop(); // remove user message we just added
+      return;
+    }
+    result = { text: '', tokens: null, elapsed: 0, model: state.model, error: err.message };
+  }
+
+  if (result.error) {
+    textEl.className = 'conv-text';
+    textEl.innerHTML = `<div class="error-card"><strong>Error:</strong> ${escHtml(result.error)}</div>`;
+    return;
+  }
+
+  const cost = calcCost(state.model, result.inputTokens, result.outputTokens);
+  state.messages.push({
+    role: 'assistant', content: result.text, model: state.model,
+    elapsed: result.elapsed, tokens: result.tokens,
+    inputTokens: result.inputTokens, outputTokens: result.outputTokens,
+  });
+
+  // Finalize bubble
+  const metaRow = typingDiv.querySelector('.conv-meta-row');
+  if (result.elapsed) metaRow.innerHTML += `<span class="metric-chip">${result.elapsed} ms</span>`;
+  if (result.tokens)  metaRow.innerHTML += `<span class="metric-chip">${result.tokens} tok</span>`;
+  if (cost)           metaRow.innerHTML += `<span class="metric-chip cost-chip">${cost}</span>`;
+  textEl.className = 'conv-text md-content';
+  textEl.innerHTML = renderMarkdown(result.text);
+  el.convThread.scrollTop = el.convThread.scrollHeight;
+}
+
+function clearConversation() {
+  state.messages = [];
+  renderConvThread();
+  showToast('Conversation cleared.');
+}
+
+// ════════════════════════════════════════════════════════
+//  COMPARE WINNER
+// ════════════════════════════════════════════════════════
+
+function tagWinner(side) {
+  const colA = document.getElementById('cmp-col-a');
+  const colB = document.getElementById('cmp-col-b');
+  colA.classList.remove('cmp-winner', 'cmp-loser');
+  colB.classList.remove('cmp-winner', 'cmp-loser');
+
+  if (side === 'a') { colA.classList.add('cmp-winner'); colB.classList.add('cmp-loser'); }
+  else              { colB.classList.add('cmp-winner'); colA.classList.add('cmp-loser'); }
+
+  el.btnWinA.classList.toggle('win-active', side === 'a');
+  el.btnWinB.classList.toggle('win-active', side === 'b');
+
+  // Record in history
+  const entry = state.history[state.histIdx];
+  if (entry?.type === 'compare') entry.winner = side;
+
+  showToast(`Model ${side.toUpperCase()} marked as winner.`);
+}
+
+// ════════════════════════════════════════════════════════
+//  SYSTEM PROMPT PRESETS
+// ════════════════════════════════════════════════════════
+
+function saveSysPreset() {
+  const text = el.systemInput.value.trim();
+  if (!text) { showToast('System prompt is empty — nothing to save.'); return; }
+  state.sysPresets.unshift({ id: Date.now(), text });
+  renderSysPresets();
+  showToast('System prompt preset saved.');
+}
+
+function renderSysPresets() {
+  const sel = el.sysPresetSel;
+  if (state.sysPresets.length === 0) { sel.classList.add('hidden'); return; }
+  sel.classList.remove('hidden');
+  sel.innerHTML = '<option value="">— load preset —</option>' +
+    state.sysPresets.map(p =>
+      `<option value="${p.id}">${escHtml(p.text.slice(0, 60))}${p.text.length > 60 ? '…' : ''}</option>`
+    ).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  SESSION EXPORT
+// ════════════════════════════════════════════════════════
+
+function exportSession() {
+  if (state.history.length === 0 && state.messages.length === 0) {
+    showToast('Nothing to export yet — run some prompts first.');
+    return;
+  }
+
+  // Build human-readable text
+  const lines = [`Switchboard Explorer — Session Export`, `Exported: ${new Date().toLocaleString()}`, ``];
+  for (const entry of state.history) {
+    if (entry.type === 'single') {
+      const r = entry.result;
+      lines.push(`── Single [${r.model}] ──`);
+      lines.push(r.text || `[Error: ${r.error}]`);
+      lines.push('');
+    } else {
+      lines.push(`── Compare [${entry.resultA.model}] vs [${entry.resultB.model}]` +
+        (entry.winner ? ` — Winner: ${entry.winner.toUpperCase()}` : '') + ` ──`);
+      lines.push(`[A] ${entry.resultA.text || `Error: ${entry.resultA.error}`}`);
+      lines.push(`[B] ${entry.resultB.text || `Error: ${entry.resultB.error}`}`);
+      lines.push('');
+    }
+  }
+  if (state.messages.length > 0) {
+    lines.push(`── Conversation ──`);
+    for (const m of state.messages) {
+      lines.push(`[${m.role.toUpperCase()}] ${m.content}`);
+    }
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `switchboard-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Session exported.');
+}
+
+// ════════════════════════════════════════════════════════
 //  HISTORY & COPY
 // ════════════════════════════════════════════════════════
 
 function updateHistoryNav() {
-  const len = state.history.length;
   const idx = state.histIdx;
+  const currentType = state.history[idx]?.type;
+
+  function hasSameTypeBefore(type) {
+    return state.history.slice(0, idx).some(h => h.type === type);
+  }
+  function hasSameTypeAfter(type) {
+    return state.history.slice(idx + 1).some(h => h.type === type);
+  }
 
   // Single nav bar
   const singleEntries = state.history.filter(h => h.type === 'single');
-  const singleIdx     = state.history.slice(0, idx + 1).filter(h => h.type === 'single').length;
-  el.btnHistPrev.disabled = idx <= 0 || state.history[idx]?.type !== 'single';
-  el.btnHistNext.disabled = idx >= len - 1 || state.history[idx]?.type !== 'single';
-  el.histPos.textContent  = singleEntries.length > 0 && state.history[idx]?.type === 'single'
-    ? `${singleIdx}/${singleEntries.length}` : '';
+  const singlePos     = state.history.slice(0, idx + 1).filter(h => h.type === 'single').length;
+  const isSingle      = currentType === 'single';
+  el.btnHistPrev.disabled = !isSingle || !hasSameTypeBefore('single');
+  el.btnHistNext.disabled = !isSingle || !hasSameTypeAfter('single');
+  el.histPos.textContent  = isSingle && singleEntries.length > 0
+    ? `${singlePos}/${singleEntries.length}` : '';
 
   // Compare nav bar
   const cmpEntries = state.history.filter(h => h.type === 'compare');
-  const cmpIdx     = state.history.slice(0, idx + 1).filter(h => h.type === 'compare').length;
-  el.btnCmpHistPrev.disabled = idx <= 0 || state.history[idx]?.type !== 'compare';
-  el.btnCmpHistNext.disabled = idx >= len - 1 || state.history[idx]?.type !== 'compare';
-  el.cmpHistPos.textContent  = cmpEntries.length > 0 && state.history[idx]?.type === 'compare'
-    ? `${cmpIdx}/${cmpEntries.length}` : '';
+  const cmpPos     = state.history.slice(0, idx + 1).filter(h => h.type === 'compare').length;
+  const isCmp      = currentType === 'compare';
+  el.btnCmpHistPrev.disabled = !isCmp || !hasSameTypeBefore('compare');
+  el.btnCmpHistNext.disabled = !isCmp || !hasSameTypeAfter('compare');
+  el.cmpHistPos.textContent  = isCmp && cmpEntries.length > 0
+    ? `${cmpPos}/${cmpEntries.length}` : '';
 }
 
 function navigateHistory(dir) {
@@ -996,11 +1354,13 @@ function showOutput(which) {
   el.outLoading.classList.add('hidden');
   el.outSingle.classList.add('hidden');
   el.outCompareWrap.classList.add('hidden');
+  el.outConversation.classList.add('hidden');
 
-  if (which === 'placeholder') el.outPlaceholder.classList.remove('hidden');
-  if (which === 'loading')     el.outLoading.classList.remove('hidden');
-  if (which === 'single')      el.outSingle.classList.remove('hidden');
-  if (which === 'compare')     el.outCompareWrap.classList.remove('hidden');
+  if (which === 'placeholder')   el.outPlaceholder.classList.remove('hidden');
+  if (which === 'loading')       el.outLoading.classList.remove('hidden');
+  if (which === 'single')        el.outSingle.classList.remove('hidden');
+  if (which === 'compare')       el.outCompareWrap.classList.remove('hidden');
+  if (which === 'conversation')  el.outConversation.classList.remove('hidden');
 }
 
 function updatePromptCounter() {
@@ -1132,11 +1492,37 @@ function wire() {
   // Compare toggle
   el.btnCompare.addEventListener('click', toggleCompare);
 
-  // System prompt toggle
+  // Conversation mode toggle
+  el.btnConvToggle.addEventListener('click', toggleConvMode);
+  el.btnClearConv.addEventListener('click', clearConversation);
+
+  // Winner tagging
+  el.btnWinA.addEventListener('click', () => tagWinner('a'));
+  el.btnWinB.addEventListener('click', () => tagWinner('b'));
+
+  // System prompt toggle + presets
   el.btnToggleSys.addEventListener('click', () => {
     const hidden = el.systemWrap.classList.toggle('hidden');
     el.btnToggleSys.textContent = hidden ? 'show' : 'hide';
   });
+  el.btnSaveSysPre.addEventListener('click', saveSysPreset);
+  el.sysPresetSel.addEventListener('change', e => {
+    const id = Number(e.target.value);
+    if (!id) return;
+    const preset = state.sysPresets.find(p => p.id === id);
+    if (preset) {
+      el.systemInput.value = preset.text;
+      // Make sure system prompt section is visible
+      if (el.systemWrap.classList.contains('hidden')) {
+        el.systemWrap.classList.remove('hidden');
+        el.btnToggleSys.textContent = 'hide';
+      }
+    }
+    e.target.value = '';
+  });
+
+  // Export
+  el.btnExport.addEventListener('click', exportSession);
 
   // Cancel
   el.btnCancel.addEventListener('click', () => state.abortController?.abort());
@@ -1146,6 +1532,12 @@ function wire() {
     state.temperature = parseFloat(el.tempSlider.value);
     el.tempVal.textContent = state.temperature.toFixed(2);
     updateTempCapNote();
+  });
+
+  // Max tokens
+  el.maxTokensSlider.addEventListener('input', () => {
+    state.maxTokens = parseInt(el.maxTokensSlider.value, 10);
+    el.maxTokensVal.textContent = state.maxTokens;
   });
 
   // Prompt counter
