@@ -9,6 +9,11 @@ const MODELS = {
   anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
 };
 
+// Human-readable display names for models
+const MODEL_LABELS = {
+  'claude-haiku-4-5-20251001': 'claude-haiku-4-5',
+};
+
 const EXAMPLES = {
   unstructured: [
     {
@@ -130,6 +135,7 @@ const el = {
   // Temperature
   tempSlider:    $('temp-slider'),
   tempVal:       $('temp-val'),
+  tempCapNote:   $('temp-cap-note'),
   // Prompt counter
   promptCounter: $('prompt-counter'),
   // Compare cfg
@@ -282,9 +288,10 @@ function closeKeyModal() {
 function confirmKeyModal() {
   const val = el.keyModalInput.value.trim();
   if (!val) return;
-  setKey(state.modalTarget, val);
+  const provider = state.modalTarget;
+  setKey(provider, val);
   closeKeyModal();
-  showToast(`${state.modalTarget === 'openai' ? 'OpenAI' : 'Anthropic'} key saved.`);
+  showToast(`${provider === 'openai' ? 'OpenAI' : 'Anthropic'} key saved.`);
 }
 
 // ════════════════════════════════════════════════════════
@@ -297,7 +304,7 @@ function setProvider(provider) {
   state.model = models[0];
 
   el.modelSelect.innerHTML = models.map(m =>
-    `<option value="${m}">${m}</option>`
+    `<option value="${m}">${MODEL_LABELS[m] || m}</option>`
   ).join('');
 
   document.querySelectorAll('#provider-tabs .segtab').forEach(t =>
@@ -305,6 +312,7 @@ function setProvider(provider) {
   );
 
   updateStatusBar();
+  updateTempCapNote();
 }
 
 function setCompareProvider(provider) {
@@ -313,7 +321,7 @@ function setCompareProvider(provider) {
   state.cmpModel = models[0];
 
   el.cmpModelSel.innerHTML = models.map(m =>
-    `<option value="${m}">${m}</option>`
+    `<option value="${m}">${MODEL_LABELS[m] || m}</option>`
   ).join('');
 
   document.querySelectorAll('#compare-provider-tabs .segtab').forEach(t =>
@@ -601,7 +609,7 @@ function renderResult(result, isStructured, schema,
     if (metricsEl) metricsEl.innerHTML = '';
     else { el.mTime.textContent = '—'; el.mTokens.textContent = '—'; el.mWords.textContent = '—'; }
     contentEl.className = 'out-content';
-    contentEl.innerHTML = `<div class="error-card"><strong>Error</strong>${escHtml(result.error)}</div>`;
+    contentEl.innerHTML = `<div class="error-card"><strong>Error:</strong> ${escHtml(result.error)}</div>`;
     if (validatorEl) validatorEl.classList.add('hidden');
     return;
   }
@@ -923,9 +931,15 @@ function showOutput(which) {
   el.outSingle.classList.add('hidden');
   el.outCompare.classList.add('hidden');
 
-  if (which === 'loading')  el.outLoading.classList.remove('hidden');
-  if (which === 'single')   el.outSingle.classList.remove('hidden');
-  if (which === 'compare')  el.outCompare.classList.remove('hidden');
+  if (which === 'placeholder') el.outPlaceholder.classList.remove('hidden');
+  if (which === 'loading')     el.outLoading.classList.remove('hidden');
+  if (which === 'single')      el.outSingle.classList.remove('hidden');
+  if (which === 'compare')     el.outCompare.classList.remove('hidden');
+}
+
+function updateTempCapNote() {
+  const show = state.provider === 'anthropic' && state.temperature > 1.0;
+  el.tempCapNote.classList.toggle('hidden', !show);
 }
 
 function updateStatus(status) {
@@ -934,7 +948,7 @@ function updateStatus(status) {
 
 function updateStatusBar() {
   el.sbProvider.textContent = state.provider;
-  el.sbModel.textContent    = state.model;
+  el.sbModel.textContent    = MODEL_LABELS[state.model] || state.model;
   el.sbMode.textContent     = state.mode === 'structured' ? 'json schema' : 'free text';
 
   const oaiSet = !!state.keys.openai;
@@ -1058,11 +1072,14 @@ function wire() {
   el.tempSlider.addEventListener('input', () => {
     state.temperature = parseFloat(el.tempSlider.value);
     el.tempVal.textContent = state.temperature.toFixed(2);
+    updateTempCapNote();
   });
 
   // Prompt counter
   el.promptInput.addEventListener('input', () => {
-    el.promptCounter.textContent = `${el.promptInput.value.length} chars`;
+    const len = el.promptInput.value.length;
+    const tokEst = Math.round(len / 4);
+    el.promptCounter.textContent = `${len} chars · ~${tokEst} tokens`;
   });
 
   // Copy & history

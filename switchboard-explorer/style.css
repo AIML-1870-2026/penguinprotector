@@ -987,6 +987,12 @@ input[type="range"] {
   text-align: right;
 }
 
+.temp-cap-note {
+  font-size: 11px;
+  color: var(--yellow);
+  margin-top: 4px;
+}
+
 /* ── Prompt counter + hint ── */
 
 .prompt-counter-row {
