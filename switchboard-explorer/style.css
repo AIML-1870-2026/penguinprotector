@@ -55,20 +55,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { height: 100%; }
-
 body {
-  height: 100vh;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.5;
-
-  /* ── LAYOUT FIX: grid body ── */
-  display: grid;
-  grid-template-rows: var(--hdr-h) 1fr var(--sb-h);
-  overflow: hidden; /* prevent body scroll */
+  overflow: hidden;
 }
 
 /* ── SCROLLBAR ── */
@@ -80,13 +73,18 @@ body {
 /* ═══ HEADER ═══════════════════════════════════════════ */
 
 .app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--hdr-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  /* explicitly does NOT grow beyond var(--hdr-h) */
+  z-index: 10;
 }
 
 .header-brand {
@@ -141,8 +139,11 @@ body {
 /* ═══ APP BODY ══════════════════════════════════════════ */
 
 .app-body {
-  /* ── LAYOUT FIX: grid item must declare min-height:0 ── */
-  min-height: 0;
+  position: fixed;
+  top: var(--hdr-h);
+  bottom: var(--sb-h);
+  left: 0;
+  right: 0;
   display: grid;
   grid-template-columns: var(--left-w) 1fr;
   overflow: hidden;
@@ -151,7 +152,6 @@ body {
 /* ═══ LEFT PANEL ════════════════════════════════════════ */
 
 .left-panel {
-  min-height: 0; /* LAYOUT FIX */
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
@@ -436,7 +436,6 @@ body {
 /* ═══ RIGHT PANEL ════════════════════════════════════════ */
 
 .right-panel {
-  min-height: 0; /* LAYOUT FIX */
   overflow-y: auto;
   background: var(--bg);
   display: flex;
@@ -674,6 +673,11 @@ body {
 /* ═══ STATUS BAR ════════════════════════════════════════ */
 
 .status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--sb-h);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -684,6 +688,7 @@ body {
   color: var(--muted);
   font-family: var(--font-mono);
   letter-spacing: 0.3px;
+  z-index: 10;
 }
 
 .sb-status {
