@@ -327,6 +327,8 @@ function setCompareProvider(provider) {
   document.querySelectorAll('#compare-provider-tabs .segtab').forEach(t =>
     t.classList.toggle('active', t.dataset.provider2 === provider)
   );
+
+  updateTempCapNote();
 }
 
 // ════════════════════════════════════════════════════════
@@ -364,6 +366,7 @@ function loadExample(idx) {
   if (state.mode === 'structured' && ex.schema) {
     el.schemaInput.value = ex.schema;
   }
+  updatePromptCounter();
 }
 
 // ════════════════════════════════════════════════════════
@@ -374,6 +377,7 @@ function toggleCompare() {
   state.compareActive = !state.compareActive;
   el.btnCompare.classList.toggle('active', state.compareActive);
   el.compareCfg.classList.toggle('hidden', !state.compareActive);
+  updateTempCapNote();
 }
 
 // ════════════════════════════════════════════════════════
@@ -589,7 +593,7 @@ function renderValidation(results, container) {
 
 function renderResult(result, isStructured, schema,
                       contentEl, validatorEl, modelTag, metricsEl) {
-  modelTag.textContent = result.model;
+  modelTag.textContent = MODEL_LABELS[result.model] || result.model;
 
   // Metrics
   const wordCount = result.text.trim().split(/\s+/).filter(Boolean).length;
@@ -778,8 +782,8 @@ async function sendSingle(prompt, schema, isStructured, systemPrompt) {
 }
 
 async function sendCompare(prompt, schema, isStructured, systemPrompt) {
-  el.cmpTagA.textContent = state.model;
-  el.cmpTagB.textContent = state.cmpModel;
+  el.cmpTagA.textContent = MODEL_LABELS[state.model] || state.model;
+  el.cmpTagB.textContent = MODEL_LABELS[state.cmpModel] || state.cmpModel;
   el.cmpContentA.className = 'out-content';
   el.cmpContentB.className = 'out-content';
   el.cmpContentA.textContent = '...';
@@ -881,6 +885,18 @@ function loadFromLibrary(id) {
   if (entry.mode !== state.mode) setMode(entry.mode);
   el.promptInput.value = entry.prompt;
   if (entry.schema) el.schemaInput.value = entry.schema;
+  updatePromptCounter();
+
+  // Restore the provider + model the prompt was saved with
+  for (const [prov, models] of Object.entries(MODELS)) {
+    if (models.includes(entry.model)) {
+      setProvider(prov);
+      state.model = entry.model;
+      el.modelSelect.value = entry.model;
+      updateStatusBar();
+      break;
+    }
+  }
 
   closeLibrary();
   showToast('Prompt loaded.');
@@ -937,9 +953,16 @@ function showOutput(which) {
   if (which === 'compare')     el.outCompare.classList.remove('hidden');
 }
 
+function updatePromptCounter() {
+  const len = el.promptInput.value.length;
+  const tokEst = Math.round(len / 4);
+  el.promptCounter.textContent = `${len} chars · ~${tokEst} tokens`;
+}
+
 function updateTempCapNote() {
-  const show = state.provider === 'anthropic' && state.temperature > 1.0;
-  el.tempCapNote.classList.toggle('hidden', !show);
+  const anthropicActive = state.provider === 'anthropic' ||
+    (state.compareActive && state.cmpProvider === 'anthropic');
+  el.tempCapNote.classList.toggle('hidden', !(anthropicActive && state.temperature > 1.0));
 }
 
 function updateStatus(status) {
@@ -1076,11 +1099,7 @@ function wire() {
   });
 
   // Prompt counter
-  el.promptInput.addEventListener('input', () => {
-    const len = el.promptInput.value.length;
-    const tokEst = Math.round(len / 4);
-    el.promptCounter.textContent = `${len} chars · ~${tokEst} tokens`;
-  });
+  el.promptInput.addEventListener('input', updatePromptCounter);
 
   // Copy & history
   el.btnCopy.addEventListener('click', copyOutput);
