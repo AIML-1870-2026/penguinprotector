@@ -144,15 +144,9 @@ export async function initGlobe(state) {
   if (_preselectAc) { _preselectAc.abort(); _preselectAc = null; }
   container.innerHTML = '';
 
-  // Surface point color
-  const pointColor = p => {
-    if (p.isMoon) return '#9ca3af';
-    if (state.selectedNeo === p.id) return '#ffffff';
-    return p.isPha ? '#f59e0b' : '#00d4aa';
-  };
-
-  // Surface point radius
-  const pointRadius = p => state.selectedNeo === p.id ? 0.6 : (p.isPha ? 0.45 : 0.32);
+  // Invisible click-target points on the surface (no visual, just hit detection)
+  const pointColor  = () => 'rgba(0,0,0,0)';
+  const pointRadius = () => 0.5;
 
   const asteroidPoints = points.filter(p => !p.isMoon);
 
@@ -187,27 +181,31 @@ export async function initGlobe(state) {
     .ringMaxRadius(p => p.isPha ? 3.5 : 2.2)
     .ringPropagationSpeed(p => p.isPha ? 1.8 : 1.1)
     .ringRepeatPeriod(p => p.isPha ? 700 : 1400)
-    // Glowing orb at each spike tip — white + scaled up when selected
+    // Glowing orbs floating in space at miss-distance altitude
     .customLayerData(asteroidPoints)
     .customThreeObject(p => {
       const T = window.THREE;
       if (!T) return null;
       const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
-      const radius = p.isMoon ? 2.2 : (p.isPha ? 1.6 : 1.1);
-      // Outer glow shell — large, transparent
-      const glowGeo = new T.SphereGeometry(radius * 1.6, 12, 12);
-      const glowMat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, depthWrite: false });
-      const glow    = new T.Mesh(glowGeo, glowMat);
-      // Inner solid orb
-      const coreGeo = new T.SphereGeometry(radius, 14, 14);
-      const coreMat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.88 });
-      const core    = new T.Mesh(coreGeo, coreMat);
-      const group   = new T.Group();
-      group.add(glow);
+      const radius = p.isMoon ? 2.4 : (p.isPha ? 2.0 : 1.4);
+
+      const make = (r, opacity, depthWrite = false) => {
+        const m = new T.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite });
+        return new T.Mesh(new T.SphereGeometry(r, 16, 16), m);
+      };
+
+      const core   = make(radius,       0.95, true);   // bright solid centre
+      const mid    = make(radius * 1.5, 0.30);          // mid glow
+      const outer  = make(radius * 2.4, 0.10);          // wide soft halo
+
+      const group = new T.Group();
+      group.add(outer);
+      group.add(mid);
       group.add(core);
-      group._coreColor = color;
-      group._core = core;
-      group._glow = glow;
+      group._color = color;
+      group._core  = core;
+      group._mid   = mid;
+      group._outer = outer;
       return group;
     })
     .customThreeObjectUpdate((obj, p) => {
@@ -217,13 +215,15 @@ export async function initGlobe(state) {
       const isSelected = state.selectedNeo === p.id;
       const T = window.THREE;
       if (T && obj._core) {
-        const col = isSelected ? 0xffffff : obj._coreColor;
+        const col = isSelected ? 0xffffff : obj._color;
         obj._core.material.color.set(col);
-        obj._glow.material.color.set(col);
-        obj._core.material.opacity = isSelected ? 1.0 : 0.88;
-        obj._glow.material.opacity = isSelected ? 0.22 : 0.12;
+        obj._mid.material.color.set(col);
+        obj._outer.material.color.set(col);
+        obj._core.material.opacity  = isSelected ? 1.0  : 0.95;
+        obj._mid.material.opacity   = isSelected ? 0.45 : 0.30;
+        obj._outer.material.opacity = isSelected ? 0.18 : 0.10;
       }
-      const s = isSelected ? 1.6 : 1.0;
+      const s = isSelected ? 1.7 : 1.0;
       obj.scale.set(s, s, s);
     })
     .width(container.offsetWidth)
