@@ -6,13 +6,13 @@
   <title>Product Review Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- ── HEADER ── -->
+  <!-- HEADER -->
   <header class="app-header">
     <div class="header-brand">
       <span class="brand-icon">★</span>
@@ -21,250 +21,152 @@
         <span class="brand-sub">AI-Powered · OpenAI · Educational Use Only</span>
       </div>
     </div>
-    <div class="header-key-status">
-      <span id="key-status-dot" class="key-dot unset"></span>
-      <span id="key-status-text" class="key-status-text">No API Key</span>
-    </div>
+    <button id="btn-about" class="btn-about">About</button>
   </header>
 
-  <!-- ── BODY ── -->
-  <div class="app-body">
+  <!-- MAIN -->
+  <main class="app-main">
 
-    <!-- ════ LEFT PANEL ════ -->
-    <aside class="left-panel">
+    <!-- Card 1: Basic Product Information -->
+    <div class="card">
+      <div class="card-title">Basic Product Information</div>
 
-      <!-- API KEY -->
-      <section class="psec">
-        <div class="psec-header">
-          <span class="psec-title">🔑 API KEY</span>
-          <span class="badge-mem">memory-only</span>
-        </div>
-        <p class="notice-text">Key is never saved to disk, localStorage, or cookies. Cleared when this page closes.</p>
-        <div class="key-row">
-          <div id="key-display" class="key-display"><span class="unset-text">not set</span></div>
-          <div class="key-btns">
-            <button id="btn-set-key" class="xbtn">set key</button>
-            <label class="xbtn">↑ .env file<input type="file" id="file-key" accept=".env,.csv,.txt" hidden></label>
-            <button id="btn-clear-key" class="xbtn xbtn-danger hidden">× clear</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- MODEL -->
-      <section class="psec">
-        <div class="psec-header">
-          <span class="psec-title">⚡ MODEL</span>
-        </div>
-        <select id="model-select" class="mono-select">
-          <option value="">— set API key to load models —</option>
-        </select>
-        <p id="model-load-status" class="notice-text" style="margin-top:6px"></p>
-      </section>
-
-      <!-- PRODUCT INFO -->
-      <section class="psec">
-        <div class="psec-header">
-          <span class="psec-title">📦 PRODUCT INFO</span>
-        </div>
-
+      <div class="form-row">
         <div class="field-group">
-          <label class="field-label">Product Name</label>
-          <input type="text" id="product-name" class="mono-input" placeholder="e.g., Wireless Headphones" autocomplete="off">
+          <label class="field-label">Product Name:</label>
+          <input type="text" id="product-name" class="form-input" placeholder="e.g., Wireless Headphones" autocomplete="off">
         </div>
-
         <div class="field-group">
-          <label class="field-label">Category</label>
-          <select id="category" class="mono-select">
+          <label class="field-label">Category:</label>
+          <select id="category" class="form-select">
             <option value="Electronics">Electronics</option>
             <option value="Clothing">Clothing</option>
-            <option value="Food & Beverage">Food & Beverage</option>
-            <option value="Home & Garden">Home & Garden</option>
+            <option value="Food &amp; Beverage">Food &amp; Beverage</option>
+            <option value="Home &amp; Garden">Home &amp; Garden</option>
             <option value="Sports">Sports</option>
             <option value="Books">Books</option>
             <option value="Other">Other</option>
           </select>
         </div>
+      </div>
 
+      <div class="form-row">
         <div class="field-group">
-          <label class="field-label">
-            Review Length
-            <span class="slider-label-val" id="length-label">Medium</span>
-          </label>
-          <div class="slider-track-wrap">
-            <span class="slider-cap">Short</span>
-            <input type="range" id="length-slider" class="styled-slider" min="0" max="2" step="1" value="1">
-            <span class="slider-cap">Long</span>
-          </div>
+          <label class="field-label">Length:</label>
+          <select id="length-select" class="form-select">
+            <option value="Short">Short</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="Long">Long</option>
+          </select>
         </div>
-
         <div class="field-group">
-          <label class="field-label">
-            Writing Style
-            <span class="slider-label-val" id="style-label">Conversational</span>
-          </label>
-          <div class="slider-track-wrap">
-            <span class="slider-cap">Formal</span>
-            <input type="range" id="style-slider" class="styled-slider" min="0" max="3" step="1" value="1">
-            <span class="slider-cap">Enthusiastic</span>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Additional Comments <span class="field-optional">(optional)</span></label>
-          <textarea id="comments" class="mono-textarea" placeholder="Key features, strengths, weaknesses, specific experiences, or instructions for the model..."></textarea>
-        </div>
-      </section>
-
-      <!-- SENTIMENT -->
-      <section class="psec">
-        <div class="psec-header">
-          <span class="psec-title">🎚️ SENTIMENT</span>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">
-            Overall Tone
-            <span class="sentiment-display">
-              <span id="overall-emoji" class="sent-emoji">😐</span>
-              <span id="overall-val" class="sent-val">50</span>
-            </span>
-          </label>
-          <div class="slider-track-wrap sentiment-track">
-            <span class="slider-cap">😡</span>
-            <input type="range" id="overall-slider" class="styled-slider sentiment-slider" min="0" max="100" step="1" value="50">
-            <span class="slider-cap">😄</span>
-          </div>
-          <div class="sent-labels">
-            <span>Very Negative</span>
-            <span>Neutral</span>
-            <span>Very Positive</span>
-          </div>
-        </div>
-
-        <div class="aspect-toggle-row">
-          <button id="btn-aspect-toggle" class="xbtn aspect-toggle-btn">+ Aspect Sliders</button>
-          <span class="aspect-hint">Price · Features · Usability</span>
-        </div>
-
-        <div id="aspect-sliders" class="hidden">
-          <div class="field-group aspect-field">
-            <label class="field-label">
-              Price / Value
-              <span class="sentiment-display">
-                <span id="price-emoji" class="sent-emoji">😐</span>
-                <span id="price-val" class="sent-val">50</span>
-              </span>
-            </label>
-            <input type="range" id="price-slider" class="styled-slider sentiment-slider full-slider" min="0" max="100" step="1" value="50">
-          </div>
-          <div class="field-group aspect-field">
-            <label class="field-label">
-              Features
-              <span class="sentiment-display">
-                <span id="features-emoji" class="sent-emoji">😐</span>
-                <span id="features-val" class="sent-val">50</span>
-              </span>
-            </label>
-            <input type="range" id="features-slider" class="styled-slider sentiment-slider full-slider" min="0" max="100" step="1" value="50">
-          </div>
-          <div class="field-group aspect-field">
-            <label class="field-label">
-              Usability
-              <span class="sentiment-display">
-                <span id="usability-emoji" class="sent-emoji">😐</span>
-                <span id="usability-val" class="sent-val">50</span>
-              </span>
-            </label>
-            <input type="range" id="usability-slider" class="styled-slider sentiment-slider full-slider" min="0" max="100" step="1" value="50">
-          </div>
-        </div>
-
-      </section>
-
-      <!-- GENERATE -->
-      <section class="psec psec-action">
-        <button id="btn-generate" class="btn-generate">★ Generate Review</button>
-        <button id="btn-cancel" class="btn-cancel hidden">✕ Cancel</button>
-        <p class="ftc-notice">⚠ FTC Compliance: For educational &amp; development use only. Do not publish AI-generated reviews as genuine consumer reviews. Violations may result in fines up to $51,744 per violation.</p>
-      </section>
-
-    </aside>
-
-    <!-- ════ RIGHT PANEL ════ -->
-    <main class="right-panel" id="right-panel">
-
-      <!-- Placeholder -->
-      <div id="out-placeholder" class="out-placeholder">
-        <div class="ph-inner">
-          <div class="ph-stars">★★★★★</div>
-          <p class="ph-line">Configure your product and hit <strong>Generate Review</strong>.</p>
-          <p class="ph-sub">Set your API key, fill in the product details, tune the sentiment sliders, and let the model write it.</p>
+          <label class="field-label">Style:</label>
+          <select id="style-select" class="form-select">
+            <option value="Formal">Formal</option>
+            <option value="Conversational" selected>Conversational</option>
+            <option value="Technical">Technical</option>
+            <option value="Enthusiastic">Enthusiastic</option>
+          </select>
         </div>
       </div>
 
-      <!-- Loading -->
-      <div id="out-loading" class="hidden out-loading">
-        <div class="loading-pulse">★</div>
-        <p class="loading-text">Generating review<span class="ellipsis">...</span></p>
+      <div class="field-group">
+        <label class="field-label">Comments:</label>
+        <textarea id="comments" class="form-textarea" placeholder="Include key features, strengths, weaknesses, specific experiences, or any advanced instructions for the review..."></textarea>
+      </div>
+    </div>
+
+    <!-- Card 2: LLM and Sentiment Selection -->
+    <div class="card">
+      <div class="card-title">LLM and Sentiment Selection</div>
+      <p id="model-load-status" class="model-status"></p>
+
+      <div class="form-row">
+        <div class="field-group">
+          <label class="field-label">LLM Family:</label>
+          <select id="llm-family" class="form-select">
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Model:</label>
+          <select id="model-select" class="form-select">
+            <option value="">— set API key to load models —</option>
+          </select>
+        </div>
       </div>
 
-      <!-- Output -->
-      <div id="out-review" class="hidden out-review">
+      <div class="sentiment-row">
+        <label class="field-label sent-label">Sentiment:</label>
+        <span id="overall-emoji" class="sent-emoji">😐</span>
+        <input type="range" id="overall-slider" class="sentiment-slider" min="0" max="100" step="1" value="50">
+        <span id="overall-val" class="sent-val">50</span>
+        <button id="btn-generate" class="btn-generate">Generate Review</button>
+      </div>
+    </div>
+
+    <!-- Card 3: Generated Review -->
+    <div class="card">
+      <div class="card-title">Generated Review:</div>
+
+      <div id="out-placeholder" class="out-placeholder">No review generated yet.</div>
+
+      <div id="out-loading" class="out-loading hidden">
+        <span class="loading-star">★</span>
+        <span>Generating review...</span>
+      </div>
+
+      <div id="out-review" class="hidden">
         <div class="out-meta-bar">
-          <div class="out-meta-left">
-            <span class="out-model-tag" id="out-model-tag">model</span>
-            <span class="out-product-tag" id="out-product-tag">product</span>
-          </div>
-          <div class="out-meta-right">
-            <span class="metric-chip" id="m-time" title="Response time">—</span>
-            <span class="metric-chip" id="m-words" title="Word count">—</span>
-            <button id="btn-copy" class="xbtn" title="Copy review text">⎘ copy</button>
-            <button id="btn-regenerate" class="xbtn" title="Generate again">↺ regenerate</button>
+          <span id="out-model-tag" class="out-model-tag"></span>
+          <span id="out-product-tag" class="out-product-tag"></span>
+          <span id="m-time" class="metric-chip"></span>
+          <span id="m-words" class="metric-chip"></span>
+          <div class="out-meta-actions">
+            <button id="btn-copy" class="btn-sm">⎘ Copy</button>
+            <button id="btn-regenerate" class="btn-sm">↺ Regenerate</button>
           </div>
         </div>
         <div id="out-content" class="out-content"></div>
       </div>
 
-      <!-- Error -->
-      <div id="out-error" class="hidden out-error">
-        <div class="err-icon">⚠</div>
+      <div id="out-error" class="out-error hidden">
         <p id="err-message" class="err-message">An error occurred.</p>
-        <button id="btn-err-retry" class="xbtn">↺ Retry</button>
+        <button id="btn-err-retry" class="btn-sm">↺ Retry</button>
       </div>
-
-    </main>
-  </div>
-
-  <!-- ── STATUS BAR ── -->
-  <footer class="status-bar">
-    <span id="sb-status" class="sb-status">READY</span>
-    <span class="sb-sep">│</span>
-    <span id="sb-model">no model</span>
-    <span class="sb-sep">│</span>
-    <span id="sb-sentiment">sentiment: 50/100</span>
-    <div class="sb-right">
-      <span id="sb-key" class="sb-key unset">○ openai key not set</span>
     </div>
-  </footer>
 
-  <!-- ── KEY MODAL ── -->
+    <!-- Bottom actions -->
+    <div class="bottom-row">
+      <button id="btn-cancel" class="btn-cancel hidden">✕ Cancel</button>
+      <button id="btn-download" class="btn-download" disabled>Download Review</button>
+    </div>
+
+  </main>
+
+  <!-- ABOUT / KEY MODAL -->
   <div id="key-modal-overlay" class="modal-overlay hidden">
     <div class="modal">
       <div class="modal-hdr">
-        <span class="modal-title">Set OpenAI API Key</span>
+        <span class="modal-title">About &amp; API Key</span>
         <button id="key-modal-close" class="modal-x">✕</button>
       </div>
       <div class="modal-body">
-        <p class="modal-notice">🔒 Stored in memory only. Cleared when this page closes. Sent directly to OpenAI — nothing passes through any intermediate server.</p>
-        <input type="password" id="key-modal-input" class="mono-input" placeholder="Paste your OpenAI API key (sk-...)" autocomplete="off" spellcheck="false">
+        <p class="modal-notice">🔒 Key stored in memory only — cleared when this page closes. Sent directly to OpenAI, never through any intermediate server.</p>
+        <div id="key-display" class="key-display"><span class="unset-text">not set</span></div>
+        <input type="password" id="key-modal-input" class="form-input" placeholder="Paste your OpenAI API key (sk-...)" autocomplete="off" spellcheck="false">
         <div class="modal-actions">
-          <button id="key-modal-confirm" class="btn-generate" style="padding:8px 20px;font-size:13px">Save Key</button>
-          <button id="key-modal-cancel" class="xbtn">Cancel</button>
+          <button id="key-modal-confirm" class="btn-generate" style="padding:8px 20px">Save Key</button>
+          <label class="btn-sm file-label">↑ .env file<input type="file" id="file-key" accept=".env,.csv,.txt" hidden></label>
+          <button id="btn-clear-key" class="btn-danger hidden">× Clear Key</button>
+          <button id="key-modal-cancel" class="btn-sm">Cancel</button>
         </div>
+        <p class="ftc-notice">⚠ FTC Compliance: For educational &amp; development use only. Do not publish AI-generated reviews as genuine consumer reviews. Violations may result in fines up to $51,744 per violation.</p>
       </div>
     </div>
   </div>
 
+  <div id="toast"></div>
   <script src="script.js"></script>
 </body>
 </html>

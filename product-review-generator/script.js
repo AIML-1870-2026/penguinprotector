@@ -12,9 +12,6 @@ const FALLBACK_MODELS = [
   'gpt-3.5-turbo',
 ];
 
-const LENGTH_LABELS  = ['Short', 'Medium', 'Long'];
-const STYLE_LABELS   = ['Formal', 'Conversational', 'Technical', 'Enthusiastic'];
-
 const LENGTH_INSTRUCTIONS = {
   Short:  'Write a short review of 2–3 paragraphs.',
   Medium: 'Write a medium-length review of 4–6 paragraphs.',
@@ -33,9 +30,8 @@ const STYLE_INSTRUCTIONS = {
 const state = {
   apiKey:          null,
   model:           '',
-  modelsCache:     null,  // cached list from OpenAI /v1/models
+  modelsCache:     null,
   abortController: null,
-  aspectOpen:      false,
 };
 
 // ── DOM refs ───────────────────────────────────────────
@@ -43,43 +39,27 @@ const state = {
 const $ = id => document.getElementById(id);
 
 const el = {
-  // Key
-  keyDisplay:      $('key-display'),
-  btnSetKey:       $('btn-set-key'),
-  fileKey:         $('file-key'),
-  btnClearKey:     $('btn-clear-key'),
-  keyStatusDot:    $('key-status-dot'),
-  keyStatusText:   $('key-status-text'),
-  // Model
-  modelSelect:     $('model-select'),
-  modelLoadStatus: $('model-load-status'),
+  // About / key modal trigger
+  btnAbout:        $('btn-about'),
   // Product info
   productName:     $('product-name'),
   category:        $('category'),
-  lengthSlider:    $('length-slider'),
-  lengthLabel:     $('length-label'),
-  styleSlider:     $('style-slider'),
-  styleLabel:      $('style-label'),
+  lengthSelect:    $('length-select'),
+  styleSelect:     $('style-select'),
   comments:        $('comments'),
+  // LLM selection
+  llmFamily:       $('llm-family'),
+  modelSelect:     $('model-select'),
+  modelLoadStatus: $('model-load-status'),
   // Sentiment
   overallSlider:   $('overall-slider'),
   overallEmoji:    $('overall-emoji'),
   overallVal:      $('overall-val'),
-  btnAspect:       $('btn-aspect-toggle'),
-  aspectSliders:   $('aspect-sliders'),
-  priceSlider:     $('price-slider'),
-  priceEmoji:      $('price-emoji'),
-  priceVal:        $('price-val'),
-  featuresSlider:  $('features-slider'),
-  featuresEmoji:   $('features-emoji'),
-  featuresVal:     $('features-val'),
-  usabilitySlider: $('usability-slider'),
-  usabilityEmoji:  $('usability-emoji'),
-  usabilityVal:    $('usability-val'),
   // Actions
   btnGenerate:     $('btn-generate'),
   btnCancel:       $('btn-cancel'),
-  // Output
+  btnDownload:     $('btn-download'),
+  // Output panels
   outPlaceholder:  $('out-placeholder'),
   outLoading:      $('out-loading'),
   outReview:       $('out-review'),
@@ -93,27 +73,24 @@ const el = {
   outContent:      $('out-content'),
   errMessage:      $('err-message'),
   btnErrRetry:     $('btn-err-retry'),
-  // Status bar
-  sbStatus:        $('sb-status'),
-  sbModel:         $('sb-model'),
-  sbSentiment:     $('sb-sentiment'),
-  sbKey:           $('sb-key'),
   // Key modal
   keyModalOverlay: $('key-modal-overlay'),
+  keyDisplay:      $('key-display'),
   keyModalInput:   $('key-modal-input'),
   keyModalClose:   $('key-modal-close'),
   keyModalConfirm: $('key-modal-confirm'),
   keyModalCancel:  $('key-modal-cancel'),
+  btnClearKey:     $('btn-clear-key'),
+  fileKey:         $('file-key'),
 };
 
 // ════════════════════════════════════════════════════════
-//  KEY MANAGEMENT  (pattern from switchboard-explorer)
+//  KEY MANAGEMENT
 // ════════════════════════════════════════════════════════
 
 function setKey(key) {
   state.apiKey = key.trim();
   updateKeyUI();
-  updateStatusBar();
   fetchModels();
 }
 
@@ -123,38 +100,29 @@ function clearKey() {
   state.model = '';
   updateKeyUI();
   resetModelSelect();
-  updateStatusBar();
 }
 
 function updateKeyUI() {
   const key = state.apiKey;
   if (key) {
     const masked = key.slice(0, 6) + '••••••••' + key.slice(-4);
-    el.keyDisplay.innerHTML = `<span style="color:var(--green);font-family:var(--font-mono)">${masked}</span>`;
+    el.keyDisplay.innerHTML = `<span style="color:#5E72EB;font-family:monospace">${masked}</span>`;
     el.btnClearKey.classList.remove('hidden');
-    el.keyStatusDot.className = 'key-dot set';
-    el.keyStatusText.textContent = 'API Key Set';
   } else {
     el.keyDisplay.innerHTML = '<span class="unset-text">not set</span>';
     el.btnClearKey.classList.add('hidden');
-    el.keyStatusDot.className = 'key-dot unset';
-    el.keyStatusText.textContent = 'No API Key';
   }
 }
 
-// Parse .env (KEY=value) or .csv (provider,key) — same as switchboard-explorer
 function parseKeyFile(text) {
-  // .env format: OPENAI_API_KEY=sk-...
   const envMatch = text.match(/OPENAI[_A-Z]*\s*=\s*(.+)/i);
   if (envMatch) return envMatch[1].trim();
 
-  // .csv format: openai,sk-...
   for (const line of text.split('\n')) {
     const [col0, col1] = line.split(',').map(s => s.trim());
     if (col0?.toLowerCase().includes('openai') && col1) return col1;
   }
 
-  // Raw key fallback: bare sk-... string
   const bare = text.trim();
   if (bare.startsWith('sk-') && bare.length > 10) return bare;
 
@@ -197,14 +165,15 @@ function confirmKeyModal() {
 }
 
 // ════════════════════════════════════════════════════════
-//  MODEL FETCHING  (dynamic from OpenAI, cached)
+//  MODEL FETCHING
 // ════════════════════════════════════════════════════════
 
 async function fetchModels() {
   if (!state.apiKey) return;
-  if (state.modelsCache) { populateModelSelect(state.modelsCache); return; }
+  if (state.modelsCache) { populateModelSelect(state.modelsCache, true); return; }
 
-  el.modelLoadStatus.textContent = 'Fetching model list…';
+  el.modelLoadStatus.textContent = 'Fetching models…';
+  el.modelLoadStatus.style.color = '#6b7280';
 
   try {
     const resp = await fetch('https://api.openai.com/v1/models', {
@@ -215,12 +184,10 @@ async function fetchModels() {
 
     const data = await resp.json();
 
-    // Filter to GPT chat models, sort
     const gptModels = data.data
       .map(m => m.id)
       .filter(id => /^gpt-/.test(id) && !id.includes('instruct') && !id.includes('realtime') && !id.includes('audio') && !id.includes('vision'))
       .sort((a, b) => {
-        // Prioritize gpt-4o > gpt-4-turbo > gpt-4 > gpt-3.5
         const rank = id => {
           if (id.startsWith('gpt-4o')) return 0;
           if (id.startsWith('gpt-4-turbo')) return 1;
@@ -232,31 +199,40 @@ async function fetchModels() {
 
     const models = gptModels.length ? gptModels : FALLBACK_MODELS;
     state.modelsCache = models;
-    populateModelSelect(models);
-    el.modelLoadStatus.textContent = `${models.length} models loaded.`;
+    populateModelSelect(models, false);
+
+    // Update LLM Family label with count
+    el.llmFamily.options[0].text = `OpenAI (${models.length} models)`;
+    el.modelLoadStatus.textContent = 'Models discovered successfully (cached)';
+    el.modelLoadStatus.style.color = '#16a34a';
   } catch (err) {
     console.warn('Model fetch failed, using fallback list:', err.message);
     state.modelsCache = FALLBACK_MODELS;
-    populateModelSelect(FALLBACK_MODELS);
+    populateModelSelect(FALLBACK_MODELS, false);
     el.modelLoadStatus.textContent = 'Using default model list.';
+    el.modelLoadStatus.style.color = '#6b7280';
   }
 }
 
-function populateModelSelect(models) {
+function populateModelSelect(models, cached) {
   el.modelSelect.innerHTML = models
-    .map(m => `<option value="${m}">${m}</option>`)
+    .map((m, i) => `<option value="${m}">${i === 0 ? '⭐ ' : ''}${m}</option>`)
     .join('');
   state.model = models[0];
-  updateStatusBar();
+  if (cached) {
+    el.modelLoadStatus.textContent = 'Models discovered successfully (cached)';
+    el.modelLoadStatus.style.color = '#16a34a';
+  }
 }
 
 function resetModelSelect() {
   el.modelSelect.innerHTML = '<option value="">— set API key to load models —</option>';
+  el.llmFamily.options[0].text = 'OpenAI';
   el.modelLoadStatus.textContent = '';
 }
 
 // ════════════════════════════════════════════════════════
-//  SLIDER HELPERS
+//  SENTIMENT HELPERS
 // ════════════════════════════════════════════════════════
 
 function sentimentEmoji(val) {
@@ -279,11 +255,10 @@ function sentimentDesc(val) {
   return 'very positive — glowing endorsement';
 }
 
-function updateSentimentSlider(slider, emojiEl, valEl) {
-  const v = parseInt(slider.value);
-  emojiEl.textContent = sentimentEmoji(v);
-  valEl.textContent   = v;
-  slider.style.setProperty('--pct', `${v}%`);
+function updateSentiment() {
+  const v = parseInt(el.overallSlider.value);
+  el.overallEmoji.textContent = sentimentEmoji(v);
+  el.overallVal.textContent   = v;
 }
 
 // ════════════════════════════════════════════════════════
@@ -293,22 +268,10 @@ function updateSentimentSlider(slider, emojiEl, valEl) {
 function buildPrompt() {
   const name       = el.productName.value.trim() || 'this product';
   const category   = el.category.value;
-  const lengthKey  = LENGTH_LABELS[parseInt(el.lengthSlider.value)];
-  const styleKey   = STYLE_LABELS[parseInt(el.styleSlider.value)];
+  const lengthKey  = el.lengthSelect.value;
+  const styleKey   = el.styleSelect.value;
   const comments   = el.comments.value.trim();
   const overall    = parseInt(el.overallSlider.value);
-
-  const lengthInstr = LENGTH_INSTRUCTIONS[lengthKey];
-  const styleInstr  = STYLE_INSTRUCTIONS[styleKey];
-
-  let sentimentBlock = `Overall sentiment: ${overall}/100 — ${sentimentDesc(overall)}.`;
-
-  if (state.aspectOpen) {
-    const price    = parseInt(el.priceSlider.value);
-    const features = parseInt(el.featuresSlider.value);
-    const usability= parseInt(el.usabilitySlider.value);
-    sentimentBlock += `\n  • Price/Value sentiment: ${price}/100 — ${sentimentDesc(price)}\n  • Features sentiment: ${features}/100 — ${sentimentDesc(features)}\n  • Usability sentiment: ${usability}/100 — ${sentimentDesc(usability)}`;
-  }
 
   const commentsBlock = comments
     ? `\nAdditional context / requirements:\n${comments}`
@@ -319,10 +282,10 @@ function buildPrompt() {
 Product: "${name}"
 Category: ${category}
 
-${lengthInstr}
-${styleInstr}
+${LENGTH_INSTRUCTIONS[lengthKey]}
+${STYLE_INSTRUCTIONS[styleKey]}
 
-${sentimentBlock}
+Overall sentiment: ${overall}/100 — ${sentimentDesc(overall)}.
 ${commentsBlock}
 
 Format your response as a well-structured review using markdown:
@@ -335,28 +298,24 @@ Write only the review — no preamble, no meta-commentary.`.trim();
 }
 
 // ════════════════════════════════════════════════════════
-//  API CALL  (pattern from switchboard-explorer)
+//  API CALL
 // ════════════════════════════════════════════════════════
 
 async function callOpenAI(prompt, model, signal) {
-  const body = {
-    model,
-    messages: [
-      { role: 'user', content: prompt },
-    ],
-    max_tokens: 1500,
-    temperature: 0.85,
-  };
-
   const start = performance.now();
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization':  `Bearer ${state.apiKey}`,
-      'Content-Type':   'application/json',
+      'Authorization': `Bearer ${state.apiKey}`,
+      'Content-Type':  'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1500,
+      temperature: 0.85,
+    }),
     signal,
   });
 
@@ -377,7 +336,7 @@ async function callOpenAI(prompt, model, signal) {
 // ════════════════════════════════════════════════════════
 
 async function generate() {
-  if (!state.apiKey) { showToast('Set your OpenAI API key first.'); return; }
+  if (!state.apiKey) { openKeyModal(); showToast('Set your OpenAI API key first.'); return; }
 
   const model = el.modelSelect.value;
   if (!model) { showToast('Select a model first.'); return; }
@@ -388,18 +347,16 @@ async function generate() {
   state.abortController = new AbortController();
 
   showPanel('loading');
-  setStatus('GENERATING…', 'working');
   el.btnGenerate.disabled = true;
   el.btnCancel.classList.remove('hidden');
+  el.btnDownload.disabled = true;
 
   try {
     const prompt = buildPrompt();
     const { text, elapsed } = await callOpenAI(prompt, model, state.abortController.signal);
 
-    // Render markdown
     el.outContent.innerHTML = marked.parse(text);
 
-    // Meta bar
     const wordCount = text.trim().split(/\s+/).length;
     el.outModelTag.textContent   = model;
     el.outProductTag.textContent = productName;
@@ -407,15 +364,17 @@ async function generate() {
     el.mWords.textContent        = `${wordCount} words`;
 
     showPanel('review');
-    setStatus('READY');
+
+    // Enable download
+    el.btnDownload.disabled = false;
+    el.btnDownload._reviewText = text;
+    el.btnDownload._productName = productName;
   } catch (err) {
     if (err.name === 'AbortError') {
       showPanel('placeholder');
-      setStatus('READY');
     } else {
       el.errMessage.textContent = err.message;
       showPanel('error');
-      setStatus('ERROR', 'error');
     }
   } finally {
     el.btnGenerate.disabled = false;
@@ -426,6 +385,26 @@ async function generate() {
 
 function cancelGenerate() {
   state.abortController?.abort();
+}
+
+// ════════════════════════════════════════════════════════
+//  DOWNLOAD
+// ════════════════════════════════════════════════════════
+
+function downloadReview() {
+  const text = el.btnDownload._reviewText;
+  if (!text) return;
+
+  const filename = (el.btnDownload._productName || 'review')
+    .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-review.txt';
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ════════════════════════════════════════════════════════
@@ -444,31 +423,8 @@ function showPanel(name) {
   if (name === 'error')       el.outError.classList.remove('hidden');
 }
 
-function setStatus(text, cls = '') {
-  el.sbStatus.textContent = text;
-  el.sbStatus.className   = 'sb-status' + (cls ? ` ${cls}` : '');
-}
-
-function updateStatusBar() {
-  el.sbModel.textContent     = state.model || 'no model';
-  el.sbSentiment.textContent = `sentiment: ${el.overallSlider.value}/100`;
-
-  if (state.apiKey) {
-    el.sbKey.textContent  = '● openai key set';
-    el.sbKey.className    = 'sb-key set';
-  } else {
-    el.sbKey.textContent  = '○ openai key not set';
-    el.sbKey.className    = 'sb-key unset';
-  }
-}
-
 function showToast(msg) {
   let t = document.getElementById('toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'toast';
-    document.body.appendChild(t);
-  }
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._timer);
@@ -479,76 +435,38 @@ function showToast(msg) {
 //  EVENT LISTENERS
 // ════════════════════════════════════════════════════════
 
-// Key management
-el.btnSetKey.addEventListener('click', openKeyModal);
-el.btnClearKey.addEventListener('click', () => { clearKey(); showToast('API key cleared.'); });
-el.fileKey.addEventListener('change', e => {
-  if (e.target.files[0]) handleFileUpload(e.target.files[0]);
-  e.target.value = '';
-});
+el.btnAbout.addEventListener('click', openKeyModal);
 
-// Key modal
 el.keyModalClose.addEventListener('click', closeKeyModal);
 el.keyModalCancel.addEventListener('click', closeKeyModal);
 el.keyModalConfirm.addEventListener('click', confirmKeyModal);
 el.keyModalOverlay.addEventListener('click', e => { if (e.target === el.keyModalOverlay) closeKeyModal(); });
 el.keyModalInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmKeyModal(); });
 
-// Model
-el.modelSelect.addEventListener('change', () => {
-  state.model = el.modelSelect.value;
-  updateStatusBar();
+el.btnClearKey.addEventListener('click', () => { clearKey(); showToast('API key cleared.'); });
+el.fileKey.addEventListener('change', e => {
+  if (e.target.files[0]) handleFileUpload(e.target.files[0]);
+  e.target.value = '';
 });
 
-// Length slider
-el.lengthSlider.addEventListener('input', () => {
-  el.lengthLabel.textContent = LENGTH_LABELS[parseInt(el.lengthSlider.value)];
-});
+el.modelSelect.addEventListener('change', () => { state.model = el.modelSelect.value; });
 
-// Style slider
-el.styleSlider.addEventListener('input', () => {
-  el.styleLabel.textContent = STYLE_LABELS[parseInt(el.styleSlider.value)];
-});
+el.overallSlider.addEventListener('input', updateSentiment);
 
-// Sentiment sliders
-el.overallSlider.addEventListener('input', () => {
-  updateSentimentSlider(el.overallSlider, el.overallEmoji, el.overallVal);
-  updateStatusBar();
-});
-
-el.priceSlider.addEventListener('input', () =>
-  updateSentimentSlider(el.priceSlider, el.priceEmoji, el.priceVal)
-);
-el.featuresSlider.addEventListener('input', () =>
-  updateSentimentSlider(el.featuresSlider, el.featuresEmoji, el.featuresVal)
-);
-el.usabilitySlider.addEventListener('input', () =>
-  updateSentimentSlider(el.usabilitySlider, el.usabilityEmoji, el.usabilityVal)
-);
-
-// Aspect toggle
-el.btnAspect.addEventListener('click', () => {
-  state.aspectOpen = !state.aspectOpen;
-  el.aspectSliders.classList.toggle('hidden', !state.aspectOpen);
-  el.btnAspect.textContent = state.aspectOpen ? '− Aspect Sliders' : '+ Aspect Sliders';
-});
-
-// Generate / cancel
 el.btnGenerate.addEventListener('click', generate);
 el.btnCancel.addEventListener('click', cancelGenerate);
 el.btnRegenerate.addEventListener('click', generate);
 el.btnErrRetry.addEventListener('click', generate);
 
-// Copy review
 el.btnCopy.addEventListener('click', () => {
-  const text = el.outContent.innerText;
-  navigator.clipboard.writeText(text).then(
+  navigator.clipboard.writeText(el.outContent.innerText).then(
     () => showToast('Review copied to clipboard.'),
-    () => showToast('Copy failed — try manually selecting the text.'),
+    () => showToast('Copy failed — try selecting the text manually.'),
   );
 });
 
-// Keyboard shortcut: Cmd/Ctrl + Enter to generate
+el.btnDownload.addEventListener('click', downloadReview);
+
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault();
@@ -561,16 +479,6 @@ document.addEventListener('keydown', e => {
 // ════════════════════════════════════════════════════════
 
 (function init() {
-  // Initialize slider labels
-  el.lengthLabel.textContent = LENGTH_LABELS[parseInt(el.lengthSlider.value)];
-  el.styleLabel.textContent  = STYLE_LABELS[parseInt(el.styleSlider.value)];
-
-  // Initialize sentiment displays
-  updateSentimentSlider(el.overallSlider,    el.overallEmoji,    el.overallVal);
-  updateSentimentSlider(el.priceSlider,      el.priceEmoji,      el.priceVal);
-  updateSentimentSlider(el.featuresSlider,   el.featuresEmoji,   el.featuresVal);
-  updateSentimentSlider(el.usabilitySlider,  el.usabilityEmoji,  el.usabilityVal);
-
-  updateStatusBar();
+  updateSentiment();
   showPanel('placeholder');
 })();
