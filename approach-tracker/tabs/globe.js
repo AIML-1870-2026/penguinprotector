@@ -144,21 +144,17 @@ export async function initGlobe(state) {
   if (_preselectAc) { _preselectAc.abort(); _preselectAc = null; }
   container.innerHTML = '';
 
-  // Color: selected spike turns white; others use distance-coded opacity
-  const spikeColor = p => {
-    if (p.isMoon) return '#9ca3af';
-    if (state.selectedNeo === p.id) return '#ffffff';
-    const opacity = Math.max(0.45, 1 - (p.alt / (MAX_ALTITUDE + 0.05)) * 0.55).toFixed(2);
+  // Tether color — thin line from surface to orb, same hue but dim
+  const tetherColor = p => {
+    if (p.isMoon) return 'rgba(156,163,175,0.3)';
+    if (state.selectedNeo === p.id) return 'rgba(255,255,255,0.5)';
     return p.isPha
-      ? `rgba(245,158,11,${opacity})`
-      : `rgba(0,212,170,${opacity})`;
+      ? 'rgba(245,158,11,0.25)'
+      : 'rgba(0,212,170,0.2)';
   };
 
-  // Radius: selected spike is 2× wider
-  const spikeRadius = p => {
-    if (state.selectedNeo === p.id) return (p.isPha ? 0.55 : 0.38) * 2;
-    return p.isPha ? 0.55 : 0.38;
-  };
+  // Hairline tether — just wide enough to be clickable
+  const tetherRadius = () => 0.08;
 
   const asteroidPoints = points.filter(p => !p.isMoon);
 
@@ -168,12 +164,12 @@ export async function initGlobe(state) {
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
     .atmosphereColor('#3a7bd5')
     .atmosphereAltitude(0.22)
-    // Spikes
+    // Hairline tethers (thin lines from surface to orb, also handle clicks)
     .pointsData(points)
     .pointAltitude('alt')
-    .pointColor(spikeColor)
-    .pointRadius(spikeRadius)
-    .pointResolution(12)
+    .pointColor(tetherColor)
+    .pointRadius(tetherRadius)
+    .pointResolution(6)
     .pointLabel(p =>
       `<div style="font-family:monospace;font-size:12px;background:#111827dd;padding:4px 8px;border-radius:4px;color:#f9fafb;border:1px solid #1f2937">${p.name}</div>`
     )
@@ -181,7 +177,7 @@ export async function initGlobe(state) {
       if (p.isMoon) return;
       state.selectedNeo = p.id;
       renderInfoPanel(p);
-      // Re-render spikes and orbs to apply selection highlight
+      // Re-render tethers and orbs to apply selection highlight
       globe.pointsData(points);
       globe.customLayerData(asteroidPoints);
     })
@@ -198,24 +194,38 @@ export async function initGlobe(state) {
     .customThreeObject(p => {
       const T = window.THREE;
       if (!T) return null;
-      const color = p.isPha ? 0xf59e0b : 0x00d4aa;
-      const radius = p.isPha ? 0.55 : 0.38;
-      const geo = new T.SphereGeometry(radius, 10, 10);
-      const mat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 });
-      return new T.Mesh(geo, mat);
+      const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
+      const radius = p.isMoon ? 2.2 : (p.isPha ? 1.6 : 1.1);
+      // Outer glow shell — large, transparent
+      const glowGeo = new T.SphereGeometry(radius * 1.6, 12, 12);
+      const glowMat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, depthWrite: false });
+      const glow    = new T.Mesh(glowGeo, glowMat);
+      // Inner solid orb
+      const coreGeo = new T.SphereGeometry(radius, 14, 14);
+      const coreMat = new T.MeshBasicMaterial({ color, transparent: true, opacity: 0.88 });
+      const core    = new T.Mesh(coreGeo, coreMat);
+      const group   = new T.Group();
+      group.add(glow);
+      group.add(core);
+      group._coreColor = color;
+      group._core = core;
+      group._glow = glow;
+      return group;
     })
     .customThreeObjectUpdate((obj, p) => {
       if (!obj) return;
-      const coords = globe.getCoords(p.lat, p.lng, p.alt + 0.04);
+      const coords = globe.getCoords(p.lat, p.lng, p.alt);
       if (coords) Object.assign(obj.position, coords);
-      // Highlight selected orb: white color, 2× scale
       const isSelected = state.selectedNeo === p.id;
       const T = window.THREE;
-      if (T) {
-        obj.material.color.set(isSelected ? 0xffffff : (p.isPha ? 0xf59e0b : 0x00d4aa));
-        obj.material.opacity = isSelected ? 1.0 : 0.92;
+      if (T && obj._core) {
+        const col = isSelected ? 0xffffff : obj._coreColor;
+        obj._core.material.color.set(col);
+        obj._glow.material.color.set(col);
+        obj._core.material.opacity = isSelected ? 1.0 : 0.88;
+        obj._glow.material.opacity = isSelected ? 0.22 : 0.12;
       }
-      const s = isSelected ? 2.2 : 1.0;
+      const s = isSelected ? 1.6 : 1.0;
       obj.scale.set(s, s, s);
     })
     .width(container.offsetWidth)
