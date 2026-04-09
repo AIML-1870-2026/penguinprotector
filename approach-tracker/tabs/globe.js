@@ -187,43 +187,27 @@ export async function initGlobe(state) {
       const T = window.THREE;
       if (!T) return null;
       const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
-      const radius = p.isMoon ? 2.4 : (p.isPha ? 2.0 : 1.4);
-
-      const make = (r, opacity, depthWrite = false) => {
-        const m = new T.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite });
-        return new T.Mesh(new T.SphereGeometry(r, 16, 16), m);
-      };
-
-      const core   = make(radius,       0.95, true);   // bright solid centre
-      const mid    = make(radius * 1.5, 0.30);          // mid glow
-      const outer  = make(radius * 2.4, 0.10);          // wide soft halo
-
-      const group = new T.Group();
-      group.add(outer);
-      group.add(mid);
-      group.add(core);
-      group._color = color;
-      group._core  = core;
-      group._mid   = mid;
-      group._outer = outer;
-      return group;
+      const radius = p.isMoon ? 5.0 : (p.isPha ? 4.0 : 3.0);
+      const geo = new T.SphereGeometry(radius, 16, 16);
+      const mat = new T.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        blending: T.AdditiveBlending,
+        depthWrite: false,
+      });
+      const mesh = new T.Mesh(geo, mat);
+      mesh._baseColor = color;
+      return mesh;
     })
     .customThreeObjectUpdate((obj, p) => {
       if (!obj) return;
       const coords = globe.getCoords(p.lat, p.lng, p.alt);
       if (coords) Object.assign(obj.position, coords);
       const isSelected = state.selectedNeo === p.id;
-      const T = window.THREE;
-      if (T && obj._core) {
-        const col = isSelected ? 0xffffff : obj._color;
-        obj._core.material.color.set(col);
-        obj._mid.material.color.set(col);
-        obj._outer.material.color.set(col);
-        obj._core.material.opacity  = isSelected ? 1.0  : 0.95;
-        obj._mid.material.opacity   = isSelected ? 0.45 : 0.30;
-        obj._outer.material.opacity = isSelected ? 0.18 : 0.10;
-      }
-      const s = isSelected ? 1.7 : 1.0;
+      obj.material.color.set(isSelected ? 0xffffff : obj._baseColor);
+      obj.material.opacity = isSelected ? 1.0 : 0.92;
+      const s = isSelected ? 1.8 : 1.0;
       obj.scale.set(s, s, s);
     })
     .width(container.offsetWidth)
