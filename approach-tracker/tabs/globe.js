@@ -169,9 +169,8 @@ export async function initGlobe(state) {
       if (p.isMoon) return;
       state.selectedNeo = p.id;
       renderInfoPanel(p);
-      // Re-render tethers and orbs to apply selection highlight
       globe.pointsData(points);
-      globe.customLayerData(asteroidPoints);
+      if (window.THREE) globe.customLayerData(asteroidPoints);
     })
     // Pulsing sonar rings at each asteroid's base
     .ringsData(asteroidPoints)
@@ -181,35 +180,6 @@ export async function initGlobe(state) {
     .ringMaxRadius(p => p.isPha ? 3.5 : 2.2)
     .ringPropagationSpeed(p => p.isPha ? 1.8 : 1.1)
     .ringRepeatPeriod(p => p.isPha ? 700 : 1400)
-    // Glowing orbs floating in space at miss-distance altitude
-    .customLayerData(asteroidPoints)
-    .customThreeObject(p => {
-      const T = window.THREE;
-      if (!T) return null;
-      const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
-      const radius = p.isMoon ? 5.0 : (p.isPha ? 4.0 : 3.0);
-      const geo = new T.SphereGeometry(radius, 16, 16);
-      const mat = new T.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.92,
-        blending: T.AdditiveBlending,
-        depthWrite: false,
-      });
-      const mesh = new T.Mesh(geo, mat);
-      mesh._baseColor = color;
-      return mesh;
-    })
-    .customThreeObjectUpdate((obj, p) => {
-      if (!obj) return;
-      const coords = globe.getCoords(p.lat, p.lng, p.alt);
-      if (coords) Object.assign(obj.position, coords);
-      const isSelected = state.selectedNeo === p.id;
-      obj.material.color.set(isSelected ? 0xffffff : obj._baseColor);
-      obj.material.opacity = isSelected ? 1.0 : 0.92;
-      const s = isSelected ? 1.8 : 1.0;
-      obj.scale.set(s, s, s);
-    })
     .width(container.offsetWidth)
     .height(container.offsetHeight);
 
@@ -223,6 +193,40 @@ export async function initGlobe(state) {
   // Cloud layer — thin transparent sphere slightly above the surface
   _addCloudLayer(globe);
 
+  // Orbs — added AFTER Globe() construction so window.THREE is guaranteed set.
+  // globe.gl sets window.THREE as a side effect of Globe(), so registering
+  // customThreeObject inside the constructor chain sees THREE as null.
+  const T = window.THREE;
+  if (T) {
+    globe
+      .customLayerData(asteroidPoints)
+      .customThreeObject(p => {
+        const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
+        const radius = p.isPha ? 4.0 : 3.0;
+        const geo = new T.SphereGeometry(radius, 16, 16);
+        const mat = new T.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.92,
+          blending: T.AdditiveBlending,
+          depthWrite: false,
+        });
+        const mesh = new T.Mesh(geo, mat);
+        mesh._baseColor = color;
+        return mesh;
+      })
+      .customThreeObjectUpdate((obj, p) => {
+        if (!obj) return;
+        const coords = globe.getCoords(p.lat, p.lng, p.alt);
+        if (coords) Object.assign(obj.position, coords);
+        const isSelected = state.selectedNeo === p.id;
+        obj.material.color.set(isSelected ? 0xffffff : obj._baseColor);
+        obj.material.opacity = isSelected ? 1.0 : 0.92;
+        const s = isSelected ? 1.8 : 1.0;
+        obj.scale.set(s, s, s);
+      });
+  }
+
   // Pre-select the closest NEO and apply highlight
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
   if (sorted.length) {
@@ -231,7 +235,7 @@ export async function initGlobe(state) {
       state.selectedNeo = first.id;
       renderInfoPanel(first);
       globe.pointsData(points);
-      globe.customLayerData(asteroidPoints);
+      if (window.THREE) globe.customLayerData(asteroidPoints);
     }
   }
 
@@ -254,7 +258,7 @@ export async function initGlobe(state) {
     state.selectedNeo = p.id;
     renderInfoPanel(p);
     globe.pointsData(_points);
-    globe.customLayerData(_points.filter(pt => !pt.isMoon));
+    if (window.THREE) globe.customLayerData(_points.filter(pt => !pt.isMoon));
   }, { signal: _preselectAc.signal });
 
   // Responsive resize — disconnect previous observer before creating a new one
