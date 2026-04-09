@@ -144,17 +144,15 @@ export async function initGlobe(state) {
   if (_preselectAc) { _preselectAc.abort(); _preselectAc = null; }
   container.innerHTML = '';
 
-  // Tether color — thin line from surface to orb, same hue but dim
-  const tetherColor = p => {
-    if (p.isMoon) return 'rgba(156,163,175,0.3)';
-    if (state.selectedNeo === p.id) return 'rgba(255,255,255,0.5)';
-    return p.isPha
-      ? 'rgba(245,158,11,0.25)'
-      : 'rgba(0,212,170,0.2)';
+  // Surface point color
+  const pointColor = p => {
+    if (p.isMoon) return '#9ca3af';
+    if (state.selectedNeo === p.id) return '#ffffff';
+    return p.isPha ? '#f59e0b' : '#00d4aa';
   };
 
-  // Hairline tether — just wide enough to be clickable
-  const tetherRadius = () => 0.08;
+  // Surface point radius
+  const pointRadius = p => state.selectedNeo === p.id ? 0.6 : (p.isPha ? 0.45 : 0.32);
 
   const asteroidPoints = points.filter(p => !p.isMoon);
 
@@ -164,12 +162,12 @@ export async function initGlobe(state) {
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
     .atmosphereColor('#3a7bd5')
     .atmosphereAltitude(0.22)
-    // Hairline tethers (thin lines from surface to orb, also handle clicks)
+    // Flat surface points (base markers) + click handling
     .pointsData(points)
-    .pointAltitude('alt')
-    .pointColor(tetherColor)
-    .pointRadius(tetherRadius)
-    .pointResolution(6)
+    .pointAltitude(0)
+    .pointColor(pointColor)
+    .pointRadius(pointRadius)
+    .pointResolution(12)
     .pointLabel(p =>
       `<div style="font-family:monospace;font-size:12px;background:#111827dd;padding:4px 8px;border-radius:4px;color:#f9fafb;border:1px solid #1f2937">${p.name}</div>`
     )
