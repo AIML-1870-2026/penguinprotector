@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 //  PRODUCT REVIEW GENERATOR — script.js
-//  OpenAI only. API key in-memory only. Markdown → HTML.
+//  OpenAI streaming. API key in-memory only. Markdown → HTML.
 // ═══════════════════════════════════════════════════════
 
 // ── Constants ──────────────────────────────────────────
@@ -25,6 +25,29 @@ const STYLE_INSTRUCTIONS = {
   Enthusiastic:   'Use an enthusiastic, energetic tone — vivid and expressive.',
 };
 
+const SURPRISE_PRODUCTS = [
+  { name: 'Noise-Cancelling Headphones',    category: 'Electronics'      },
+  { name: 'Self-Warming Coffee Mug',         category: 'Electronics'      },
+  { name: 'Himalayan Salt Chocolate Bar',    category: 'Food & Beverage'  },
+  { name: 'Weighted Blanket',                category: 'Home & Garden'    },
+  { name: 'Ergonomic Standing Desk',         category: 'Home & Garden'    },
+  { name: 'Sourdough Starter Kit',           category: 'Food & Beverage'  },
+  { name: 'Smart Water Bottle',              category: 'Electronics'      },
+  { name: 'Vintage Denim Jacket',            category: 'Clothing'         },
+  { name: 'Indoor Herb Garden Kit',          category: 'Home & Garden'    },
+  { name: 'Portable Espresso Maker',         category: 'Electronics'      },
+  { name: 'Foam Roller Set',                 category: 'Sports'           },
+  { name: 'The Hitchhiker\'s Guide to the Galaxy', category: 'Books'     },
+  { name: 'Mechanical Keyboard',             category: 'Electronics'      },
+  { name: 'Oat Milk Barista Edition',        category: 'Food & Beverage'  },
+  { name: 'Trail Running Shoes',             category: 'Sports'           },
+  { name: 'Bamboo Cutting Board Set',        category: 'Home & Garden'    },
+  { name: 'Wireless Charging Pad',           category: 'Electronics'      },
+  { name: 'Cold Brew Coffee Kit',            category: 'Food & Beverage'  },
+];
+
+const MAX_HISTORY = 5;
+
 // ── State ──────────────────────────────────────────────
 
 const state = {
@@ -32,6 +55,10 @@ const state = {
   model:           '',
   modelsCache:     null,
   abortController: null,
+  history:         [],   // [{text, model, product, elapsed, words, stars}]
+  activeHistoryIdx: null,
+  reviewText:      null,
+  reviewProduct:   null,
 };
 
 // ── DOM refs ───────────────────────────────────────────
@@ -39,54 +66,53 @@ const state = {
 const $ = id => document.getElementById(id);
 
 const el = {
-  // About / key modal trigger
   btnAbout:          $('btn-about'),
-  // Inline key input
+  btnSurprise:       $('btn-surprise'),
   inlineKeyInput:    $('inline-key-input'),
   btnSetKeyInline:   $('btn-set-key-inline'),
   btnClearKeyInline: $('btn-clear-key-inline'),
   keyInlineStatus:   $('key-inline-status'),
-  // Product info
-  productName:     $('product-name'),
-  category:        $('category'),
-  lengthSelect:    $('length-select'),
-  styleSelect:     $('style-select'),
-  comments:        $('comments'),
-  // LLM selection
-  llmFamily:       $('llm-family'),
-  modelSelect:     $('model-select'),
-  modelLoadStatus: $('model-load-status'),
-  // Sentiment
-  overallSlider:   $('overall-slider'),
-  overallEmoji:    $('overall-emoji'),
-  overallVal:      $('overall-val'),
-  // Actions
-  btnGenerate:     $('btn-generate'),
-  btnCancel:       $('btn-cancel'),
-  btnDownload:     $('btn-download'),
-  // Output panels
-  outPlaceholder:  $('out-placeholder'),
-  outLoading:      $('out-loading'),
-  outReview:       $('out-review'),
-  outError:        $('out-error'),
-  outModelTag:     $('out-model-tag'),
-  outProductTag:   $('out-product-tag'),
-  mTime:           $('m-time'),
-  mWords:          $('m-words'),
-  btnCopy:         $('btn-copy'),
-  btnRegenerate:   $('btn-regenerate'),
-  outContent:      $('out-content'),
-  errMessage:      $('err-message'),
-  btnErrRetry:     $('btn-err-retry'),
-  // Key modal
-  keyModalOverlay: $('key-modal-overlay'),
-  keyDisplay:      $('key-display'),
-  keyModalInput:   $('key-modal-input'),
-  keyModalClose:   $('key-modal-close'),
-  keyModalConfirm: $('key-modal-confirm'),
-  keyModalCancel:  $('key-modal-cancel'),
-  btnClearKey:     $('btn-clear-key'),
-  fileKey:         $('file-key'),
+  productName:       $('product-name'),
+  category:          $('category'),
+  lengthSelect:      $('length-select'),
+  styleSelect:       $('style-select'),
+  comments:          $('comments'),
+  commentsCount:     $('comments-count'),
+  llmFamily:         $('llm-family'),
+  modelSelect:       $('model-select'),
+  modelLoadStatus:   $('model-load-status'),
+  overallSlider:     $('overall-slider'),
+  overallEmoji:      $('overall-emoji'),
+  overallVal:        $('overall-val'),
+  starDisplay:       $('star-display'),
+  starDesc:          $('star-desc'),
+  btnGenerate:       $('btn-generate'),
+  btnCancel:         $('btn-cancel'),
+  btnDownload:       $('btn-download'),
+  reviewHistory:     $('review-history'),
+  historyPills:      $('history-pills'),
+  outPlaceholder:    $('out-placeholder'),
+  outLoading:        $('out-loading'),
+  outReview:         $('out-review'),
+  outError:          $('out-error'),
+  outModelTag:       $('out-model-tag'),
+  outProductTag:     $('out-product-tag'),
+  outStarRating:     $('out-star-rating'),
+  mTime:             $('m-time'),
+  mWords:            $('m-words'),
+  btnCopy:           $('btn-copy'),
+  btnRegenerate:     $('btn-regenerate'),
+  outContent:        $('out-content'),
+  errMessage:        $('err-message'),
+  btnErrRetry:       $('btn-err-retry'),
+  keyModalOverlay:   $('key-modal-overlay'),
+  keyDisplay:        $('key-display'),
+  keyModalInput:     $('key-modal-input'),
+  keyModalClose:     $('key-modal-close'),
+  keyModalConfirm:   $('key-modal-confirm'),
+  keyModalCancel:    $('key-modal-cancel'),
+  btnClearKey:       $('btn-clear-key'),
+  fileKey:           $('file-key'),
 };
 
 // ════════════════════════════════════════════════════════
@@ -111,22 +137,20 @@ function updateKeyUI() {
   const key = state.apiKey;
   if (key) {
     const masked = key.slice(0, 6) + '••••••••' + key.slice(-4);
-    // Modal display
     el.keyDisplay.innerHTML = `<span style="color:#5E72EB;font-family:monospace">${masked}</span>`;
     el.btnClearKey.classList.remove('hidden');
-    // Inline display
     el.inlineKeyInput.value = '';
     el.inlineKeyInput.placeholder = masked;
     el.keyInlineStatus.textContent = '● Key set';
-    el.keyInlineStatus.style.color = '#a5b4fc';
+    el.keyInlineStatus.classList.add('is-set');
     el.btnSetKeyInline.classList.add('hidden');
     el.btnClearKeyInline.classList.remove('hidden');
   } else {
     el.keyDisplay.innerHTML = '<span class="unset-text">not set</span>';
     el.btnClearKey.classList.add('hidden');
-    // Inline display
     el.inlineKeyInput.placeholder = 'Paste your OpenAI API key (sk-...)';
     el.keyInlineStatus.textContent = '';
+    el.keyInlineStatus.classList.remove('is-set');
     el.btnSetKeyInline.classList.remove('hidden');
     el.btnClearKeyInline.classList.add('hidden');
   }
@@ -135,15 +159,12 @@ function updateKeyUI() {
 function parseKeyFile(text) {
   const envMatch = text.match(/OPENAI[_A-Z]*\s*=\s*(.+)/i);
   if (envMatch) return envMatch[1].trim();
-
   for (const line of text.split('\n')) {
     const [col0, col1] = line.split(',').map(s => s.trim());
     if (col0?.toLowerCase().includes('openai') && col1) return col1;
   }
-
   const bare = text.trim();
   if (bare.startsWith('sk-') && bare.length > 10) return bare;
-
   return null;
 }
 
@@ -151,17 +172,11 @@ function handleFileUpload(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const key = parseKeyFile(e.target.result);
-    if (key) {
-      setKey(key);
-      showToast('API key loaded from file.');
-    } else {
-      showToast('No OpenAI key found. Use OPENAI_API_KEY=sk-... format.');
-    }
+    if (key) { setKey(key); showToast('API key loaded from file.'); }
+    else      { showToast('No OpenAI key found. Use OPENAI_API_KEY=sk-... format.'); }
   };
   reader.readAsText(file);
 }
-
-// ── Key modal ──
 
 function openKeyModal() {
   el.keyModalInput.value = '';
@@ -197,19 +212,19 @@ async function fetchModels() {
     const resp = await fetch('https://api.openai.com/v1/models', {
       headers: { 'Authorization': `Bearer ${state.apiKey}` },
     });
-
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
     const data = await resp.json();
 
     const gptModels = data.data
       .map(m => m.id)
-      .filter(id => /^gpt-/.test(id) && !id.includes('instruct') && !id.includes('realtime') && !id.includes('audio') && !id.includes('vision'))
+      .filter(id => /^gpt-/.test(id) &&
+        !id.includes('instruct') && !id.includes('realtime') &&
+        !id.includes('audio')    && !id.includes('vision'))
       .sort((a, b) => {
         const rank = id => {
-          if (id.startsWith('gpt-4o')) return 0;
+          if (id.startsWith('gpt-4o'))      return 0;
           if (id.startsWith('gpt-4-turbo')) return 1;
-          if (id.startsWith('gpt-4')) return 2;
+          if (id.startsWith('gpt-4'))       return 2;
           return 3;
         };
         return rank(a) - rank(b) || a.localeCompare(b);
@@ -218,13 +233,11 @@ async function fetchModels() {
     const models = gptModels.length ? gptModels : FALLBACK_MODELS;
     state.modelsCache = models;
     populateModelSelect(models, false);
-
-    // Update LLM Family label with count
     el.llmFamily.options[0].text = `OpenAI (${models.length} models)`;
     el.modelLoadStatus.textContent = 'Models discovered successfully (cached)';
     el.modelLoadStatus.style.color = '#16a34a';
   } catch (err) {
-    console.warn('Model fetch failed, using fallback list:', err.message);
+    console.warn('Model fetch failed, using fallback:', err.message);
     state.modelsCache = FALLBACK_MODELS;
     populateModelSelect(FALLBACK_MODELS, false);
     el.modelLoadStatus.textContent = 'Using default model list.';
@@ -250,7 +263,7 @@ function resetModelSelect() {
 }
 
 // ════════════════════════════════════════════════════════
-//  SENTIMENT HELPERS
+//  SENTIMENT & STAR RATING
 // ════════════════════════════════════════════════════════
 
 function sentimentEmoji(val) {
@@ -273,10 +286,98 @@ function sentimentDesc(val) {
   return 'very positive — glowing endorsement';
 }
 
+function sentimentToStars(val) {
+  if (val <= 15) return { stars: '★☆☆☆☆', label: '1 star'  };
+  if (val <= 35) return { stars: '★★☆☆☆', label: '2 stars' };
+  if (val <= 55) return { stars: '★★★☆☆', label: '3 stars' };
+  if (val <= 75) return { stars: '★★★★☆', label: '4 stars' };
+  return              { stars: '★★★★★', label: '5 stars' };
+}
+
 function updateSentiment() {
   const v = parseInt(el.overallSlider.value);
   el.overallEmoji.textContent = sentimentEmoji(v);
   el.overallVal.textContent   = v;
+  const { stars, label } = sentimentToStars(v);
+  el.starDisplay.textContent  = stars;
+  el.starDesc.textContent     = label;
+}
+
+function extractStarRating(text) {
+  const match = text.match(/[★☆]{3,5}/);
+  return match ? match[0] : null;
+}
+
+// ════════════════════════════════════════════════════════
+//  SURPRISE ME
+// ════════════════════════════════════════════════════════
+
+function surpriseMe() {
+  const pick = SURPRISE_PRODUCTS[Math.floor(Math.random() * SURPRISE_PRODUCTS.length)];
+  el.productName.value = pick.name;
+
+  // set category dropdown
+  for (const opt of el.category.options) {
+    if (opt.value === pick.category) { opt.selected = true; break; }
+  }
+
+  // flash animation on the input
+  el.productName.style.transition = 'background 0.15s';
+  el.productName.style.background = '#eef0fd';
+  setTimeout(() => { el.productName.style.background = ''; }, 350);
+
+  showToast(`Loaded: ${pick.name}`);
+}
+
+// ════════════════════════════════════════════════════════
+//  REVIEW HISTORY
+// ════════════════════════════════════════════════════════
+
+function addToHistory(entry) {
+  // Push to front, cap at MAX_HISTORY
+  state.history.unshift(entry);
+  if (state.history.length > MAX_HISTORY) state.history.pop();
+  state.activeHistoryIdx = 0;
+  renderHistory();
+}
+
+function renderHistory() {
+  if (state.history.length === 0) {
+    el.reviewHistory.classList.add('hidden');
+    return;
+  }
+  el.reviewHistory.classList.remove('hidden');
+  el.historyPills.innerHTML = state.history
+    .map((entry, i) => {
+      const label = entry.product || 'Review';
+      const cls   = i === state.activeHistoryIdx ? 'history-pill active' : 'history-pill';
+      return `<button class="${cls}" data-idx="${i}" title="${label}">${label}</button>`;
+    })
+    .join('');
+
+  el.historyPills.querySelectorAll('.history-pill').forEach(btn => {
+    btn.addEventListener('click', () => restoreHistory(parseInt(btn.dataset.idx)));
+  });
+}
+
+function restoreHistory(idx) {
+  const entry = state.history[idx];
+  if (!entry) return;
+
+  state.activeHistoryIdx = idx;
+  state.reviewText    = entry.text;
+  state.reviewProduct = entry.product;
+
+  el.outContent.innerHTML   = marked.parse(entry.text);
+  el.outModelTag.textContent   = entry.model;
+  el.outProductTag.textContent = entry.product;
+  el.outStarRating.textContent = entry.stars || '';
+  el.mTime.textContent         = entry.elapsed ? `${(entry.elapsed / 1000).toFixed(1)}s` : '—';
+  el.mWords.textContent        = `${entry.words} words`;
+
+  el.btnDownload.disabled = false;
+  showPanel('review');
+  renderHistory();
 }
 
 // ════════════════════════════════════════════════════════
@@ -284,16 +385,14 @@ function updateSentiment() {
 // ════════════════════════════════════════════════════════
 
 function buildPrompt() {
-  const name       = el.productName.value.trim() || 'this product';
-  const category   = el.category.value;
-  const lengthKey  = el.lengthSelect.value;
-  const styleKey   = el.styleSelect.value;
-  const comments   = el.comments.value.trim();
-  const overall    = parseInt(el.overallSlider.value);
+  const name     = el.productName.value.trim() || 'this product';
+  const category = el.category.value;
+  const lengthKey = el.lengthSelect.value;
+  const styleKey  = el.styleSelect.value;
+  const comments  = el.comments.value.trim();
+  const overall   = parseInt(el.overallSlider.value);
 
-  const commentsBlock = comments
-    ? `\nAdditional context / requirements:\n${comments}`
-    : '';
+  const commentsBlock = comments ? `\nAdditional context / requirements:\n${comments}` : '';
 
   return `You are writing a product review for educational and development purposes only.
 
@@ -316,10 +415,10 @@ Write only the review — no preamble, no meta-commentary.`.trim();
 }
 
 // ════════════════════════════════════════════════════════
-//  API CALL
+//  API CALL (streaming)
 // ════════════════════════════════════════════════════════
 
-async function callOpenAI(prompt, model, signal) {
+async function callOpenAI(prompt, model, signal, onChunk) {
   const start = performance.now();
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -330,9 +429,10 @@ async function callOpenAI(prompt, model, signal) {
     },
     body: JSON.stringify({
       model,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1500,
+      messages:    [{ role: 'user', content: prompt }],
+      max_tokens:  1500,
       temperature: 0.85,
+      stream:      true,
     }),
     signal,
   });
@@ -342,11 +442,36 @@ async function callOpenAI(prompt, model, signal) {
     throw new Error(err.error?.message || `OpenAI error ${resp.status}`);
   }
 
-  const data    = await resp.json();
-  const elapsed = Math.round(performance.now() - start);
-  const text    = data.choices?.[0]?.message?.content ?? '';
+  const reader  = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let buffer   = '';
 
-  return { text, elapsed };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop(); // hold incomplete line
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') break;
+      try {
+        const parsed = JSON.parse(data);
+        const chunk  = parsed.choices?.[0]?.delta?.content ?? '';
+        if (chunk) {
+          fullText += chunk;
+          onChunk(fullText);
+        }
+      } catch { /* malformed chunk, skip */ }
+    }
+  }
+
+  const elapsed = Math.round(performance.now() - start);
+  return { text: fullText, elapsed };
 }
 
 // ════════════════════════════════════════════════════════
@@ -364,29 +489,55 @@ async function generate() {
   state.model = model;
   state.abortController = new AbortController();
 
-  showPanel('loading');
+  // Show review panel immediately for streaming
+  showPanel('review');
+  el.outContent.innerHTML = '';
+  el.outModelTag.textContent   = model;
+  el.outProductTag.textContent = productName;
+  el.outStarRating.textContent = '';
+  el.mTime.textContent         = '—';
+  el.mWords.textContent        = '—';
+
   el.btnGenerate.disabled = true;
   el.btnCancel.classList.remove('hidden');
   el.btnDownload.disabled = true;
 
+  let firstChunk = true;
+
   try {
     const prompt = buildPrompt();
-    const { text, elapsed } = await callOpenAI(prompt, model, state.abortController.signal);
+    const { text, elapsed } = await callOpenAI(
+      prompt, model, state.abortController.signal,
+      (accumulated) => {
+        // Render markdown incrementally with a blinking cursor
+        el.outContent.innerHTML = marked.parse(accumulated);
+        const cursor = document.createElement('span');
+        cursor.className = 'stream-cursor';
+        el.outContent.appendChild(cursor);
+        if (firstChunk) {
+          firstChunk = false;
+          // Scroll card into view smoothly on first content
+          el.outContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    );
 
+    // Final render without cursor
     el.outContent.innerHTML = marked.parse(text);
 
     const wordCount = text.trim().split(/\s+/).length;
-    el.outModelTag.textContent   = model;
-    el.outProductTag.textContent = productName;
+    const stars     = extractStarRating(text);
+
     el.mTime.textContent         = `${(elapsed / 1000).toFixed(1)}s`;
     el.mWords.textContent        = `${wordCount} words`;
+    el.outStarRating.textContent = stars || '';
 
-    showPanel('review');
-
-    // Enable download
+    state.reviewText    = text;
+    state.reviewProduct = productName;
     el.btnDownload.disabled = false;
-    el.btnDownload._reviewText = text;
-    el.btnDownload._productName = productName;
+
+    addToHistory({ text, model, product: productName, elapsed, words: wordCount, stars });
+
   } catch (err) {
     if (err.name === 'AbortError') {
       showPanel('placeholder');
@@ -410,13 +561,12 @@ function cancelGenerate() {
 // ════════════════════════════════════════════════════════
 
 function downloadReview() {
-  const text = el.btnDownload._reviewText;
-  if (!text) return;
+  if (!state.reviewText) return;
 
-  const filename = (el.btnDownload._productName || 'review')
+  const filename = (state.reviewProduct || 'review')
     .toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-review.txt';
 
-  const blob = new Blob([text], { type: 'text/plain' });
+  const blob = new Blob([state.reviewText], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
@@ -442,7 +592,7 @@ function showPanel(name) {
 }
 
 function showToast(msg) {
-  let t = document.getElementById('toast');
+  const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._timer);
@@ -454,8 +604,9 @@ function showToast(msg) {
 // ════════════════════════════════════════════════════════
 
 el.btnAbout.addEventListener('click', openKeyModal);
+el.btnSurprise.addEventListener('click', surpriseMe);
 
-// Inline key input
+// Inline key
 el.btnSetKeyInline.addEventListener('click', () => {
   const val = el.inlineKeyInput.value.trim();
   if (!val) { showToast('Paste an API key first.'); return; }
@@ -467,27 +618,39 @@ el.inlineKeyInput.addEventListener('keydown', e => {
 });
 el.btnClearKeyInline.addEventListener('click', () => { clearKey(); showToast('API key cleared.'); });
 
+// Modal
 el.keyModalClose.addEventListener('click', closeKeyModal);
 el.keyModalCancel.addEventListener('click', closeKeyModal);
 el.keyModalConfirm.addEventListener('click', confirmKeyModal);
 el.keyModalOverlay.addEventListener('click', e => { if (e.target === el.keyModalOverlay) closeKeyModal(); });
 el.keyModalInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmKeyModal(); });
-
 el.btnClearKey.addEventListener('click', () => { clearKey(); showToast('API key cleared.'); });
 el.fileKey.addEventListener('change', e => {
   if (e.target.files[0]) handleFileUpload(e.target.files[0]);
   e.target.value = '';
 });
 
+// Model
 el.modelSelect.addEventListener('change', () => { state.model = el.modelSelect.value; });
 
+// Sentiment
 el.overallSlider.addEventListener('input', updateSentiment);
 
+// Comments character counter
+el.comments.addEventListener('input', () => {
+  const len = el.comments.value.length;
+  el.commentsCount.textContent = len;
+  el.commentsCount.parentElement.classList.toggle('near-limit', len >= 800 && len < 1000);
+  el.commentsCount.parentElement.classList.toggle('at-limit',   len >= 1000);
+});
+
+// Generate / cancel
 el.btnGenerate.addEventListener('click', generate);
 el.btnCancel.addEventListener('click', cancelGenerate);
 el.btnRegenerate.addEventListener('click', generate);
 el.btnErrRetry.addEventListener('click', generate);
 
+// Copy
 el.btnCopy.addEventListener('click', () => {
   navigator.clipboard.writeText(el.outContent.innerText).then(
     () => showToast('Review copied to clipboard.'),
@@ -495,8 +658,10 @@ el.btnCopy.addEventListener('click', () => {
   );
 });
 
+// Download
 el.btnDownload.addEventListener('click', downloadReview);
 
+// Cmd/Ctrl + Enter to generate
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault();

@@ -41,7 +41,10 @@
 
       <div class="form-row">
         <div class="field-group">
-          <label class="field-label">Product Name:</label>
+          <div class="field-label-row">
+            <label class="field-label" for="product-name">Product Name:</label>
+            <button id="btn-surprise" class="btn-surprise">🎲 Surprise me</button>
+          </div>
           <input type="text" id="product-name" class="form-input" placeholder="e.g., Wireless Headphones" autocomplete="off">
         </div>
         <div class="field-group">
@@ -80,7 +83,8 @@
 
       <div class="field-group">
         <label class="field-label">Comments:</label>
-        <textarea id="comments" class="form-textarea" placeholder="Include key features, strengths, weaknesses, specific experiences, or any advanced instructions for the review..."></textarea>
+        <textarea id="comments" class="form-textarea" maxlength="1000" placeholder="Include key features, strengths, weaknesses, specific experiences, or any advanced instructions for the review..."></textarea>
+        <div class="char-counter"><span id="comments-count">0</span> / 1000</div>
       </div>
     </div>
 
@@ -122,11 +126,23 @@
         <span id="overall-val" class="sent-val">50</span>
         <button id="btn-generate" class="btn-generate">Generate Review</button>
       </div>
+
+      <div class="star-rating-row">
+        <span class="srr-label">Review will be:</span>
+        <span id="star-display" class="star-display">★★★☆☆</span>
+        <span id="star-desc" class="star-desc">Neutral</span>
+      </div>
     </div>
 
     <!-- Card 3: Generated Review -->
     <div class="card">
-      <div class="card-title">Generated Review:</div>
+      <div class="card-title">Generated Review</div>
+
+      <!-- History -->
+      <div id="review-history" class="review-history hidden">
+        <span class="history-label">History:</span>
+        <div id="history-pills" class="history-pills"></div>
+      </div>
 
       <div id="out-placeholder" class="out-placeholder">
         <div class="ph-stars">★★★★★</div>
@@ -142,6 +158,7 @@
         <div class="out-meta-bar">
           <span id="out-model-tag" class="out-model-tag"></span>
           <span id="out-product-tag" class="out-product-tag"></span>
+          <span id="out-star-rating" class="out-star-rating"></span>
           <span id="m-time" class="metric-chip"></span>
           <span id="m-words" class="metric-chip"></span>
           <div class="out-meta-actions">
