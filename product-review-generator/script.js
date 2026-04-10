@@ -418,7 +418,7 @@ Write only the review — no preamble, no meta-commentary.`.trim();
 //  API CALL (streaming)
 // ════════════════════════════════════════════════════════
 
-async function callOpenAI(prompt, model, signal, onChunk) {
+async function callOpenAI(prompt, model, signal) {
   const start = performance.now();
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -432,7 +432,6 @@ async function callOpenAI(prompt, model, signal, onChunk) {
       messages:    [{ role: 'user', content: prompt }],
       max_tokens:  1500,
       temperature: 0.85,
-      stream:      true,
     }),
     signal,
   });
@@ -442,36 +441,11 @@ async function callOpenAI(prompt, model, signal, onChunk) {
     throw new Error(err.error?.message || `OpenAI error ${resp.status}`);
   }
 
-  const reader  = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let fullText = '';
-  let buffer   = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop(); // hold incomplete line
-
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim();
-      if (data === '[DONE]') break;
-      try {
-        const parsed = JSON.parse(data);
-        const chunk  = parsed.choices?.[0]?.delta?.content ?? '';
-        if (chunk) {
-          fullText += chunk;
-          onChunk(fullText);
-        }
-      } catch { /* malformed chunk, skip */ }
-    }
-  }
-
+  const data    = await resp.json();
   const elapsed = Math.round(performance.now() - start);
-  return { text: fullText, elapsed };
+  const text    = data.choices?.[0]?.message?.content ?? '';
+
+  return { text, elapsed };
 }
 
 // ════════════════════════════════════════════════════════
@@ -489,40 +463,15 @@ async function generate() {
   state.model = model;
   state.abortController = new AbortController();
 
-  // Show review panel immediately for streaming
-  showPanel('review');
-  el.outContent.innerHTML = '';
-  el.outModelTag.textContent   = model;
-  el.outProductTag.textContent = productName;
-  el.outStarRating.textContent = '';
-  el.mTime.textContent         = '—';
-  el.mWords.textContent        = '—';
-
+  showPanel('loading');
   el.btnGenerate.disabled = true;
   el.btnCancel.classList.remove('hidden');
   el.btnDownload.disabled = true;
 
-  let firstChunk = true;
-
   try {
     const prompt = buildPrompt();
-    const { text, elapsed } = await callOpenAI(
-      prompt, model, state.abortController.signal,
-      (accumulated) => {
-        // Render markdown incrementally with a blinking cursor
-        el.outContent.innerHTML = marked.parse(accumulated);
-        const cursor = document.createElement('span');
-        cursor.className = 'stream-cursor';
-        el.outContent.appendChild(cursor);
-        if (firstChunk) {
-          firstChunk = false;
-          // Scroll card into view smoothly on first content
-          el.outContent.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }
-    );
+    const { text, elapsed } = await callOpenAI(prompt, model, state.abortController.signal);
 
-    // Final render without cursor
     el.outContent.innerHTML = marked.parse(text);
 
     const wordCount = text.trim().split(/\s+/).length;

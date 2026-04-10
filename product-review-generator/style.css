@@ -686,23 +686,6 @@ body {
   padding: 3px 8px;
 }
 
-/* ── STREAM CURSOR ───────────────────────────────── */
-
-.stream-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1.1em;
-  background: var(--periwinkle);
-  margin-left: 2px;
-  border-radius: 1px;
-  vertical-align: middle;
-  animation: blink 0.75s steps(1) infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
 
 /* ── OUTPUT CONTENT ──────────────────────────────── */
 
