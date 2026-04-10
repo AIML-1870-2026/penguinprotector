@@ -40,7 +40,12 @@ const $ = id => document.getElementById(id);
 
 const el = {
   // About / key modal trigger
-  btnAbout:        $('btn-about'),
+  btnAbout:          $('btn-about'),
+  // Inline key input
+  inlineKeyInput:    $('inline-key-input'),
+  btnSetKeyInline:   $('btn-set-key-inline'),
+  btnClearKeyInline: $('btn-clear-key-inline'),
+  keyInlineStatus:   $('key-inline-status'),
   // Product info
   productName:     $('product-name'),
   category:        $('category'),
@@ -106,11 +111,24 @@ function updateKeyUI() {
   const key = state.apiKey;
   if (key) {
     const masked = key.slice(0, 6) + '••••••••' + key.slice(-4);
+    // Modal display
     el.keyDisplay.innerHTML = `<span style="color:#5E72EB;font-family:monospace">${masked}</span>`;
     el.btnClearKey.classList.remove('hidden');
+    // Inline display
+    el.inlineKeyInput.value = '';
+    el.inlineKeyInput.placeholder = masked;
+    el.keyInlineStatus.textContent = '● Key set';
+    el.keyInlineStatus.style.color = '#5E72EB';
+    el.btnSetKeyInline.classList.add('hidden');
+    el.btnClearKeyInline.classList.remove('hidden');
   } else {
     el.keyDisplay.innerHTML = '<span class="unset-text">not set</span>';
     el.btnClearKey.classList.add('hidden');
+    // Inline display
+    el.inlineKeyInput.placeholder = 'Paste your OpenAI API key (sk-...)';
+    el.keyInlineStatus.textContent = '';
+    el.btnSetKeyInline.classList.remove('hidden');
+    el.btnClearKeyInline.classList.add('hidden');
   }
 }
 
@@ -436,6 +454,18 @@ function showToast(msg) {
 // ════════════════════════════════════════════════════════
 
 el.btnAbout.addEventListener('click', openKeyModal);
+
+// Inline key input
+el.btnSetKeyInline.addEventListener('click', () => {
+  const val = el.inlineKeyInput.value.trim();
+  if (!val) { showToast('Paste an API key first.'); return; }
+  setKey(val);
+  showToast('API key saved.');
+});
+el.inlineKeyInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') el.btnSetKeyInline.click();
+});
+el.btnClearKeyInline.addEventListener('click', () => { clearKey(); showToast('API key cleared.'); });
 
 el.keyModalClose.addEventListener('click', closeKeyModal);
 el.keyModalCancel.addEventListener('click', closeKeyModal);

@@ -79,6 +79,17 @@
     <!-- Card 2: LLM and Sentiment Selection -->
     <div class="card">
       <div class="card-title">LLM and Sentiment Selection</div>
+
+      <div class="field-group">
+        <label class="field-label">API Key:</label>
+        <div class="key-input-row">
+          <input type="password" id="inline-key-input" class="form-input" placeholder="Paste your OpenAI API key (sk-...)" autocomplete="off" spellcheck="false">
+          <button id="btn-set-key-inline" class="btn-sm btn-set-key">Set Key</button>
+          <button id="btn-clear-key-inline" class="btn-danger hidden">× Clear</button>
+        </div>
+        <p id="key-inline-status" class="key-inline-status"></p>
+      </div>
+
       <p id="model-load-status" class="model-status"></p>
 
       <div class="form-row">
@@ -109,7 +120,10 @@
     <div class="card">
       <div class="card-title">Generated Review:</div>
 
-      <div id="out-placeholder" class="out-placeholder">No review generated yet.</div>
+      <div id="out-placeholder" class="out-placeholder">
+        <div class="ph-stars">★★★★★</div>
+        <span>Configure your product and hit <strong>Generate Review</strong>.</span>
+      </div>
 
       <div id="out-loading" class="out-loading hidden">
         <span class="loading-star">★</span>
