@@ -112,7 +112,7 @@ function updateKeyUI() {
   if (key) {
     const masked = key.slice(0, 6) + '••••••••' + key.slice(-4);
     // Modal display
-    el.keyDisplay.innerHTML = `<span style="color:#a5b4fc;font-family:monospace">${masked}</span>`;
+    el.keyDisplay.innerHTML = `<span style="color:#5E72EB;font-family:monospace">${masked}</span>`;
     el.btnClearKey.classList.remove('hidden');
     // Inline display
     el.inlineKeyInput.value = '';
