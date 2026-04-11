@@ -29,7 +29,10 @@
         <span class="brand-sub">AI-Powered · OpenAI · Educational Use Only</span>
       </div>
     </div>
-    <button id="btn-about" class="btn-about">About</button>
+    <div class="header-actions">
+      <button id="btn-shortcuts" class="btn-shortcuts" title="Keyboard shortcuts (?)">?</button>
+      <button id="btn-about" class="btn-about">About</button>
+    </div>
   </header>
 
   <!-- MAIN -->
@@ -57,6 +60,34 @@
             <option value="Sports">Sports</option>
             <option value="Books">Books</option>
             <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field-group">
+          <label class="field-label">Reviewer Persona:</label>
+          <select id="persona-select" class="form-select">
+            <option value="None">No persona</option>
+            <option value="TechEnthusiast">Tech Enthusiast</option>
+            <option value="BudgetShopper">Budget Shopper</option>
+            <option value="SkepticalParent">Skeptical Parent</option>
+            <option value="ExpertCritic">Expert Critic</option>
+            <option value="FirstTimeBuyer">First-Time Buyer</option>
+            <option value="PowerUser">Power User</option>
+            <option value="CasualUser">Casual User</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Platform:</label>
+          <select id="platform-select" class="form-select">
+            <option value="None">No specific platform</option>
+            <option value="Amazon">Amazon</option>
+            <option value="Yelp">Yelp</option>
+            <option value="Google">Google Reviews</option>
+            <option value="AppStore">App Store</option>
+            <option value="Reddit">Reddit</option>
+            <option value="Trustpilot">Trustpilot</option>
           </select>
         </div>
       </div>
@@ -120,7 +151,7 @@
       </div>
 
       <div class="sentiment-row">
-        <label class="field-label sent-label">Sentiment:</label>
+        <label class="field-label sent-label">Overall:</label>
         <span id="overall-emoji" class="sent-emoji">😐</span>
         <input type="range" id="overall-slider" class="sentiment-slider" min="0" max="100" step="1" value="50">
         <span id="overall-val" class="sent-val">50</span>
@@ -131,6 +162,32 @@
         <span class="srr-label">Review will be:</span>
         <span id="star-display" class="star-display">★★★☆☆</span>
         <span id="star-desc" class="star-desc">Neutral</span>
+      </div>
+
+      <!-- Aspect Sentiment Sliders -->
+      <div class="aspect-sliders">
+        <div class="aspect-sliders-header">
+          <span class="field-label">Aspect Sentiments</span>
+          <span class="aspect-hint">Fine-tune individual aspects — 50 = follows overall</span>
+        </div>
+        <div class="aspect-row">
+          <span class="aspect-name">Price / Value</span>
+          <span id="price-emoji" class="aspect-emoji">😐</span>
+          <input type="range" id="price-slider" class="aspect-slider" min="0" max="100" step="1" value="50">
+          <span id="price-val" class="aspect-val">50</span>
+        </div>
+        <div class="aspect-row">
+          <span class="aspect-name">Features</span>
+          <span id="features-emoji" class="aspect-emoji">😐</span>
+          <input type="range" id="features-slider" class="aspect-slider" min="0" max="100" step="1" value="50">
+          <span id="features-val" class="aspect-val">50</span>
+        </div>
+        <div class="aspect-row">
+          <span class="aspect-name">Usability</span>
+          <span id="usability-emoji" class="aspect-emoji">😐</span>
+          <input type="range" id="usability-slider" class="aspect-slider" min="0" max="100" step="1" value="50">
+          <span id="usability-val" class="aspect-val">50</span>
+        </div>
       </div>
     </div>
 
@@ -161,11 +218,24 @@
           <span id="out-star-rating" class="out-star-rating"></span>
           <span id="m-time" class="metric-chip"></span>
           <span id="m-words" class="metric-chip"></span>
+          <span id="m-cost" class="metric-chip cost-chip hidden"></span>
           <div class="out-meta-actions">
-            <button id="btn-copy" class="btn-sm">⎘ Copy</button>
+            <button id="btn-toggle-prompt" class="btn-sm btn-prompt-toggle" title="Show/hide prompt sent to OpenAI (⌘⇧P)">〈/〉</button>
+            <button id="btn-copy" class="btn-sm" title="Copy plain text (⌘⇧C)">⎘ Copy</button>
+            <button id="btn-copy-html" class="btn-sm" title="Copy rendered HTML">⎘ HTML</button>
             <button id="btn-regenerate" class="btn-sm">↺ Regenerate</button>
           </div>
         </div>
+
+        <!-- Prompt Inspector -->
+        <div id="prompt-inspector" class="prompt-inspector hidden">
+          <div class="pi-header">
+            <span class="pi-title">Prompt sent to OpenAI</span>
+            <button id="btn-copy-prompt" class="btn-sm">⎘ Copy prompt</button>
+          </div>
+          <pre id="pi-content" class="pi-content"></pre>
+        </div>
+
         <div id="out-content" class="out-content"></div>
       </div>
 
@@ -175,10 +245,31 @@
       </div>
     </div>
 
+    <!-- Card 4: Compare Mode -->
+    <div class="card hidden" id="compare-card">
+      <div class="card-title">Compare: Negative vs Positive</div>
+      <div id="compare-loading" class="out-loading">
+        <span class="loading-star">★</span>
+        <span>Generating both reviews...</span>
+      </div>
+      <div id="compare-grid" class="compare-grid hidden">
+        <div class="compare-col">
+          <div class="compare-hdr compare-hdr-neg">★☆☆☆☆ Negative</div>
+          <div id="compare-negative" class="out-content compare-content"></div>
+        </div>
+        <div class="compare-col">
+          <div class="compare-hdr compare-hdr-pos">★★★★★ Positive</div>
+          <div id="compare-positive" class="out-content compare-content"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bottom actions -->
     <div class="bottom-row">
       <button id="btn-cancel" class="btn-cancel hidden">✕ Cancel</button>
-      <button id="btn-download" class="btn-download" disabled>Download Review</button>
+      <button id="btn-compare" class="btn-compare" title="Generate negative + positive side-by-side (⌘⇧B)">⇄ Generate Both</button>
+      <button id="btn-download" class="btn-download" disabled>↓ .txt</button>
+      <button id="btn-download-md" class="btn-download-md" disabled>↓ .md</button>
     </div>
 
   </main>
@@ -201,6 +292,27 @@
           <button id="key-modal-cancel" class="btn-sm">Cancel</button>
         </div>
         <p class="ftc-notice">⚠ FTC Compliance: For educational &amp; development use only. Do not publish AI-generated reviews as genuine consumer reviews. Violations may result in fines up to $51,744 per violation.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHORTCUTS MODAL -->
+  <div id="shortcuts-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-hdr">
+        <span class="modal-title">Keyboard Shortcuts</span>
+        <button id="shortcuts-modal-close" class="modal-x">✕</button>
+      </div>
+      <div class="modal-body">
+        <table class="shortcuts-table">
+          <tbody>
+            <tr><td><kbd>⌘ Enter</kbd></td><td>Generate review</td></tr>
+            <tr><td><kbd>⌘ ⇧ B</kbd></td><td>Generate Both (compare mode)</td></tr>
+            <tr><td><kbd>⌘ ⇧ C</kbd></td><td>Copy review to clipboard</td></tr>
+            <tr><td><kbd>⌘ ⇧ P</kbd></td><td>Toggle prompt inspector</td></tr>
+            <tr><td><kbd>Escape</kbd></td><td>Close modal / cancel generation</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
