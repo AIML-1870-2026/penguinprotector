@@ -111,6 +111,26 @@ body {
 .key-status.error .key-dot { background: var(--coral); }
 .key-status.error .key-label { color: var(--coral); }
 
+.key-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.key-input {
+  background: var(--input-bg);
+  border: 1px solid var(--teal);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: monospace;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.65rem;
+  width: 190px;
+  transition: border-color 0.2s;
+}
+
+.key-input:focus { outline: none; border-color: var(--teal-light); }
+
 /* ===== BUTTONS ===== */
 .btn {
   display: inline-flex;

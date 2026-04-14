@@ -26,6 +26,38 @@ const historyList    = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const chipGrid       = document.getElementById('chipGrid');
 
+// ===== MANUAL KEY ENTRY =====
+const typeKeyBtn     = document.getElementById('typeKeyBtn');
+const keyInputRow    = document.getElementById('keyInputRow');
+const keyInput       = document.getElementById('keyInput');
+const keySubmit      = document.getElementById('keySubmit');
+const keyInputClose  = document.getElementById('keyInputClose');
+
+typeKeyBtn.addEventListener('click', () => {
+  keyInputRow.hidden = false;
+  typeKeyBtn.hidden  = true;
+  keyInput.focus();
+});
+
+keyInputClose.addEventListener('click', () => {
+  keyInputRow.hidden = true;
+  typeKeyBtn.hidden  = false;
+  keyInput.value = '';
+});
+
+function submitManualKey() {
+  const val = keyInput.value.trim();
+  if (!val) return;
+  apiKey = val;
+  setKeyStatus('loaded', 'Key loaded');
+  keyInputRow.hidden = true;
+  typeKeyBtn.hidden  = false;
+  keyInput.value = '';
+}
+
+keySubmit.addEventListener('click', submitManualKey);
+keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualKey(); });
+
 // ===== API KEY LOADING =====
 function parseKeyFile(text) {
   // .csv format: provider,key
