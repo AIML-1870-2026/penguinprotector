@@ -1,3 +1,92 @@
+// ===== CONFETTI =====
+(function () {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  const COLORS = ['#7C3AED','#EC4899','#FBBF24','#10B981','#F97316','#0EA5E9','#A78BFA','#F472B6'];
+  const SHAPES = ['rect', 'circle', 'star'];
+  const COUNT  = 90;
+
+  let pieces = [];
+  let W, H;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function starPath(cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+      const b = a + (2 * Math.PI) / 5;
+      const inner = r * 0.45;
+      ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      ctx.lineTo(cx + inner * Math.cos(b), cy + inner * Math.sin(b));
+    }
+    ctx.closePath();
+  }
+
+  function makePiece() {
+    return {
+      x:      rand(0, W),
+      y:      rand(-H, 0),
+      size:   rand(7, 15),
+      color:  COLORS[Math.floor(rand(0, COLORS.length))],
+      shape:  SHAPES[Math.floor(rand(0, SHAPES.length))],
+      speed:  rand(1.2, 3),
+      drift:  rand(-0.6, 0.6),
+      spin:   rand(-0.06, 0.06),
+      angle:  rand(0, Math.PI * 2),
+      wobble: rand(0, Math.PI * 2),
+      wobbleSpeed: rand(0.02, 0.06),
+    };
+  }
+
+  function init() {
+    resize();
+    pieces = Array.from({ length: COUNT }, makePiece);
+    // Scatter some already on screen at start
+    pieces.forEach((p, i) => { if (i < COUNT / 2) p.y = rand(0, H); });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    pieces.forEach(p => {
+      p.y     += p.speed;
+      p.x     += p.drift + Math.sin(p.wobble) * 0.5;
+      p.angle += p.spin;
+      p.wobble += p.wobbleSpeed;
+
+      if (p.y > H + 20) { Object.assign(p, makePiece(), { y: -20, x: rand(0, W) }); }
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.82;
+
+      if (p.shape === 'rect') {
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      } else if (p.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        starPath(0, 0, p.size / 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  draw();
+})();
+
 // ===== STATE =====
 let apiKey = null;
 const history = [];
