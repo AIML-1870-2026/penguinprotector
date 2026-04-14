@@ -1,66 +1,43 @@
 // ===== STATE =====
 let apiKey = null;
 const history = [];
+let activePillIdx = -1;
 
 // ===== ELEMENTS =====
-const envFileInput   = document.getElementById('envFile');
-const keyStatus      = document.getElementById('keyStatus');
-const keyLabel       = keyStatus.querySelector('.key-label');
-const gradeSelect    = document.getElementById('gradeSelect');
-const suppliesInput  = document.getElementById('suppliesInput');
-const modelSelect    = document.getElementById('modelSelect');
-const generateBtn    = document.getElementById('generateBtn');
-const outputEmpty    = document.getElementById('outputEmpty');
-const outputCard     = document.getElementById('outputCard');
-const outputLoading  = document.getElementById('outputLoading');
-const outputError    = document.getElementById('outputError');
-const outputBody     = document.getElementById('outputBody');
+const envFileInput    = document.getElementById('envFile');
+const keyInput        = document.getElementById('keyInput');
+const keySubmit       = document.getElementById('keySubmit');
+const keyInputClose   = document.getElementById('keyInputClose');
+const keyStatusEl     = document.getElementById('keyStatus');
+const gradeSelect     = document.getElementById('gradeSelect');
+const suppliesInput   = document.getElementById('suppliesInput');
+const modelSelect     = document.getElementById('modelSelect');
+const generateBtn     = document.getElementById('generateBtn');
+const outputEmpty     = document.getElementById('outputEmpty');
+const outputCard      = document.getElementById('outputCard');
+const outputLoading   = document.getElementById('outputLoading');
+const outputError     = document.getElementById('outputError');
+const outputBody      = document.getElementById('outputBody');
 const difficultyBadge = document.getElementById('difficultyBadge');
-const copyBtn        = document.getElementById('copyBtn');
-const saveBtn        = document.getElementById('saveBtn');
-const historyToggle  = document.getElementById('historyToggle');
-const historyClose   = document.getElementById('historyClose');
-const historyDrawer  = document.getElementById('historyDrawer');
-const historyOverlay = document.getElementById('historyOverlay');
-const historyList    = document.getElementById('historyList');
+const copyBtn         = document.getElementById('copyBtn');
+const saveBtn         = document.getElementById('saveBtn');
+const historyToggle   = document.getElementById('historyToggle');
+const historyClose    = document.getElementById('historyClose');
+const historyDrawer   = document.getElementById('historyDrawer');
+const historyOverlay  = document.getElementById('historyOverlay');
+const historyList     = document.getElementById('historyList');
+const historyPillsBar = document.getElementById('historyPillsBar');
+const historyPills    = document.getElementById('historyPills');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-const chipGrid       = document.getElementById('chipGrid');
+const chipGrid        = document.getElementById('chipGrid');
+const substToggle     = document.getElementById('substToggle');
+const substPanel      = document.getElementById('substPanel');
+const substInput      = document.getElementById('substInput');
+const substBtn        = document.getElementById('substBtn');
+const substResult     = document.getElementById('substResult');
 
-// ===== MANUAL KEY ENTRY =====
-const typeKeyBtn     = document.getElementById('typeKeyBtn');
-const keyInputRow    = document.getElementById('keyInputRow');
-const keyInput       = document.getElementById('keyInput');
-const keySubmit      = document.getElementById('keySubmit');
-const keyInputClose  = document.getElementById('keyInputClose');
-
-typeKeyBtn.addEventListener('click', () => {
-  keyInputRow.hidden = false;
-  typeKeyBtn.hidden  = true;
-  keyInput.focus();
-});
-
-keyInputClose.addEventListener('click', () => {
-  keyInputRow.hidden = true;
-  typeKeyBtn.hidden  = false;
-  keyInput.value = '';
-});
-
-function submitManualKey() {
-  const val = keyInput.value.trim();
-  if (!val) return;
-  apiKey = val;
-  setKeyStatus('loaded', 'Key loaded');
-  keyInputRow.hidden = true;
-  typeKeyBtn.hidden  = false;
-  keyInput.value = '';
-}
-
-keySubmit.addEventListener('click', submitManualKey);
-keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualKey(); });
-
-// ===== API KEY LOADING =====
+// ===== API KEY — FILE LOADER =====
 function parseKeyFile(text) {
-  // .csv format: provider,key
   if (text.includes(',')) {
     const lines = text.trim().split('\n');
     for (const line of lines) {
@@ -71,10 +48,8 @@ function parseKeyFile(text) {
       }
     }
   }
-  // .env format: KEY=value
   const match = text.match(/OPENAI_API_KEY\s*=\s*(.+)/i);
   if (match) return match[1].trim();
-  // bare key
   const trimmed = text.trim();
   if (trimmed.startsWith('sk-')) return trimmed;
   return null;
@@ -87,26 +62,51 @@ envFileInput.addEventListener('change', () => {
   reader.onload = (e) => {
     const key = parseKeyFile(e.target.result);
     if (key) {
-      apiKey = key;
-      setKeyStatus('loaded', 'Key loaded');
+      setKey(key);
     } else {
-      apiKey = null;
-      setKeyStatus('error', 'Key not found');
+      setKeyError('Key not found in file');
     }
     envFileInput.value = '';
   };
   reader.readAsText(file);
 });
 
-function setKeyStatus(state, label) {
-  keyStatus.className = 'key-status ' + state;
-  keyLabel.textContent = label;
+// ===== API KEY — MANUAL ENTRY =====
+function submitManualKey() {
+  const val = keyInput.value.trim();
+  if (!val) return;
+  setKey(val);
+  keyInput.value = '';
+}
+
+keySubmit.addEventListener('click', submitManualKey);
+keyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitManualKey(); });
+
+keyInputClose.addEventListener('click', () => {
+  apiKey = null;
+  keyInput.value = '';
+  keyStatusEl.textContent = '';
+  keyStatusEl.className = 'key-inline-status';
+  keyInputClose.classList.add('hidden');
+});
+
+function setKey(val) {
+  apiKey = val;
+  const masked = val.slice(0, 8) + '••••••••' + val.slice(-4);
+  keyStatusEl.textContent = '✓ Key set: ' + masked;
+  keyStatusEl.className = 'key-inline-status is-set';
+  keyInputClose.classList.remove('hidden');
+}
+
+function setKeyError(msg) {
+  apiKey = null;
+  keyStatusEl.textContent = '✗ ' + msg;
+  keyStatusEl.className = 'key-inline-status is-error';
 }
 
 // ===== VALIDATION =====
 function checkCanGenerate() {
-  const ready = gradeSelect.value && suppliesInput.value.trim().length > 0;
-  generateBtn.disabled = !ready;
+  generateBtn.disabled = !(gradeSelect.value && suppliesInput.value.trim().length > 0);
 }
 
 gradeSelect.addEventListener('change', checkCanGenerate);
@@ -122,22 +122,19 @@ chipGrid.addEventListener('click', (e) => {
   if (!lines.includes(supply)) {
     suppliesInput.value = current ? current.trimEnd() + '\n' + supply : supply;
     chip.classList.add('active');
-    checkCanGenerate();
   } else {
-    // Remove it
-    const filtered = lines.filter(l => l !== supply);
-    suppliesInput.value = filtered.join('\n');
+    suppliesInput.value = lines.filter(l => l !== supply).join('\n');
     chip.classList.remove('active');
-    checkCanGenerate();
   }
+  checkCanGenerate();
 });
 
 // ===== DIFFICULTY =====
 const DIFFICULTY_MAP = {
-  'K–2':  { label: '⭐ Beginner',      cls: 'beginner' },
-  '3–5':  { label: '⭐⭐ Intermediate', cls: 'intermediate' },
-  '6–8':  { label: '⭐⭐ Intermediate', cls: 'intermediate' },
-  '9–12': { label: '⭐⭐⭐ Advanced',   cls: 'advanced' },
+  'K–2':  { label: '⭐ Beginner',       cls: 'beginner' },
+  '3–5':  { label: '⭐⭐ Intermediate',  cls: 'intermediate' },
+  '6–8':  { label: '⭐⭐ Intermediate',  cls: 'intermediate' },
+  '9–12': { label: '⭐⭐⭐ Advanced',    cls: 'advanced' },
 };
 
 function setDifficultyBadge(grade) {
@@ -146,7 +143,7 @@ function setDifficultyBadge(grade) {
   difficultyBadge.className = 'difficulty-badge ' + d.cls;
 }
 
-// ===== OUTPUT VISIBILITY =====
+// ===== OUTPUT STATE =====
 function showState(state) {
   outputEmpty.hidden   = state !== 'empty';
   outputCard.hidden    = state !== 'result';
@@ -159,7 +156,7 @@ generateBtn.addEventListener('click', generateExperiment);
 
 async function generateExperiment() {
   if (!apiKey) {
-    showError('No API key loaded', 'Please load your .env file using the button in the header before generating.');
+    showError('No API key set', 'Enter your OpenAI key in the API Key field above before generating.');
     return;
   }
 
@@ -194,8 +191,8 @@ async function generateExperiment() {
       const errData = await res.json().catch(() => ({}));
       const msg = errData?.error?.message || `HTTP ${res.status}`;
       if (res.status === 401) {
-        setKeyStatus('error', 'Invalid key');
-        throw new Error('Invalid API key. Please check your .env file and reload.');
+        setKeyError('Invalid key');
+        throw new Error('Invalid API key. Please check and re-enter your key.');
       }
       if (res.status === 429) {
         throw new Error('Rate limit reached. Please wait a moment and try again.');
@@ -205,7 +202,6 @@ async function generateExperiment() {
 
     const data = await res.json();
     const markdown = data.choices?.[0]?.message?.content || '';
-
     if (!markdown) throw new Error('The model returned an empty response. Please try again.');
 
     renderResult(markdown, grade);
@@ -213,18 +209,17 @@ async function generateExperiment() {
   } catch (err) {
     showError('Generation failed', err.message || 'An unexpected error occurred. Please try again.');
   } finally {
-    checkCanGenerate(); // re-enables button if fields are still filled
+    checkCanGenerate();
   }
 }
 
 // ===== RENDER RESULT =====
 let lastMarkdown = '';
-let lastGrade = '';
+let lastGrade    = '';
 
 function renderResult(markdown, grade) {
   lastMarkdown = markdown;
   lastGrade    = grade;
-
   outputBody.innerHTML = marked.parse(markdown);
   setDifficultyBadge(grade);
   showState('result');
@@ -241,9 +236,7 @@ copyBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(lastMarkdown);
     copyBtn.textContent = '✓ Copied!';
-    setTimeout(() => {
-      copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy`;
-    }, 2000);
+    setTimeout(() => { copyBtn.textContent = '⎘ Copy'; }, 2000);
   } catch {
     copyBtn.textContent = 'Failed';
   }
@@ -252,34 +245,38 @@ copyBtn.addEventListener('click', async () => {
 // ===== SAVE TO HISTORY =====
 saveBtn.addEventListener('click', () => {
   if (!lastMarkdown) return;
-
-  // Extract title from first # heading
   const titleMatch = lastMarkdown.match(/^#\s+(.+)/m);
   const title = titleMatch ? titleMatch[1].trim() : 'Untitled Experiment';
-
-  const entry = {
-    grade:    lastGrade,
-    title,
-    markdown: lastMarkdown,
-    time:     new Date(),
-  };
-
-  history.unshift(entry);
+  history.unshift({ grade: lastGrade, title, markdown: lastMarkdown, time: new Date() });
   renderHistory();
-
   saveBtn.textContent = '✓ Saved!';
-  setTimeout(() => {
-    saveBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save`;
-  }, 2000);
+  setTimeout(() => { saveBtn.textContent = '+ Save'; }, 2000);
 });
 
-// ===== HISTORY =====
+// ===== HISTORY PILLS (inside output card) =====
 function renderHistory() {
   if (history.length === 0) {
-    historyList.innerHTML = '<div class="history-empty">No experiments saved yet. Generate one and click <strong>Save</strong>!</div>';
+    historyPillsBar.classList.add('hidden');
+    historyList.innerHTML = '<div class="history-empty">No experiments saved yet.<br>Generate one and click <strong>+ Save</strong>!</div>';
     return;
   }
 
+  historyPillsBar.classList.remove('hidden');
+  historyPills.innerHTML = '';
+  history.forEach((entry, idx) => {
+    const pill = document.createElement('button');
+    pill.className = 'history-pill' + (idx === activePillIdx ? ' active' : '');
+    pill.title = entry.title;
+    pill.textContent = 'Gr.' + entry.grade + ' — ' + entry.title.slice(0, 22) + (entry.title.length > 22 ? '…' : '');
+    pill.addEventListener('click', () => {
+      activePillIdx = idx;
+      renderResult(entry.markdown, entry.grade);
+      renderHistory();
+    });
+    historyPills.appendChild(pill);
+  });
+
+  // Drawer list
   historyList.innerHTML = '';
   history.forEach((entry, idx) => {
     const item = document.createElement('div');
@@ -290,7 +287,9 @@ function renderHistory() {
       <div class="history-item-time">${formatTime(entry.time)}</div>
     `;
     item.addEventListener('click', () => {
+      activePillIdx = idx;
       renderResult(entry.markdown, entry.grade);
+      renderHistory();
       closeHistory();
     });
     historyList.appendChild(item);
@@ -299,30 +298,19 @@ function renderHistory() {
 
 clearHistoryBtn.addEventListener('click', () => {
   history.length = 0;
+  activePillIdx = -1;
   renderHistory();
 });
 
-function openHistory() {
-  historyDrawer.classList.add('open');
-  historyOverlay.hidden = false;
-}
-
-function closeHistory() {
-  historyDrawer.classList.remove('open');
-  historyOverlay.hidden = true;
-}
+// ===== HISTORY DRAWER =====
+function openHistory()  { historyDrawer.classList.add('open');    historyOverlay.hidden = false; }
+function closeHistory() { historyDrawer.classList.remove('open'); historyOverlay.hidden = true;  }
 
 historyToggle.addEventListener('click', openHistory);
 historyClose.addEventListener('click', closeHistory);
 historyOverlay.addEventListener('click', closeHistory);
 
 // ===== SUPPLY SUBSTITUTION =====
-const substToggle = document.getElementById('substToggle');
-const substPanel  = document.getElementById('substPanel');
-const substInput  = document.getElementById('substInput');
-const substBtn    = document.getElementById('substBtn');
-const substResult = document.getElementById('substResult');
-
 substToggle.addEventListener('click', () => {
   substPanel.hidden = !substPanel.hidden;
   if (!substPanel.hidden) substInput.focus();
@@ -337,7 +325,7 @@ async function suggestSubstitutions() {
 
   if (!apiKey) {
     substResult.className = 'subst-result error';
-    substResult.textContent = 'Load your .env key first.';
+    substResult.textContent = 'Enter your API key first.';
     return;
   }
 
@@ -355,14 +343,8 @@ async function suggestSubstitutions() {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful science teacher. When given a supply name, suggest 3–4 common household alternatives that could serve a similar role in science experiments. Be brief — respond with a short intro sentence and a bulleted list only. No extra commentary.',
-          },
-          {
-            role: 'user',
-            content: `What are common household alternatives to "${supply}" for science experiments?`,
-          },
+          { role: 'system', content: 'You are a helpful science teacher. When given a supply name, suggest 3–4 common household alternatives that could serve a similar role in science experiments. Be brief — respond with a short intro sentence and a bulleted list only. No extra commentary.' },
+          { role: 'user',   content: `What are common household alternatives to "${supply}" for science experiments?` },
         ],
         max_tokens: 200,
       }),
@@ -374,10 +356,8 @@ async function suggestSubstitutions() {
     }
 
     const data = await res.json();
-    const text = data.choices?.[0]?.message?.content || '';
     substResult.className = 'subst-result';
-    substResult.innerHTML = marked.parse(text);
-
+    substResult.innerHTML = marked.parse(data.choices?.[0]?.message?.content || '');
   } catch (err) {
     substResult.className = 'subst-result error';
     substResult.textContent = 'Error: ' + (err.message || 'Could not fetch alternatives.');

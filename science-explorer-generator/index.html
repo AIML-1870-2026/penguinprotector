@@ -6,76 +6,90 @@
   <title>Science Experiment Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="logo">
-        <span class="logo-icon">🔬</span>
-        <div>
-          <span class="logo-title">Science Lab</span>
-          <span class="logo-sub">Experiment Generator</span>
-        </div>
+  <!-- BACKGROUND ORBS -->
+  <div class="bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-icon">🔬</span>
+      <div class="brand-text">
+        <span class="brand-name">Science Experiment Generator</span>
+        <span class="brand-sub">AI-Powered · OpenAI · Educational Use Only</span>
       </div>
-      <div class="header-actions">
-        <div class="key-status" id="keyStatus">
-          <span class="key-dot"></span>
-          <span class="key-label">No key loaded</span>
-        </div>
-        <div class="key-input-row" id="keyInputRow" hidden>
-          <input type="password" id="keyInput" class="key-input" placeholder="sk-..." autocomplete="off" spellcheck="false" />
-          <button class="btn btn-teal btn-sm" id="keySubmit">Set</button>
-          <button class="btn btn-ghost btn-sm icon-btn" id="keyInputClose">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <button class="btn btn-outline btn-sm" id="typeKeyBtn">Type Key</button>
-        <label class="btn btn-outline btn-sm" for="envFile">
-          Load .env
-          <input type="file" id="envFile" accept=".env,.csv,.txt" hidden />
-        </label>
-        <button class="btn btn-ghost btn-sm" id="historyToggle" title="Experiment History">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          History
-        </button>
-      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-history" id="historyToggle" title="Experiment History">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </button>
     </div>
   </header>
 
-  <div class="app-layout">
+  <!-- MAIN -->
+  <main class="app-main">
 
-    <!-- CONTROLS PANEL -->
-    <aside class="controls-panel">
+    <!-- Card 1: Experiment Setup -->
+    <div class="card">
+      <div class="card-title">Experiment Setup</div>
 
-      <section class="control-section">
-        <label class="field-label" for="gradeSelect">
-          Grade Level <span class="required">*</span>
-        </label>
-        <div class="select-wrapper">
-          <select id="gradeSelect">
+      <div class="form-row">
+        <div class="field-group">
+          <label class="field-label" for="gradeSelect">Grade Level <span class="req">*</span></label>
+          <select id="gradeSelect" class="form-select">
             <option value="">Select a grade level…</option>
             <option value="K–2">K–2 (Kindergarten–2nd Grade)</option>
             <option value="3–5">3–5 (3rd–5th Grade)</option>
             <option value="6–8">6–8 (Middle School)</option>
             <option value="9–12">9–12 (High School)</option>
           </select>
-          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
         </div>
-      </section>
+        <div class="field-group">
+          <label class="field-label" for="modelSelect">Model</label>
+          <select id="modelSelect" class="form-select">
+            <option value="gpt-4o-mini">gpt-4o-mini — Fast &amp; Efficient</option>
+            <option value="gpt-4o">gpt-4o — Most Capable</option>
+          </select>
+        </div>
+      </div>
 
-      <section class="control-section">
-        <label class="field-label" for="suppliesInput">
-          Available Supplies <span class="required">*</span>
-        </label>
+      <div class="field-group">
+        <label class="field-label">API Key:</label>
+        <div class="key-input-row">
+          <input type="password" id="keyInput" class="form-input" placeholder="Paste your OpenAI API key (sk-...)" autocomplete="off" spellcheck="false" />
+          <button id="keySubmit" class="btn-sm btn-set-key">Set Key</button>
+          <button id="keyInputClose" class="btn-danger hidden">× Clear</button>
+          <label class="btn-sm file-label">↑ .env<input type="file" id="envFile" accept=".env,.csv,.txt" hidden /></label>
+        </div>
+        <p id="keyStatus" class="key-inline-status"></p>
+      </div>
+    </div>
+
+    <!-- Card 2: Available Supplies -->
+    <div class="card">
+      <div class="card-title">Available Supplies</div>
+
+      <div class="field-group">
+        <label class="field-label" for="suppliesInput">What do you have on hand? <span class="req">*</span></label>
         <textarea
           id="suppliesInput"
+          class="form-textarea"
           placeholder="Enter one supply per line, e.g.&#10;baking soda&#10;vinegar&#10;food coloring&#10;paper towels"
-          rows="6"
+          rows="5"
         ></textarea>
+      </div>
 
+      <div class="field-group">
         <div class="quick-add-label">Quick-Add Supplies</div>
         <div class="chip-grid" id="chipGrid">
           <button class="chip" data-supply="baking soda">🧂 baking soda</button>
@@ -99,74 +113,54 @@
           <button class="chip" data-supply="string">🧵 string</button>
           <button class="chip" data-supply="ice cubes">🧊 ice cubes</button>
         </div>
-      </section>
+      </div>
 
-      <section class="control-section">
-        <div class="subst-header">
-          <span class="field-label">Supply Substitutions</span>
-          <button class="btn btn-ghost btn-sm" id="substToggle" title="Suggest alternatives for supplies you don't have">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-            Suggest Alternatives
-          </button>
+      <div class="subst-section">
+        <div class="subst-toggle-row">
+          <span class="field-label">Need a substitute?</span>
+          <button class="btn-sm" id="substToggle">⇄ Suggest Alternatives</button>
         </div>
         <div class="subst-panel" id="substPanel" hidden>
           <div class="subst-input-row">
-            <input type="text" id="substInput" placeholder="e.g. vinegar" class="subst-input" />
-            <button class="btn btn-teal btn-sm" id="substBtn">Find</button>
+            <input type="text" id="substInput" class="form-input" placeholder="e.g. vinegar" />
+            <button class="btn-sm btn-set-key" id="substBtn">Find</button>
           </div>
           <div class="subst-result" id="substResult"></div>
         </div>
-      </section>
+      </div>
+    </div>
 
-      <section class="control-section">
-        <label class="field-label" for="modelSelect">Model</label>
-        <div class="select-wrapper">
-          <select id="modelSelect">
-            <option value="gpt-4o-mini">gpt-4o-mini — Fast &amp; Efficient</option>
-            <option value="gpt-4o">gpt-4o — Most Capable</option>
-          </select>
-          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
-      </section>
-
-      <button class="btn btn-primary btn-generate" id="generateBtn" disabled>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+    <!-- Generate row -->
+    <div class="generate-row">
+      <button class="btn-generate" id="generateBtn" disabled>
         Generate Experiment
       </button>
+      <p class="disclaimer">For educational use only — verify AI-generated content before classroom use.</p>
+    </div>
 
-      <p class="disclaimer">For educational use only. AI-generated content — verify before classroom use.</p>
-    </aside>
+    <!-- Card 3: Generated Experiment -->
+    <div class="card">
+      <div class="card-title">Generated Experiment</div>
 
-    <!-- OUTPUT PANEL -->
-    <main class="output-panel">
-      <div class="output-empty" id="outputEmpty">
-        <div class="empty-icon">⚗️</div>
-        <h2>Ready to Experiment?</h2>
-        <p>Select a grade level, enter your available supplies, and click <strong>Generate Experiment</strong> to get started.</p>
+      <!-- History pills bar -->
+      <div id="historyPillsBar" class="history-bar hidden">
+        <span class="history-label">History:</span>
+        <div id="historyPills" class="history-pills"></div>
+        <button class="btn-sm" id="clearHistoryBtn" style="margin-left:auto;flex-shrink:0">Clear</button>
       </div>
 
-      <div class="output-card" id="outputCard" hidden>
-        <div class="output-card-header">
-          <div class="difficulty-badge" id="difficultyBadge"></div>
-          <div class="output-actions">
-            <button class="btn btn-outline btn-sm" id="copyBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              Copy
-            </button>
-            <button class="btn btn-teal btn-sm" id="saveBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Save
-            </button>
-          </div>
-        </div>
-        <div class="output-body" id="outputBody"></div>
+      <!-- Placeholder -->
+      <div id="outputEmpty" class="out-placeholder">
+        <div class="ph-icon">⚗️🧪🔭</div>
+        <span>Select a grade level, add supplies, and hit <strong>Generate Experiment</strong>.</span>
       </div>
 
-      <div class="output-loading" id="outputLoading" hidden>
+      <!-- Loading -->
+      <div id="outputLoading" class="out-loading hidden">
         <div class="loading-dots">
           <span></span><span></span><span></span>
         </div>
-        <p class="loading-label">Designing your experiment…</p>
+        <span>Designing your experiment…</span>
         <div class="skeleton-lines">
           <div class="skel skel-title"></div>
           <div class="skel skel-line"></div>
@@ -174,34 +168,39 @@
           <div class="skel skel-line"></div>
           <div class="skel skel-line skel-med"></div>
           <div class="skel skel-line"></div>
-          <div class="skel skel-line skel-short"></div>
         </div>
       </div>
 
-      <div class="output-error" id="outputError" hidden>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <div>
-          <strong id="errorTitle">Something went wrong</strong>
-          <p id="errorMsg"></p>
+      <!-- Result -->
+      <div id="outputCard" hidden>
+        <div class="out-meta-bar">
+          <div class="difficulty-badge" id="difficultyBadge"></div>
+          <div class="out-meta-actions">
+            <button id="copyBtn" class="btn-sm">⎘ Copy</button>
+            <button id="saveBtn" class="btn-sm btn-set-key">+ Save</button>
+          </div>
         </div>
+        <div id="outputBody" class="out-content"></div>
       </div>
-    </main>
-  </div>
+
+      <!-- Error -->
+      <div id="outputError" class="out-error hidden">
+        <strong id="errorTitle">Something went wrong</strong>
+        <p id="errorMsg"></p>
+      </div>
+    </div>
+
+  </main>
 
   <!-- HISTORY DRAWER -->
   <div class="history-overlay" id="historyOverlay" hidden></div>
   <aside class="history-drawer" id="historyDrawer">
-    <div class="history-header">
-      <h3>Experiment History</h3>
-      <div class="history-header-actions">
-        <button class="btn btn-ghost btn-sm" id="clearHistoryBtn">Clear All</button>
-        <button class="btn btn-ghost btn-sm icon-btn" id="historyClose">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
+    <div class="history-drawer-hdr">
+      <span class="history-drawer-title">Experiment History</span>
+      <button class="btn-sm icon-btn" id="historyClose">✕</button>
     </div>
     <div class="history-list" id="historyList">
-      <div class="history-empty">No experiments saved yet. Generate one and click <strong>Save</strong>!</div>
+      <div class="history-empty">No experiments saved yet.<br>Generate one and click <strong>+ Save</strong>!</div>
     </div>
   </aside>
 
