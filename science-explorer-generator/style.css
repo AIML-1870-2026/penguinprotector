@@ -163,7 +163,7 @@ body {
 
 /* Rainbow top border per card */
 .card:nth-child(1)::before { background: linear-gradient(90deg, var(--purple), var(--sky)); }
-.card:nth-child(2)::before { background: linear-gradient(90deg, var(--green), var(--yellow)); }
+.card:nth-child(2)::before { background: linear-gradient(90deg, var(--sky), var(--pink)); }
 .card:nth-child(3)::before { background: linear-gradient(90deg, var(--pink), var(--orange)); }
 
 .card::before {
@@ -184,7 +184,7 @@ body {
 }
 
 .card:nth-child(1) .card-title { color: var(--purple); }
-.card:nth-child(2) .card-title { color: var(--green); }
+.card:nth-child(2) .card-title { color: var(--sky); }
 .card:nth-child(3) .card-title { color: var(--pink); }
 
 /* ── FORM ────────────────────────────────────────── */
