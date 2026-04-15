@@ -117,6 +117,36 @@ body {
 }
 .btn-history:hover { background: rgba(255,255,255,0.32); }
 
+.provider-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+.ps-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.4); flex-shrink: 0; }
+.provider-status.ok    .ps-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.provider-status.error .ps-dot { background: #f87171; }
+
+.no-providers-banner {
+  background: #fef9c3;
+  border: 1.5px solid #fbbf24;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+  position: relative;
+  z-index: 1;
+  animation: cardIn 0.5s ease both;
+}
+.no-providers-banner code { background: #fef3c7; border-radius: 4px; padding: 1px 5px; font-family: monospace; }
+
 /* ── MAIN LAYOUT ─────────────────────────────────── */
 
 .app-main {
