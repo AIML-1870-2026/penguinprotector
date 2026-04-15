@@ -197,13 +197,18 @@
       <!-- Result -->
       <div id="outputCard" hidden>
         <div class="out-meta-bar">
-          <div class="difficulty-badge" id="difficultyBadge"></div>
+          <div class="out-badges">
+            <div class="meta-badge difficulty-badge" id="difficultyBadge"></div>
+            <div class="meta-badge safety-badge" id="safetyBadge"></div>
+            <div class="meta-badge duration-badge" id="durationBadge"></div>
+          </div>
           <div class="out-meta-actions">
             <div class="rating-btns">
               <button id="rateUp" class="btn-rate" title="Great experiment!">👍</button>
               <button id="rateDown" class="btn-rate" title="Not great">👎</button>
             </div>
             <button id="regenBtn" class="btn-sm">↺ Regenerate</button>
+            <button id="promptToggleBtn" class="btn-sm">🔍 Prompt</button>
             <button id="printBtn" class="btn-sm">🖨️ Print</button>
             <button id="copyBtn" class="btn-sm">⎘ Copy</button>
             <button id="downloadBtn" class="btn-sm">⬇ .md</button>
@@ -211,6 +216,17 @@
           </div>
         </div>
         <div id="outputBody" class="out-content"></div>
+        <!-- Prompt Inspector -->
+        <div id="promptInspector" class="prompt-inspector hidden">
+          <div class="pi-section">
+            <div class="pi-label">System Prompt</div>
+            <pre id="piSystem" class="pi-pre"></pre>
+          </div>
+          <div class="pi-section">
+            <div class="pi-label">User Prompt</div>
+            <pre id="piUser" class="pi-pre"></pre>
+          </div>
+        </div>
       </div>
 
       <!-- Error -->
@@ -233,6 +249,9 @@
       <div class="history-empty">No experiments saved yet.<br>Generate one and click <strong>+ Save</strong>!</div>
     </div>
   </aside>
+
+  <!-- Toast container -->
+  <div id="toast-container" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="app.js"></script>

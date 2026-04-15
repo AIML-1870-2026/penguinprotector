@@ -104,8 +104,10 @@
 // ===== STATE =====
 let apiKey = null;
 const history = [];
-let activePillIdx  = -1;
-let activeCategory = '';
+let activePillIdx    = -1;
+let activeCategory   = '';
+let lastSystemPrompt = '';
+let lastUserPrompt   = '';
 
 // ===== ELEMENTS =====
 const envFileInput    = document.getElementById('envFile');
@@ -147,6 +149,10 @@ const clearSuppliesBtn = document.getElementById('clearSuppliesBtn');
 const categoryGrid     = document.getElementById('categoryGrid');
 const rateUp           = document.getElementById('rateUp');
 const rateDown         = document.getElementById('rateDown');
+const promptToggleBtn  = document.getElementById('promptToggleBtn');
+const promptInspector  = document.getElementById('promptInspector');
+const piSystem         = document.getElementById('piSystem');
+const piUser           = document.getElementById('piUser');
 
 // ===== API KEY — FILE LOADER =====
 function parseKeyFile(text) {
@@ -279,10 +285,21 @@ async function generateExperiment() {
   showState('loading');
   generateBtn.disabled = true;
 
-  const systemPrompt = `You are a creative science teacher who designs safe, engaging, grade-appropriate experiments. When given a grade level and a list of available supplies, you generate a complete experiment plan using only those materials. Format your response in markdown with clear sections: Experiment Title, Objective, Materials Needed, Step-by-Step Instructions, Expected Results, and a Discussion Question. Keep safety appropriate for the stated grade level.`;
+  const systemPrompt = `You are a creative science teacher who designs safe, engaging, grade-appropriate experiments. When given a grade level and a list of available supplies, you generate a complete experiment plan using only those materials.
+
+At the very top of your response, before anything else, output exactly these two metadata lines (no extra text):
+SAFETY: Kid-safe
+or
+SAFETY: Adult supervision required
+DURATION: [estimated total experiment time, e.g. "15 minutes" or "30 minutes"]
+
+Then a blank line, then the full experiment in markdown with clear sections: Experiment Title, Objective, Materials Needed, Step-by-Step Instructions, Expected Results, and a Discussion Question. Keep safety appropriate for the stated grade level.`;
 
   const categoryLine = activeCategory ? `\nScience Category: ${activeCategory}` : '';
   const userPrompt = `Grade Level: ${grade}${categoryLine}\n\nAvailable Supplies:\n${supplies}\n\nPlease generate a science experiment using only the supplies listed above, appropriate for the selected grade level.`;
+
+  lastSystemPrompt = systemPrompt;
+  lastUserPrompt   = userPrompt;
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -330,18 +347,56 @@ async function generateExperiment() {
 let lastMarkdown = '';
 let lastGrade    = '';
 
+function parseMetadata(raw) {
+  const safetyMatch   = raw.match(/^SAFETY:\s*(.+)/im);
+  const durationMatch = raw.match(/^DURATION:\s*(.+)/im);
+  const safety   = safetyMatch   ? safetyMatch[1].trim()   : null;
+  const duration = durationMatch ? durationMatch[1].trim() : null;
+  const clean = raw
+    .replace(/^SAFETY:\s*.+\r?\n?/im, '')
+    .replace(/^DURATION:\s*.+\r?\n?/im, '')
+    .trimStart();
+  return { safety, duration, clean };
+}
+
+function setSafetyBadge(safety, grade) {
+  const el = document.getElementById('safetyBadge');
+  if (!safety) safety = (grade === '9–12') ? 'Adult supervision required' : 'Kid-safe';
+  const isAdult = /adult|supervision/i.test(safety);
+  el.textContent = isAdult ? '⚠️ Adult supervision' : '✅ Kid-safe';
+  el.className   = 'meta-badge safety-badge ' + (isAdult ? 'adult' : 'safe');
+}
+
+function setDurationBadge(duration) {
+  const el = document.getElementById('durationBadge');
+  if (!duration) { el.textContent = ''; el.className = 'meta-badge duration-badge'; return; }
+  el.textContent = '⏱ ' + duration;
+  el.className   = 'meta-badge duration-badge visible';
+}
+
 function renderResult(markdown, grade) {
-  lastMarkdown = markdown;
+  const { safety, duration, clean } = parseMetadata(markdown);
+  lastMarkdown = clean;
   lastGrade    = grade;
-  outputBody.innerHTML = marked.parse(markdown);
+
+  outputBody.innerHTML = marked.parse(clean);
   setDifficultyBadge(grade);
+  setSafetyBadge(safety, grade);
+  setDurationBadge(duration);
   rateUp.classList.remove('active');
   rateDown.classList.remove('active');
+
+  // Populate prompt inspector
+  piSystem.textContent = lastSystemPrompt;
+  piUser.textContent   = lastUserPrompt;
+  promptInspector.classList.add('hidden');
+  promptToggleBtn.classList.remove('active');
+
   showState('result');
 
   // Animate the result card entrance
   outputCard.classList.remove('result-enter');
-  void outputCard.offsetWidth; // force reflow
+  void outputCard.offsetWidth;
   outputCard.classList.add('result-enter');
 
   // Scroll to output card
@@ -356,14 +411,27 @@ function showError(title, msg) {
   showState('error');
 }
 
+// ===== TOAST =====
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('toast-show'));
+  setTimeout(() => {
+    toast.classList.remove('toast-show');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, 2600);
+}
+
 // ===== COPY =====
 copyBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(lastMarkdown);
-    copyBtn.textContent = '✓ Copied!';
-    setTimeout(() => { copyBtn.textContent = '⎘ Copy'; }, 2000);
+    showToast('✓ Copied to clipboard!');
   } catch {
-    copyBtn.textContent = 'Failed';
+    showToast('Could not copy — try again', 'error');
   }
 });
 
@@ -374,8 +442,7 @@ saveBtn.addEventListener('click', () => {
   const title = titleMatch ? titleMatch[1].trim() : 'Untitled Experiment';
   history.unshift({ grade: lastGrade, title, markdown: lastMarkdown, time: new Date() });
   renderHistory();
-  saveBtn.textContent = '✓ Saved!';
-  setTimeout(() => { saveBtn.textContent = '+ Save'; }, 2000);
+  showToast('✓ Saved to history!');
 });
 
 // ===== HISTORY PILLS (inside output card) =====
@@ -454,6 +521,13 @@ downloadBtn.addEventListener('click', () => {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+  showToast('⬇ Downloading ' + filename);
+});
+
+// ===== PROMPT INSPECTOR =====
+promptToggleBtn.addEventListener('click', () => {
+  const open = promptInspector.classList.toggle('hidden');
+  promptToggleBtn.classList.toggle('active', !open);
 });
 
 // ===== CLEAR SUPPLIES =====
