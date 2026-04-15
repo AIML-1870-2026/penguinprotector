@@ -109,6 +109,63 @@ let activeCategory   = '';
 let lastSystemPrompt = '';
 let lastUserPrompt   = '';
 
+// ===== ROTATING LOADING MESSAGES =====
+const LOADING_MSGS = [
+  'Mixing virtual chemicals…',
+  'Consulting the lab notes…',
+  'Igniting curiosity…',
+  'Calibrating the microscope…',
+  'Asking the science teacher…',
+  'Measuring twice, cutting once…',
+  'Applying the scientific method…',
+  'Heating things up…',
+  'Running a hypothesis…',
+  'Bubbling with ideas…',
+];
+let loadingMsgInterval = null;
+
+function startLoadingMessages() {
+  const el = document.getElementById('loadingMsg');
+  if (!el) return;
+  let i = Math.floor(Math.random() * LOADING_MSGS.length);
+  el.textContent = LOADING_MSGS[i];
+  loadingMsgInterval = setInterval(() => {
+    i = (i + 1) % LOADING_MSGS.length;
+    el.style.opacity = '0';
+    setTimeout(() => { el.textContent = LOADING_MSGS[i]; el.style.opacity = '1'; }, 220);
+  }, 2200);
+}
+function stopLoadingMessages() {
+  clearInterval(loadingMsgInterval);
+  loadingMsgInterval = null;
+}
+
+// ===== ROTATING PLACEHOLDER TIPS =====
+const PH_TIPS = [
+  { icon: '⚗️', tip: 'Select a grade level, add supplies, and hit <strong>Generate Experiment</strong>' },
+  { icon: '🎲', tip: 'Try <strong>Surprise Me!</strong> for a random experiment — no setup needed' },
+  { icon: '🧪', tip: 'Pick a <strong>Science Category</strong> to focus your experiment (Chemistry, Physics…)' },
+  { icon: '🛒', tip: 'Click any supply chip to add it instantly — or type your own supplies' },
+  { icon: '🔭', tip: 'Use <strong>⇄ Suggest Alternatives</strong> if you\'re missing a supply' },
+];
+let phIdx = 0;
+
+function startPlaceholderRotation() {
+  const iconEl = document.getElementById('phIcon');
+  const tipEl  = document.getElementById('phTip');
+  if (!iconEl || !tipEl) return;
+  setInterval(() => {
+    phIdx = (phIdx + 1) % PH_TIPS.length;
+    iconEl.style.opacity = tipEl.style.opacity = '0';
+    setTimeout(() => {
+      iconEl.textContent  = PH_TIPS[phIdx].icon;
+      tipEl.innerHTML     = PH_TIPS[phIdx].tip;
+      iconEl.style.opacity = tipEl.style.opacity = '1';
+    }, 300);
+  }, 4000);
+}
+startPlaceholderRotation();
+
 // ===== ELEMENTS =====
 const envFileInput    = document.getElementById('envFile');
 const keyInput        = document.getElementById('keyInput');
@@ -224,11 +281,25 @@ function setKeyError(msg) {
 
 // ===== VALIDATION =====
 function checkCanGenerate() {
-  generateBtn.disabled = !(gradeSelect.value && suppliesInput.value.trim().length > 0);
+  const ok = !!(gradeSelect.value && suppliesInput.value.trim().length > 0);
+  generateBtn.disabled = !ok;
+  const mobileBtn = document.getElementById('mobileGenerateBtn');
+  if (mobileBtn) mobileBtn.disabled = !ok;
 }
 
 gradeSelect.addEventListener('change', checkCanGenerate);
-suppliesInput.addEventListener('input', checkCanGenerate);
+suppliesInput.addEventListener('input', () => {
+  checkCanGenerate();
+  syncChipsToTextarea();
+});
+
+// Sync supply chips to whatever is typed in the textarea
+function syncChipsToTextarea() {
+  const lines = suppliesInput.value.split('\n').map(l => l.trim().toLowerCase()).filter(Boolean);
+  document.querySelectorAll('.chip:not(.cat-chip)').forEach(chip => {
+    chip.classList.toggle('active', lines.includes(chip.dataset.supply.toLowerCase()));
+  });
+}
 
 // ===== QUICK-ADD CHIPS =====
 chipGrid.addEventListener('click', (e) => {
@@ -267,6 +338,8 @@ function showState(state) {
   outputCard.hidden    = state !== 'result';
   outputLoading.hidden = state !== 'loading';
   outputError.hidden   = state !== 'error';
+  if (state === 'loading') startLoadingMessages();
+  else stopLoadingMessages();
 }
 
 // ===== GENERATE =====
@@ -386,6 +459,16 @@ function renderResult(markdown, grade) {
   rateUp.classList.remove('active');
   rateDown.classList.remove('active');
 
+  // Category badge
+  const catBadge = document.getElementById('categoryBadge');
+  if (activeCategory) {
+    catBadge.textContent = '🔬 ' + activeCategory;
+    catBadge.classList.add('visible');
+  } else {
+    catBadge.textContent = '';
+    catBadge.classList.remove('visible');
+  }
+
   // Populate prompt inspector
   piSystem.textContent = lastSystemPrompt;
   piUser.textContent   = lastUserPrompt;
@@ -501,6 +584,12 @@ function closeHistory() { historyDrawer.classList.remove('open'); historyOverlay
 historyToggle.addEventListener('click', openHistory);
 historyClose.addEventListener('click', closeHistory);
 historyOverlay.addEventListener('click', closeHistory);
+
+// ===== MOBILE STICKY BAR =====
+const mobileGenerateBtn = document.getElementById('mobileGenerateBtn');
+const mobileSurpriseBtn = document.getElementById('mobileSurpriseBtn');
+if (mobileGenerateBtn) mobileGenerateBtn.addEventListener('click', generateExperiment);
+if (mobileSurpriseBtn) mobileSurpriseBtn.addEventListener('click', () => surpriseBtn.click());
 
 // ===== REGENERATE =====
 regenBtn.addEventListener('click', generateExperiment);

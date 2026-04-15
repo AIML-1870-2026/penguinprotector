@@ -51,15 +51,6 @@
           </select>
         </div>
         <div class="field-group">
-          <label class="field-label" for="familySelect">LLM Family</label>
-          <select id="familySelect" class="form-select">
-            <option value="openai">OpenAI</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field-group" style="grid-column: 1 / -1;">
           <label class="field-label" for="modelSelect">Model</label>
           <select id="modelSelect" class="form-select">
             <option value="gpt-4o-mini">gpt-4o-mini — Fast &amp; Efficient</option>
@@ -174,8 +165,11 @@
 
       <!-- Placeholder -->
       <div id="outputEmpty" class="out-placeholder">
-        <div class="ph-icon">⚗️🧪🔭</div>
-        <span>Select a grade level, add supplies, and hit <strong>Generate Experiment</strong> — or try <strong>🎲 Surprise Me!</strong></span>
+        <div class="ph-icon" id="phIcon">⚗️</div>
+        <div class="ph-tip" id="phTip">Select a grade level, add supplies, and hit <strong>Generate Experiment</strong></div>
+        <div class="ph-dots">
+          <span></span><span></span><span></span>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -183,7 +177,7 @@
         <div class="loading-dots">
           <span></span><span></span><span></span>
         </div>
-        <span>Designing your experiment…</span>
+        <span id="loadingMsg">Designing your experiment…</span>
         <div class="skeleton-lines">
           <div class="skel skel-title"></div>
           <div class="skel skel-line"></div>
@@ -201,6 +195,7 @@
             <div class="meta-badge difficulty-badge" id="difficultyBadge"></div>
             <div class="meta-badge safety-badge" id="safetyBadge"></div>
             <div class="meta-badge duration-badge" id="durationBadge"></div>
+            <div class="meta-badge category-badge" id="categoryBadge"></div>
           </div>
           <div class="out-meta-actions">
             <div class="rating-btns">
@@ -252,6 +247,16 @@
 
   <!-- Toast container -->
   <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Sticky mobile generate bar -->
+  <div class="mobile-gen-bar" id="mobileGenBar">
+    <button class="btn-generate btn-generate-mobile" id="mobileGenerateBtn" disabled>
+      ✨ Generate
+    </button>
+    <button class="btn-surprise btn-surprise-mobile" id="mobileSurpriseBtn">
+      🎲
+    </button>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="app.js"></script>
