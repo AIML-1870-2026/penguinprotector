@@ -537,6 +537,42 @@ body {
   border-color: transparent;
 }
 
+/* ── SUPPLIES LABEL ROW ──────────────────────────── */
+
+.supplies-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-clear-supplies {
+  font-size: 11px;
+  padding: 3px 10px;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.btn-clear-supplies:hover { background: #fef2f2; border-color: #f87171; color: #dc2626; }
+
+/* ── CATEGORY CHIPS ──────────────────────────────── */
+
+.cat-chip {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+.cat-chip:hover {
+  background: var(--yellow);
+  color: #fff;
+  border-color: var(--yellow);
+  box-shadow: 0 3px 10px rgba(251,191,36,0.35);
+}
+.cat-chip.active {
+  background: linear-gradient(135deg, var(--yellow), var(--orange));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(249,115,22,0.35);
+}
+
 /* ── OUTPUT ──────────────────────────────────────── */
 
 .out-placeholder {
@@ -617,6 +653,15 @@ body {
 @keyframes skelShimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Result card entrance animation */
+@keyframes resultEnter {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+#outputCard.result-enter {
+  animation: resultEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Out meta bar */

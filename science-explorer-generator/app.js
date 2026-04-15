@@ -104,7 +104,8 @@
 // ===== STATE =====
 let apiKey = null;
 const history = [];
-let activePillIdx = -1;
+let activePillIdx  = -1;
+let activeCategory = '';
 
 // ===== ELEMENTS =====
 const envFileInput    = document.getElementById('envFile');
@@ -138,11 +139,14 @@ const substPanel      = document.getElementById('substPanel');
 const substInput      = document.getElementById('substInput');
 const substBtn        = document.getElementById('substBtn');
 const substResult     = document.getElementById('substResult');
-const surpriseBtn     = document.getElementById('surpriseBtn');
-const regenBtn        = document.getElementById('regenBtn');
-const printBtn        = document.getElementById('printBtn');
-const rateUp          = document.getElementById('rateUp');
-const rateDown        = document.getElementById('rateDown');
+const surpriseBtn      = document.getElementById('surpriseBtn');
+const regenBtn         = document.getElementById('regenBtn');
+const printBtn         = document.getElementById('printBtn');
+const downloadBtn      = document.getElementById('downloadBtn');
+const clearSuppliesBtn = document.getElementById('clearSuppliesBtn');
+const categoryGrid     = document.getElementById('categoryGrid');
+const rateUp           = document.getElementById('rateUp');
+const rateDown         = document.getElementById('rateDown');
 
 // ===== API KEY — FILE LOADER =====
 function parseKeyFile(text) {
@@ -277,7 +281,8 @@ async function generateExperiment() {
 
   const systemPrompt = `You are a creative science teacher who designs safe, engaging, grade-appropriate experiments. When given a grade level and a list of available supplies, you generate a complete experiment plan using only those materials. Format your response in markdown with clear sections: Experiment Title, Objective, Materials Needed, Step-by-Step Instructions, Expected Results, and a Discussion Question. Keep safety appropriate for the stated grade level.`;
 
-  const userPrompt = `Grade Level: ${grade}\n\nAvailable Supplies:\n${supplies}\n\nPlease generate a science experiment using only the supplies listed above, appropriate for the selected grade level.`;
+  const categoryLine = activeCategory ? `\nScience Category: ${activeCategory}` : '';
+  const userPrompt = `Grade Level: ${grade}${categoryLine}\n\nAvailable Supplies:\n${supplies}\n\nPlease generate a science experiment using only the supplies listed above, appropriate for the selected grade level.`;
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -333,6 +338,15 @@ function renderResult(markdown, grade) {
   rateUp.classList.remove('active');
   rateDown.classList.remove('active');
   showState('result');
+
+  // Animate the result card entrance
+  outputCard.classList.remove('result-enter');
+  void outputCard.offsetWidth; // force reflow
+  outputCard.classList.add('result-enter');
+
+  // Scroll to output card
+  outputCard.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   if (window.confettiBurst) window.confettiBurst(55);
 }
 
@@ -427,6 +441,43 @@ regenBtn.addEventListener('click', generateExperiment);
 // ===== PRINT =====
 printBtn.addEventListener('click', () => window.print());
 
+// ===== DOWNLOAD =====
+downloadBtn.addEventListener('click', () => {
+  if (!lastMarkdown) return;
+  const titleMatch = lastMarkdown.match(/^#\s+(.+)/m);
+  const filename   = (titleMatch ? titleMatch[1].trim() : 'experiment')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.md';
+  const blob = new Blob([lastMarkdown], { type: 'text/markdown' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ===== CLEAR SUPPLIES =====
+clearSuppliesBtn.addEventListener('click', () => {
+  suppliesInput.value = '';
+  document.querySelectorAll('.chip:not(.cat-chip)').forEach(c => c.classList.remove('active'));
+  checkCanGenerate();
+});
+
+// ===== SCIENCE CATEGORY CHIPS =====
+categoryGrid.addEventListener('click', (e) => {
+  const chip = e.target.closest('.cat-chip');
+  if (!chip) return;
+  const cat = chip.dataset.category;
+  if (activeCategory === cat) {
+    activeCategory = '';
+    chip.classList.remove('active');
+  } else {
+    activeCategory = cat;
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  }
+});
+
 // ===== RATINGS =====
 rateUp.addEventListener('click', () => {
   rateUp.classList.toggle('active');
@@ -445,6 +496,8 @@ const SURPRISE_SUPPLIES = [
   'toothpicks','aluminum foil','tape','scissors','magnifying glass','string','ice cubes',
 ];
 
+const SURPRISE_CATEGORIES = ['Chemistry','Biology','Physics','Earth Science','Astronomy','Engineering'];
+
 surpriseBtn.addEventListener('click', () => {
   const grade = SURPRISE_GRADES[Math.floor(Math.random() * SURPRISE_GRADES.length)];
   gradeSelect.value = grade;
@@ -455,7 +508,13 @@ surpriseBtn.addEventListener('click', () => {
 
   suppliesInput.value = picked.join('\n');
 
-  document.querySelectorAll('.chip').forEach(chip => {
+  // Random category
+  activeCategory = SURPRISE_CATEGORIES[Math.floor(Math.random() * SURPRISE_CATEGORIES.length)];
+  document.querySelectorAll('.cat-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.category === activeCategory);
+  });
+
+  document.querySelectorAll('.chip:not(.cat-chip)').forEach(chip => {
     chip.classList.toggle('active', picked.includes(chip.dataset.supply));
   });
 

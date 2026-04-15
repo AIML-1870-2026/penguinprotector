@@ -37,7 +37,7 @@
 
     <!-- Card 1: Experiment Setup -->
     <div class="card">
-      <div class="card-title">Experiment Setup</div>
+      <div class="card-title">🧪 Experiment Setup</div>
 
       <div class="form-row">
         <div class="field-group">
@@ -82,16 +82,31 @@
 
     <!-- Card 2: Available Supplies -->
     <div class="card">
-      <div class="card-title">Available Supplies</div>
+      <div class="card-title">🛒 Available Supplies</div>
 
       <div class="field-group">
-        <label class="field-label" for="suppliesInput">What do you have on hand? <span class="req">*</span></label>
+        <div class="supplies-label-row">
+          <label class="field-label" for="suppliesInput">What do you have on hand? <span class="req">*</span></label>
+          <button class="btn-sm btn-clear-supplies" id="clearSuppliesBtn" title="Clear all supplies">✕ Clear</button>
+        </div>
         <textarea
           id="suppliesInput"
           class="form-textarea"
           placeholder="Enter one supply per line, e.g.&#10;baking soda&#10;vinegar&#10;food coloring&#10;paper towels"
           rows="5"
         ></textarea>
+      </div>
+
+      <div class="field-group">
+        <div class="quick-add-label">Science Category</div>
+        <div class="chip-grid" id="categoryGrid">
+          <button class="chip cat-chip" data-category="Chemistry">⚗️ Chemistry</button>
+          <button class="chip cat-chip" data-category="Biology">🌱 Biology</button>
+          <button class="chip cat-chip" data-category="Physics">⚡ Physics</button>
+          <button class="chip cat-chip" data-category="Earth Science">🌍 Earth Science</button>
+          <button class="chip cat-chip" data-category="Astronomy">🔭 Astronomy</button>
+          <button class="chip cat-chip" data-category="Engineering">🔧 Engineering</button>
+        </div>
       </div>
 
       <div class="field-group">
@@ -138,14 +153,17 @@
     <!-- Generate row -->
     <div class="generate-row">
       <button class="btn-generate" id="generateBtn" disabled>
-        Generate Experiment
+        ✨ Generate Experiment
+      </button>
+      <button class="btn-surprise" id="surpriseBtn">
+        🎲 Surprise Me!
       </button>
       <p class="disclaimer">For educational use only — verify AI-generated content before classroom use.</p>
     </div>
 
     <!-- Card 3: Generated Experiment -->
     <div class="card">
-      <div class="card-title">Generated Experiment</div>
+      <div class="card-title">⚗️ Generated Experiment</div>
 
       <!-- History pills bar -->
       <div id="historyPillsBar" class="history-bar hidden">
@@ -157,7 +175,7 @@
       <!-- Placeholder -->
       <div id="outputEmpty" class="out-placeholder">
         <div class="ph-icon">⚗️🧪🔭</div>
-        <span>Select a grade level, add supplies, and hit <strong>Generate Experiment</strong>.</span>
+        <span>Select a grade level, add supplies, and hit <strong>Generate Experiment</strong> — or try <strong>🎲 Surprise Me!</strong></span>
       </div>
 
       <!-- Loading -->
@@ -181,7 +199,14 @@
         <div class="out-meta-bar">
           <div class="difficulty-badge" id="difficultyBadge"></div>
           <div class="out-meta-actions">
+            <div class="rating-btns">
+              <button id="rateUp" class="btn-rate" title="Great experiment!">👍</button>
+              <button id="rateDown" class="btn-rate" title="Not great">👎</button>
+            </div>
+            <button id="regenBtn" class="btn-sm">↺ Regenerate</button>
+            <button id="printBtn" class="btn-sm">🖨️ Print</button>
             <button id="copyBtn" class="btn-sm">⎘ Copy</button>
+            <button id="downloadBtn" class="btn-sm">⬇ .md</button>
             <button id="saveBtn" class="btn-sm btn-set-key">+ Save</button>
           </div>
         </div>
