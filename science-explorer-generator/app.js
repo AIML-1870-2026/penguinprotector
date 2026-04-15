@@ -201,9 +201,11 @@ const substResult     = document.getElementById('substResult');
 const surpriseBtn      = document.getElementById('surpriseBtn');
 const regenBtn         = document.getElementById('regenBtn');
 const printBtn         = document.getElementById('printBtn');
+const worksheetBtn     = document.getElementById('worksheetBtn');
 const downloadBtn      = document.getElementById('downloadBtn');
 const clearSuppliesBtn = document.getElementById('clearSuppliesBtn');
 const categoryGrid     = document.getElementById('categoryGrid');
+const visualToggleBtn  = document.getElementById('visualToggleBtn');
 const rateUp           = document.getElementById('rateUp');
 const rateDown         = document.getElementById('rateDown');
 const promptToggleBtn  = document.getElementById('promptToggleBtn');
@@ -293,30 +295,86 @@ suppliesInput.addEventListener('input', () => {
   syncChipsToTextarea();
 });
 
-// Sync supply chips to whatever is typed in the textarea
+// Sync supply chips/cards to whatever is typed in the textarea
 function syncChipsToTextarea() {
-  const lines = suppliesInput.value.split('\n').map(l => l.trim().toLowerCase()).filter(Boolean);
-  document.querySelectorAll('.chip:not(.cat-chip)').forEach(chip => {
-    chip.classList.toggle('active', lines.includes(chip.dataset.supply.toLowerCase()));
-  });
+  renderChipGrid();
 }
 
-// ===== QUICK-ADD CHIPS =====
-chipGrid.addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  const supply = chip.dataset.supply;
+// ===== SUPPLY VISUAL MODE =====
+const SUPPLY_VISUAL = {
+  'baking soda':     { emoji: '🧂', desc: 'White powder, reacts with acid' },
+  'vinegar':         { emoji: '🍶', desc: 'Acidic liquid, causes bubbles' },
+  'food coloring':   { emoji: '🎨', desc: 'Dye for water & liquids' },
+  'paper towels':    { emoji: '🧻', desc: 'Absorbent, for cleanup' },
+  'balloons':        { emoji: '🎈', desc: 'Stretchy, holds air or gas' },
+  'salt':            { emoji: '🧂', desc: 'Changes density & freezing point' },
+  'sugar':           { emoji: '🍬', desc: 'Dissolves in water easily' },
+  'water':           { emoji: '💧', desc: 'Universal solvent' },
+  'dish soap':       { emoji: '🧼', desc: 'Breaks surface tension' },
+  'cornstarch':      { emoji: '🌽', desc: 'Non-Newtonian fluid base' },
+  'rubbing alcohol': { emoji: '🧪', desc: 'Evaporates fast, antiseptic' },
+  'plastic cups':    { emoji: '🥤', desc: 'Container for liquids' },
+  'rubber bands':    { emoji: '🔴', desc: 'Elastic, stores energy' },
+  'toothpicks':      { emoji: '🪥', desc: 'Small structural supports' },
+  'aluminum foil':   { emoji: '🫙', desc: 'Reflective, waterproof sheet' },
+  'tape':            { emoji: '🖊️', desc: 'Adhesive for joining parts' },
+  'scissors':        { emoji: '✂️', desc: 'Cuts paper and materials' },
+  'magnifying glass':{ emoji: '🔍', desc: 'Enlarges small details' },
+  'string':          { emoji: '🧵', desc: 'Flexible connector or measurer' },
+  'ice cubes':       { emoji: '🧊', desc: 'Frozen water, tests heat transfer' },
+};
+
+let visualMode = false;
+
+function renderChipGrid() {
+  chipGrid.innerHTML = '';
+  const lines = suppliesInput.value.split('\n').map(l => l.trim().toLowerCase()).filter(Boolean);
+
+  Object.entries(SUPPLY_VISUAL).forEach(([supply, { emoji, desc }]) => {
+    const isActive = lines.includes(supply.toLowerCase());
+    if (visualMode) {
+      const card = document.createElement('button');
+      card.className = 'supply-card' + (isActive ? ' active' : '');
+      card.dataset.supply = supply;
+      card.innerHTML = `<span class="sc-emoji">${emoji}</span><span class="sc-name">${supply}</span><span class="sc-desc">${desc}</span>`;
+      card.addEventListener('click', () => toggleSupply(supply, card));
+      chipGrid.appendChild(card);
+    } else {
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (isActive ? ' active' : '');
+      chip.dataset.supply = supply;
+      chip.textContent = emoji + ' ' + supply;
+      chip.addEventListener('click', () => toggleSupply(supply, chip));
+      chipGrid.appendChild(chip);
+    }
+  });
+
+  chipGrid.className = visualMode ? 'supply-card-grid' : 'chip-grid';
+}
+
+function toggleSupply(supply, el) {
   const current = suppliesInput.value;
-  const lines = current.split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.includes(supply)) {
+  const lines   = current.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.map(l => l.toLowerCase()).includes(supply.toLowerCase())) {
     suppliesInput.value = current ? current.trimEnd() + '\n' + supply : supply;
-    chip.classList.add('active');
+    el.classList.add('active');
   } else {
-    suppliesInput.value = lines.filter(l => l !== supply).join('\n');
-    chip.classList.remove('active');
+    suppliesInput.value = lines.filter(l => l.toLowerCase() !== supply.toLowerCase()).join('\n');
+    el.classList.remove('active');
   }
   checkCanGenerate();
+}
+
+visualToggleBtn.addEventListener('click', () => {
+  visualMode = !visualMode;
+  visualToggleBtn.classList.toggle('active', visualMode);
+  visualToggleBtn.textContent = visualMode ? '≡ List' : '🖼 Visual';
+  renderChipGrid();
 });
+
+renderChipGrid();
+
+// ===== QUICK-ADD CHIPS — handled by renderChipGrid() above =====
 
 // ===== DIFFICULTY =====
 const DIFFICULTY_MAP = {
@@ -613,6 +671,145 @@ downloadBtn.addEventListener('click', () => {
   showToast('⬇ Downloading ' + filename);
 });
 
+// ===== OBSERVATION WORKSHEET =====
+worksheetBtn.addEventListener('click', () => {
+  if (!lastMarkdown) return;
+
+  const titleMatch = lastMarkdown.match(/^#\s+(.+)/m);
+  const title      = titleMatch ? titleMatch[1].trim() : 'Science Experiment';
+
+  // Extract materials list from markdown
+  const materialsMatch = lastMarkdown.match(/##\s*Materials[^\n]*\n([\s\S]*?)(?=\n##|\n#|$)/i);
+  let materialsHTML = '';
+  if (materialsMatch) {
+    const items = materialsMatch[1].match(/[-*]\s+(.+)/g) || [];
+    materialsHTML = items.map(item =>
+      `<div class="ws-check-row"><span class="ws-check">☐</span><span>${item.replace(/^[-*]\s+/, '')}</span></div>`
+    ).join('');
+  }
+
+  // Extract discussion question
+  const discussMatch = lastMarkdown.match(/##\s*Discussion[^\n]*\n([\s\S]*?)(?=\n##|\n#|$)/i);
+  const discussion   = discussMatch ? discussMatch[1].replace(/[-*]\s*/g, '').trim() : '';
+
+  const difficultyEl = document.getElementById('difficultyBadge');
+  const safetyEl     = document.getElementById('safetyBadge');
+  const durationEl   = document.getElementById('durationBadge');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Observation Worksheet — ${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Nunito',sans-serif;font-size:13pt;color:#1e1b4b;padding:28px 36px;max-width:780px;margin:0 auto}
+  @media print{body{padding:16px 20px}}
+  .ws-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #7C3AED;padding-bottom:12px;margin-bottom:18px}
+  .ws-title{font-size:20pt;font-weight:800;color:#7C3AED;line-height:1.2}
+  .ws-meta{font-size:10pt;color:#6b7280;margin-top:4px}
+  .ws-badge{display:inline-block;font-size:9pt;font-weight:700;padding:3px 10px;border-radius:99px;margin-right:6px}
+  .ws-badge-diff{background:#fce7f3;color:#9d174d}
+  .ws-badge-safe{background:#dcfce7;color:#166534}
+  .ws-badge-dur{background:#e0f2fe;color:#075985}
+  .ws-logo{font-size:32pt;line-height:1}
+  .ws-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+  .ws-field{border-bottom:1.5px solid #d1d5db;padding-bottom:4px}
+  .ws-field-label{font-size:8.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:10px}
+  .ws-section{margin-bottom:18px}
+  .ws-section-title{font-size:11pt;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#7C3AED;border-left:4px solid #7C3AED;padding-left:10px;margin-bottom:10px}
+  .ws-lines{display:flex;flex-direction:column;gap:10px}
+  .ws-line{border-bottom:1px solid #e5e7eb;min-height:26px}
+  .ws-hyp{display:grid;grid-template-columns:auto 1fr auto 1fr;align-items:end;gap:6px;font-size:12pt}
+  .ws-hyp-line{border-bottom:1px solid #374151;flex:1;min-height:24px}
+  .ws-table{width:100%;border-collapse:collapse;font-size:11pt}
+  .ws-table th{background:#f5f3ff;color:#7C3AED;font-size:9pt;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border:1px solid #ddd6fe;text-align:left}
+  .ws-table td{border:1px solid #e5e7eb;padding:6px 10px;height:36px;vertical-align:top}
+  .ws-table tr:nth-child(even) td{background:#faf5ff}
+  .ws-check-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;font-size:12pt}
+  .ws-check{font-size:13pt;flex-shrink:0}
+  .ws-conclusion{font-size:12pt;line-height:1.6;margin-bottom:6px}
+  .ws-footer{margin-top:24px;padding-top:10px;border-top:1.5px dashed #e5e7eb;font-size:9pt;color:#9ca3af;text-align:center}
+  .page-break{page-break-before:always}
+</style>
+</head>
+<body>
+<div class="ws-header">
+  <div>
+    <div class="ws-title">${title}</div>
+    <div class="ws-meta">
+      <span class="ws-badge ws-badge-diff">${difficultyEl.textContent}</span>
+      <span class="ws-badge ws-badge-safe">${safetyEl.textContent}</span>
+      ${durationEl.textContent ? `<span class="ws-badge ws-badge-dur">${durationEl.textContent}</span>` : ''}
+      ${activeCategory ? `<span class="ws-badge" style="background:#fef9c3;color:#713f12">🔬 ${activeCategory}</span>` : ''}
+    </div>
+  </div>
+  <div class="ws-logo">🔬</div>
+</div>
+
+<div class="ws-info">
+  <div><div class="ws-field-label">Name</div><div class="ws-field"></div></div>
+  <div><div class="ws-field-label">Date</div><div class="ws-field"></div></div>
+  <div><div class="ws-field-label">Class / Period</div><div class="ws-field"></div></div>
+</div>
+
+<div class="ws-section">
+  <div class="ws-section-title">My Question</div>
+  <div class="ws-lines"><div class="ws-line"></div><div class="ws-line"></div></div>
+</div>
+
+<div class="ws-section">
+  <div class="ws-section-title">My Hypothesis</div>
+  <div class="ws-conclusion">I think that <span class="ws-hyp-line" style="display:inline-block;width:220px;border-bottom:1px solid #374151">&nbsp;</span> because <span class="ws-hyp-line" style="display:inline-block;width:200px;border-bottom:1px solid #374151">&nbsp;</span></div>
+  <div class="ws-lines"><div class="ws-line"></div><div class="ws-line"></div></div>
+</div>
+
+${materialsHTML ? `<div class="ws-section">
+  <div class="ws-section-title">Materials Checklist</div>
+  ${materialsHTML}
+</div>` : ''}
+
+<div class="ws-section">
+  <div class="ws-section-title">Observations</div>
+  <table class="ws-table">
+    <thead><tr><th style="width:60px">Trial</th><th>What I Saw / Noticed</th><th>What I Measured</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td></td><td></td></tr>
+      <tr><td>2</td><td></td><td></td></tr>
+      <tr><td>3</td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="ws-section">
+  <div class="ws-section-title">Results — What Happened?</div>
+  <div class="ws-lines"><div class="ws-line"></div><div class="ws-line"></div><div class="ws-line"></div></div>
+</div>
+
+<div class="ws-section">
+  <div class="ws-section-title">Conclusion</div>
+  <div class="ws-conclusion">My hypothesis was ☐ correct &nbsp; ☐ incorrect &nbsp; ☐ partially correct because:</div>
+  <div class="ws-lines"><div class="ws-line"></div><div class="ws-line"></div><div class="ws-line"></div></div>
+</div>
+
+${discussion ? `<div class="ws-section">
+  <div class="ws-section-title">Discussion Question</div>
+  <div class="ws-conclusion" style="font-style:italic;color:#374151;margin-bottom:12px">${discussion}</div>
+  <div class="ws-lines"><div class="ws-line"></div><div class="ws-line"></div><div class="ws-line"></div></div>
+</div>` : ''}
+
+<div class="ws-footer">Science Experiment Generator · AI-Generated · For Educational Use Only</div>
+
+<script>window.onload = () => window.print();<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+});
+
 // ===== PROMPT INSPECTOR =====
 promptToggleBtn.addEventListener('click', () => {
   const open = promptInspector.classList.toggle('hidden');
@@ -622,7 +819,7 @@ promptToggleBtn.addEventListener('click', () => {
 // ===== CLEAR SUPPLIES =====
 clearSuppliesBtn.addEventListener('click', () => {
   suppliesInput.value = '';
-  document.querySelectorAll('.chip:not(.cat-chip)').forEach(c => c.classList.remove('active'));
+  renderChipGrid();
   checkCanGenerate();
 });
 
@@ -677,9 +874,7 @@ surpriseBtn.addEventListener('click', () => {
     c.classList.toggle('active', c.dataset.category === activeCategory);
   });
 
-  document.querySelectorAll('.chip:not(.cat-chip)').forEach(chip => {
-    chip.classList.toggle('active', picked.includes(chip.dataset.supply));
-  });
+  renderChipGrid();
 
   checkCanGenerate();
   generateExperiment();
