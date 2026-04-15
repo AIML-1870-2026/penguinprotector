@@ -21,15 +21,11 @@
       <span class="brand-icon">🔬</span>
       <div class="brand-text">
         <span class="brand-name">Science Experiment Generator</span>
-        <span class="brand-sub">AI-Powered · Educational Use Only</span>
+        <span class="brand-sub">AI-Powered · OpenAI · Educational Use Only</span>
       </div>
     </div>
     <div class="header-actions">
-      <div class="provider-status" id="providerStatus">
-        <span class="ps-dot"></span>
-        <span class="ps-label">Loading…</span>
-      </div>
-      <button class="btn-history" id="historyToggle">
+      <button class="btn-history" id="historyToggle" title="Experiment History">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         History
       </button>
@@ -38,11 +34,6 @@
 
   <!-- MAIN -->
   <main class="app-main">
-
-    <!-- No providers banner (shown if server has no keys) -->
-    <div id="noBanner" class="no-providers-banner hidden">
-      ⚠️ No API keys are configured on the server. Add <code>OPENAI_API_KEY</code> and/or <code>ANTHROPIC_API_KEY</code> to your <code>.env</code> file.
-    </div>
 
     <!-- Card 1: Experiment Setup -->
     <div class="card">
@@ -62,7 +53,7 @@
         <div class="field-group">
           <label class="field-label" for="familySelect">LLM Family</label>
           <select id="familySelect" class="form-select">
-            <option value="">Loading providers…</option>
+            <option value="openai">OpenAI</option>
           </select>
         </div>
       </div>
@@ -71,9 +62,21 @@
         <div class="field-group" style="grid-column: 1 / -1;">
           <label class="field-label" for="modelSelect">Model</label>
           <select id="modelSelect" class="form-select">
-            <option value="">Select a provider first…</option>
+            <option value="gpt-4o-mini">gpt-4o-mini — Fast &amp; Efficient</option>
+            <option value="gpt-4o">gpt-4o — Most Capable</option>
           </select>
         </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">API Key:</label>
+        <div class="key-input-row">
+          <input type="password" id="keyInput" class="form-input" placeholder="Paste your OpenAI API key (sk-...)" autocomplete="off" spellcheck="false" />
+          <button id="keySubmit" class="btn-sm btn-set-key">Set Key</button>
+          <button id="keyInputClose" class="btn-danger hidden">× Clear</button>
+          <label class="btn-sm file-label">↑ .env<input type="file" id="envFile" accept=".env,.csv,.txt" hidden /></label>
+        </div>
+        <p id="keyStatus" class="key-inline-status"></p>
       </div>
     </div>
 
@@ -144,19 +147,24 @@
     <div class="card">
       <div class="card-title">Generated Experiment</div>
 
+      <!-- History pills bar -->
       <div id="historyPillsBar" class="history-bar hidden">
         <span class="history-label">History:</span>
         <div id="historyPills" class="history-pills"></div>
         <button class="btn-sm" id="clearHistoryBtn" style="margin-left:auto;flex-shrink:0">Clear</button>
       </div>
 
+      <!-- Placeholder -->
       <div id="outputEmpty" class="out-placeholder">
         <div class="ph-icon">⚗️🧪🔭</div>
         <span>Select a grade level, add supplies, and hit <strong>Generate Experiment</strong>.</span>
       </div>
 
+      <!-- Loading -->
       <div id="outputLoading" class="out-loading hidden">
-        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <div class="loading-dots">
+          <span></span><span></span><span></span>
+        </div>
         <span>Designing your experiment…</span>
         <div class="skeleton-lines">
           <div class="skel skel-title"></div>
@@ -168,6 +176,7 @@
         </div>
       </div>
 
+      <!-- Result -->
       <div id="outputCard" hidden>
         <div class="out-meta-bar">
           <div class="difficulty-badge" id="difficultyBadge"></div>
@@ -179,6 +188,7 @@
         <div id="outputBody" class="out-content"></div>
       </div>
 
+      <!-- Error -->
       <div id="outputError" class="out-error hidden">
         <strong id="errorTitle">Something went wrong</strong>
         <p id="errorMsg"></p>
