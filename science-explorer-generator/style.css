@@ -357,6 +357,50 @@ body {
 .btn-generate:active:not(:disabled) { transform: translateY(0) scale(1); }
 .btn-generate:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
 
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 6px 24px rgba(124, 58, 237, 0.45); }
+  50%       { box-shadow: 0 10px 38px rgba(236, 72, 153, 0.65), 0 0 0 8px rgba(124, 58, 237, 0.1); }
+}
+.btn-generate:not(:disabled) {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+.btn-surprise {
+  background: linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 11px 32px;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: var(--font);
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 18px rgba(249, 115, 22, 0.4);
+}
+.btn-surprise:hover {
+  opacity: 0.9;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(249, 115, 22, 0.55);
+}
+.btn-surprise:active { transform: translateY(0) scale(1); }
+
+.btn-rate {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  padding: 4px 11px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1.4;
+  font-family: var(--font);
+}
+.btn-rate:hover { transform: scale(1.18); border-color: var(--purple-lt); }
+#rateUp.active   { background: #f0fdf4; border-color: #86efac; box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+#rateDown.active { background: #fef2f2; border-color: #fca5a5; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+
 .disclaimer {
   font-size: 11px;
   color: var(--dim);
@@ -587,7 +631,8 @@ body {
   margin-bottom: 4px;
 }
 
-.out-meta-actions { display: flex; gap: 6px; }
+.out-meta-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.rating-btns { display: flex; gap: 4px; }
 
 /* Difficulty badge */
 .difficulty-badge {
@@ -754,6 +799,37 @@ body {
 .hidden { display: none !important; }
 
 /* ── RESPONSIVE ──────────────────────────────────── */
+
+/* ── PRINT ───────────────────────────────────────── */
+
+@media print {
+  #confetti-canvas,
+  .app-header,
+  .generate-row,
+  .history-bar,
+  .out-meta-actions,
+  .history-drawer,
+  .history-overlay,
+  .subst-section,
+  .app-main > .card:nth-child(1),
+  .app-main > .card:nth-child(2) { display: none !important; }
+
+  body { background: #fff; }
+  .app-main { padding: 12px; max-width: 100%; }
+
+  .card {
+    box-shadow: none;
+    border: 1.5px solid #e5e7eb;
+    animation: none;
+    transform: none;
+  }
+  .card::before { display: none; }
+
+  .difficulty-badge { border: 1px solid #e5e7eb; }
+  .out-content { font-size: 12pt; line-height: 1.65; }
+  .out-content h1 { font-size: 1.3rem; }
+  .out-content h2 { font-size: 1.05rem; }
+}
 
 @media (max-width: 640px) {
   .app-header { padding: 0 16px; }

@@ -85,6 +85,20 @@
   window.addEventListener('resize', resize);
   init();
   draw();
+
+  // Expose burst for use after generation
+  window.confettiBurst = function(count) {
+    count = count || 55;
+    for (let i = 0; i < count; i++) {
+      const p = makePiece();
+      p.x     = rand(W * 0.2, W * 0.8);
+      p.y     = rand(H * 0.25, H * 0.55);
+      p.speed = rand(4, 10);
+      p.drift = rand(-4, 4);
+      pieces.push(p);
+    }
+    setTimeout(() => { pieces.splice(COUNT); }, 5000);
+  };
 })();
 
 // ===== STATE =====
@@ -124,6 +138,11 @@ const substPanel      = document.getElementById('substPanel');
 const substInput      = document.getElementById('substInput');
 const substBtn        = document.getElementById('substBtn');
 const substResult     = document.getElementById('substResult');
+const surpriseBtn     = document.getElementById('surpriseBtn');
+const regenBtn        = document.getElementById('regenBtn');
+const printBtn        = document.getElementById('printBtn');
+const rateUp          = document.getElementById('rateUp');
+const rateDown        = document.getElementById('rateDown');
 
 // ===== API KEY — FILE LOADER =====
 function parseKeyFile(text) {
@@ -311,7 +330,10 @@ function renderResult(markdown, grade) {
   lastGrade    = grade;
   outputBody.innerHTML = marked.parse(markdown);
   setDifficultyBadge(grade);
+  rateUp.classList.remove('active');
+  rateDown.classList.remove('active');
   showState('result');
+  if (window.confettiBurst) window.confettiBurst(55);
 }
 
 function showError(title, msg) {
@@ -398,6 +420,48 @@ function closeHistory() { historyDrawer.classList.remove('open'); historyOverlay
 historyToggle.addEventListener('click', openHistory);
 historyClose.addEventListener('click', closeHistory);
 historyOverlay.addEventListener('click', closeHistory);
+
+// ===== REGENERATE =====
+regenBtn.addEventListener('click', generateExperiment);
+
+// ===== PRINT =====
+printBtn.addEventListener('click', () => window.print());
+
+// ===== RATINGS =====
+rateUp.addEventListener('click', () => {
+  rateUp.classList.toggle('active');
+  rateDown.classList.remove('active');
+});
+rateDown.addEventListener('click', () => {
+  rateDown.classList.toggle('active');
+  rateUp.classList.remove('active');
+});
+
+// ===== SURPRISE ME =====
+const SURPRISE_GRADES   = ['K–2', '3–5', '6–8', '9–12'];
+const SURPRISE_SUPPLIES = [
+  'baking soda','vinegar','food coloring','paper towels','balloons','salt','sugar',
+  'water','dish soap','cornstarch','rubbing alcohol','plastic cups','rubber bands',
+  'toothpicks','aluminum foil','tape','scissors','magnifying glass','string','ice cubes',
+];
+
+surpriseBtn.addEventListener('click', () => {
+  const grade = SURPRISE_GRADES[Math.floor(Math.random() * SURPRISE_GRADES.length)];
+  gradeSelect.value = grade;
+
+  const count    = 4 + Math.floor(Math.random() * 3);
+  const shuffled = [...SURPRISE_SUPPLIES].sort(() => Math.random() - 0.5);
+  const picked   = shuffled.slice(0, count);
+
+  suppliesInput.value = picked.join('\n');
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.classList.toggle('active', picked.includes(chip.dataset.supply));
+  });
+
+  checkCanGenerate();
+  generateExperiment();
+});
 
 // ===== SUPPLY SUBSTITUTION =====
 substToggle.addEventListener('click', () => {
