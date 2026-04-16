@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE IMPLEMENTATION — temp/reference.html
+  ═══════════════════════════════════════════════════════════════════════════
+  NOT part of the final deliverable. This file documents the four key
+  patterns used in the main project:
+
+    1. .env file upload + in-memory key parsing
+    2. Exact fetch() call structure for the Anthropic Messages API
+    3. Error handling for failed / malformed API responses
+    4. Extracting structured JSON from an LLM response reliably
+
+  Open this file directly in a browser to test your API key before running
+  the full ai-blackjack app.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference: Anthropic API Patterns</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 720px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #0d1117;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+    h1  { color: #d4af37; }
+    h2  { color: #94a3b8; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 32px; }
+    code, pre { font-family: 'Fira Code', monospace; font-size: 13px; }
+    pre {
+      background: #0a0f1a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .step {
+      background: #112240;
+      border: 1px solid #1e3a5f;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+    .step p { margin: 0 0 12px; color: #94a3b8; font-size: 13px; }
+    label.file-btn {
+      display: inline-block;
+      padding: 8px 18px;
+      background: rgba(212,175,55,0.1);
+      border: 1px solid #d4af37;
+      border-radius: 6px;
+      color: #d4af37;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    button {
+      padding: 9px 20px;
+      background: #1e3a5f;
+      border: 1px solid #2d5f8a;
+      border-radius: 6px;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    button:hover  { background: #2d5f8a; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+      background: #0a0f1a;
+    }
+    .status.ok   { color: #22c55e; border-color: rgba(34,197,94,0.3); }
+    .status.err  { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+    .status.info { color: #94a3b8; }
+    .note {
+      font-size: 12px;
+      color: #475569;
+      border-left: 3px solid #1e293b;
+      padding-left: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Reference: Anthropic API Patterns</h1>
+<p style="color:#94a3b8">
+  This file demonstrates the four patterns used throughout the ai-blackjack project.
+  It is <strong>not</strong> a deliverable — it lives in <code>temp/</code> only.
+</p>
+
+<!-- ─── Step 1: .env Upload ──────────────────────────────────────────────────── -->
+<div class="step">
+  <h2>Pattern 1 — .env File Upload &amp; In-Memory Key Parsing</h2>
+  <p>
+    The user selects a <code>.env</code> file. The file is read with <code>FileReader</code>
+    and the key is stored in a plain JS variable — never in localStorage, sessionStorage,
+    cookies, or any server. The page has no backend.
+  </p>
+  <pre>
+// Pattern: parseEnvFile(text) → string | null
+function parseEnvFile(text) {
+  // .env format:  ANTHROPIC_API_KEY=sk-ant-...
+  const envMatches = text.matchAll(/^([A-Z_]+)\s*=\s*(.+)$/gm);
+  for (const [, k, v] of envMatches) {
+    if (k.includes('ANTHROPIC')) return v.trim();
+  }
+  // CSV format:  anthropic,sk-ant-...
+  for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
+    const [col0, col1] = line.split(',').map(s => s.trim());
+    if (col1 &amp;&amp; col0.toLowerCase().includes('anthropic')) return col1;
+  }
+  // Bare key fallback
+  const bare = text.trim().replace(/\s+/g, '');
+  if (bare.startsWith('sk-ant-') &amp;&amp; bare.length > 20) return bare;
+  return null;
+}
+</pre>
+
+  <label class="file-btn">
+    Select .env file
+    <input type="file" id="ref-env-file" accept=".env,.txt,.csv" hidden>
+  </label>
+  <div class="status info" id="ref-key-status">No key loaded.</div>
+  <p class="note">
+    Security note: the key is stored only in the JS variable <code>_apiKey</code> for the
+    lifetime of the page. Closing or refreshing the tab clears it automatically.
+  </p>
+</div>
+
+<!-- ─── Step 2: fetch() Structure ───────────────────────────────────────────── -->
+<div class="step">
+  <h2>Pattern 2 — Exact fetch() Structure for the Anthropic Messages API</h2>
+  <p>
+    Every call to Claude uses this exact header set. The
+    <code>anthropic-dangerous-allow-browser</code> header is required for
+    direct browser-to-API calls (no CORS proxy needed).
+  </p>
+  <pre>
+const response = await fetch('https://api.anthropic.com/v1/messages', {
+  method: 'POST',
+  headers: {
+    'x-api-key':                         apiKey,
+    'anthropic-version':                 '2023-06-01',
+    'anthropic-dangerous-allow-browser': 'true',
+    'Content-Type':                      'application/json',
+  },
+  body: JSON.stringify({
+    model:      'claude-sonnet-4-6',
+    system:     'You are a helpful assistant. Return ONLY valid JSON.',
+    messages:   [{ role: 'user', content: prompt }],
+    max_tokens: 512,
+    temperature: 0,
+  }),
+});
+</pre>
+</div>
+
+<!-- ─── Step 3: Error Handling ───────────────────────────────────────────────── -->
+<div class="step">
+  <h2>Pattern 3 — Error Handling for Failed / Malformed Responses</h2>
+  <pre>
+if (!response.ok) {
+  // Parse the Anthropic error object for a human-readable message
+  const err = await response.json().catch(() => ({}));
+  throw new Error(err.error?.message || `API error ${response.status}`);
+}
+const data  = await response.json();
+const text  = data.content[0]?.text ?? '';
+if (!text) throw new Error('Empty response from API');
+</pre>
+</div>
+
+<!-- ─── Step 4: Structured JSON Extraction ───────────────────────────────────── -->
+<div class="step">
+  <h2>Pattern 4 — Reliable Structured JSON Extraction</h2>
+  <p>
+    We instruct the model to respond with JSON only. Then we strip any markdown
+    fences the model might add defensively, and parse. If that fails we grab
+    the first <code>{...}</code> block in the raw text.
+  </p>
+  <pre>
+function extractJSON(text) {
+  // Strip ``` or ```json fences
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw    = fenced ? fenced[1].trim() : text.trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Not valid JSON: ' + text.slice(0, 100));
+  }
+}
+</pre>
+</div>
+
+<!-- ─── Live Demo ──────────────────────────────────────────────────────────────── -->
+<div class="step">
+  <h2>Live Demo — Ask Claude "What is 2+2?" (returns JSON)</h2>
+  <p>
+    After uploading a key above, click Run to make a real API call.
+    The model is instructed to return <em>only</em> a JSON object
+    <code>{"answer": 4, "explanation": "..."}</code>.
+  </p>
+  <button id="ref-run-btn" disabled>Run Demo Call</button>
+  <div class="status info" id="ref-result">Waiting for key…</div>
+</div>
+
+<script>
+'use strict';
+
+// ── Pattern 1: In-memory key storage ──────────────────────────────────────────
+let _apiKey = null;
+
+function parseEnvFile(text) {
+  const envMatches = text.matchAll(/^([A-Z_]+)\s*=\s*(.+)$/gm);
+  for (const [, k, v] of envMatches) {
+    if (k.includes('ANTHROPIC')) return v.trim();
+  }
+  for (const line of text.split('\n').map(l => l.trim()).filter(Boolean)) {
+    const [col0, col1] = line.split(',').map(s => s.trim());
+    if (col1 && col0.toLowerCase().includes('anthropic')) return col1;
+  }
+  const bare = text.trim().replace(/\s+/g, '');
+  if (bare.startsWith('sk-ant-') && bare.length > 20) return bare;
+  return null;
+}
+
+document.getElementById('ref-env-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const key = parseEnvFile(ev.target.result);
+    const statusEl = document.getElementById('ref-key-status');
+    if (key) {
+      _apiKey = key;
+      const masked = key.slice(0, 7) + '••••••' + key.slice(-4);
+      statusEl.textContent = `Key loaded ✓ (${masked})`;
+      statusEl.className   = 'status ok';
+      document.getElementById('ref-run-btn').disabled = false;
+    } else {
+      statusEl.textContent = 'No ANTHROPIC_API_KEY found. Check file format.';
+      statusEl.className   = 'status err';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ── Pattern 4: JSON extraction ────────────────────────────────────────────────
+function extractJSON(text) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw    = fenced ? fenced[1].trim() : text.trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Not valid JSON: ' + text.slice(0, 100));
+  }
+}
+
+// ── Patterns 2 + 3: fetch with error handling ─────────────────────────────────
+document.getElementById('ref-run-btn').addEventListener('click', async () => {
+  const resultEl = document.getElementById('ref-result');
+  resultEl.textContent = 'Calling API…';
+  resultEl.className   = 'status info';
+
+  try {
+    // Pattern 2: exact fetch structure
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key':                         _apiKey,
+        'anthropic-version':                 '2023-06-01',
+        'anthropic-dangerous-allow-browser': 'true',
+        'Content-Type':                      'application/json',
+      },
+      body: JSON.stringify({
+        model:   'claude-sonnet-4-6',
+        system:  'You are a calculator. Respond ONLY with a JSON object (no markdown, no explanation) matching: {"answer": <number>, "explanation": "<string>"}',
+        messages:[{ role: 'user', content: 'What is 2 + 2?' }],
+        max_tokens: 128,
+        temperature: 0,
+      }),
+    });
+
+    // Pattern 3: error handling
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.content[0]?.text ?? '';
+    if (!text) throw new Error('Empty response from API');
+
+    // Pattern 4: extract JSON
+    const parsed = extractJSON(text);
+
+    resultEl.textContent = `✓ Success!\n\nRaw response text:\n${text}\n\nParsed JSON:\n${JSON.stringify(parsed, null, 2)}`;
+    resultEl.className   = 'status ok';
+  } catch (err) {
+    resultEl.textContent = `✗ Error: ${err.message}`;
+    resultEl.className   = 'status err';
+  }
+});
+</script>
+
+</body>
+</html>

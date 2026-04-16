@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Blackjack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="title-area">
+      <div class="suit-icons">
+        <span>♠</span><span>♥</span><span>♦</span><span>♣</span>
+      </div>
+      <h1 class="site-title">AI Blackjack</h1>
+    </div>
+    <div class="header-right">
+      <div class="key-indicator" id="key-indicator">
+        <span class="key-dot" id="key-dot"></span>
+        <span id="key-text">No key loaded</span>
+      </div>
+      <label class="upload-label">
+        Upload .env
+        <input type="file" id="env-file" accept=".env,.txt,.csv" hidden>
+      </label>
+      <button class="about-btn" id="about-btn">About</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════
+       CONTROL BAR
+  ═══════════════════════════════════════════════════ -->
+  <div class="control-bar">
+    <div class="model-group">
+      <span class="ctrl-label">Family</span>
+      <select class="ctrl-select" id="family-select">
+        <option value="anthropic">Claude</option>
+      </select>
+    </div>
+    <div class="model-group">
+      <span class="ctrl-label">Model</span>
+      <select class="ctrl-select" id="model-select"></select>
+      <button class="refresh-btn" id="refresh-models" title="Refresh model list">↻</button>
+    </div>
+    <div class="bet-group">
+      <span class="ctrl-label">Bet</span>
+      <button class="bet-adj-btn" id="bet-minus">−</button>
+      <span class="bet-display" id="bet-display">$25</span>
+      <button class="bet-adj-btn" id="bet-plus">+</button>
+    </div>
+    <div class="balance-group">
+      <span class="ctrl-label">Balance</span>
+      <span class="balance-val" id="balance-val">$1,000</span>
+    </div>
+    <button class="play-btn" id="play-btn" disabled>PLAY</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       MAIN LAYOUT: GAME TABLE + AI PANEL
+  ═══════════════════════════════════════════════════ -->
+  <div class="main-layout">
+
+    <!-- ─── Game Area ─────────────────────────────────── -->
+    <div class="game-area">
+
+      <!-- Dealer -->
+      <div class="area-section">
+        <div class="area-label">
+          <span>Dealer</span>
+          <span class="hand-score" id="dealer-score"></span>
+        </div>
+        <div class="card-row" id="dealer-cards"></div>
+      </div>
+
+      <!-- Status -->
+      <div class="status-bar" id="status-bar">Upload your .env file to begin</div>
+
+      <!-- Result Banner -->
+      <div class="result-banner hidden" id="result-banner"></div>
+
+      <!-- Player Area (dynamically built by ui.js) -->
+      <div id="player-area"></div>
+
+      <!-- Insurance Offer Bar -->
+      <div class="insurance-bar hidden" id="insurance-bar">
+        <span>Dealer shows Ace — Insurance? (side bet: half your wager)</span>
+        <button class="action-btn btn-insurance" id="ins-yes-btn">Take Insurance</button>
+        <button class="action-btn btn-stand"     id="ins-no-btn" style="padding:8px 14px">No Thanks</button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-bar" id="action-bar">
+        <button class="action-btn btn-hit"       id="hit-btn"       disabled>HIT</button>
+        <button class="action-btn btn-stand"     id="stand-btn"     disabled>STAND</button>
+        <button class="action-btn btn-double"    id="double-btn"    disabled>DOUBLE</button>
+        <button class="action-btn btn-split"     id="split-btn"     disabled>SPLIT</button>
+        <button class="action-btn btn-insurance" id="insurance-btn" disabled>INSURANCE</button>
+      </div>
+
+    </div><!-- /game-area -->
+
+    <!-- ─── AI Analysis Panel ─────────────────────────── -->
+    <aside class="ai-panel">
+
+      <div class="ai-panel-title">⚡ AI Analysis</div>
+
+      <!-- AI Recommendation -->
+      <div class="ai-recommend-block">
+        <span class="ai-recommend-label">AI Recommends</span>
+        <span class="ai-action-word" id="ai-action-word">—</span>
+      </div>
+
+      <!-- Confidence Meter -->
+      <div class="confidence-wrap">
+        <div class="confidence-hdr">
+          <span class="confidence-title">Confidence</span>
+          <span class="confidence-pct" id="confidence-pct">—</span>
+        </div>
+        <div class="confidence-track">
+          <div class="confidence-fill" id="confidence-fill" data-level="mid" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Brief Reason -->
+      <div class="ai-brief-reason" id="ai-brief-reason"></div>
+
+      <!-- Full Analysis -->
+      <div class="ai-analysis-text" id="ai-analysis">Waiting for deal…</div>
+
+      <!-- Execute Button -->
+      <button class="execute-btn" id="execute-btn" disabled>
+        ▶ Execute Recommendation
+      </button>
+
+      <!-- Strategy Match Badge -->
+      <div class="strategy-badge" id="strategy-badge"></div>
+
+    </aside><!-- /ai-panel -->
+
+  </div><!-- /main-layout -->
+
+  <!-- ═══════════════════════════════════════════════════
+       STRETCH 1 — BASIC STRATEGY MATRIX
+  ═══════════════════════════════════════════════════ -->
+  <div class="collapsible-section">
+    <div class="collapsible-header" id="matrix-toggle">
+      <span class="collapsible-title">
+        ♟ Basic Strategy Matrix
+      </span>
+      <span class="chevron" id="matrix-chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="matrix-body">
+      <div class="strategy-matrix-wrap">
+        <div id="strategy-matrix"></div>
+      </div>
+      <div class="strategy-badge" id="strategy-badge-footer" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       STRETCH 2 — SESSION ANALYTICS
+  ═══════════════════════════════════════════════════ -->
+  <div class="collapsible-section">
+    <div class="collapsible-header" id="analytics-toggle">
+      <span class="collapsible-title">
+        📊 Session Analytics
+      </span>
+      <span class="chevron" id="analytics-chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="analytics-body">
+
+      <!-- Stat Cards -->
+      <div class="analytics-grid">
+        <div class="stat-card">
+          <span class="stat-val" id="stat-hands">0</span>
+          <span class="stat-lbl">Hands Played</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-winrate">—</span>
+          <span class="stat-lbl">Win Rate</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-wins">0</span>
+          <span class="stat-lbl" style="color:#22c55e">Wins</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-losses">0</span>
+          <span class="stat-lbl" style="color:#ef4444">Losses</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-pushes">0</span>
+          <span class="stat-lbl">Pushes</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-ai-agree">—</span>
+          <span class="stat-lbl">AI vs Basic Strategy</span>
+        </div>
+      </div>
+
+      <!-- Win/Loss/Push Bar -->
+      <div style="margin-bottom:16px">
+        <div class="chart-title">Win / Loss / Push Split</div>
+        <div class="wlp-bar-wrap" id="wlp-bar">
+          <div class="wlp-seg seg-win"  style="width:0%"></div>
+          <div class="wlp-seg seg-loss" style="width:0%"></div>
+          <div class="wlp-seg seg-push" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Bankroll History</div>
+          <svg class="chart-svg" id="bankroll-svg" viewBox="0 0 280 80" height="80" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Action Breakdown</div>
+          <svg class="chart-svg" id="action-svg" viewBox="0 0 280 80" height="80" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ABOUT MODAL
+  ═══════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="about-modal">
+    <div class="modal">
+      <h2>♠ About AI Blackjack</h2>
+      <p>
+        This is a fully playable Blackjack game powered by the <strong>Anthropic Claude API</strong>.
+        After each deal, an AI agent analyzes the game state and recommends the optimal action.
+      </p>
+      <p>
+        <strong>How it works:</strong> The agent receives your hand, the dealer's up card, and
+        available actions. It returns a structured JSON object — not a prose response — so the
+        recommended action is parsed precisely with no ambiguity.
+      </p>
+      <p>
+        <strong>Key loaded locally:</strong> Your <code>.env</code> file is read in-memory only.
+        The key is never written to localStorage, sessionStorage, cookies, or any server.
+        It is used solely for the direct API call to Anthropic.
+      </p>
+      <p>
+        <strong>Stretch features:</strong> The Basic Strategy Matrix highlights the current hand
+        in real time. The Session Analytics panel tracks win rate, bankroll history, and how
+        often the AI agrees with pure basic strategy.
+      </p>
+      <button class="modal-close-btn" id="about-close">Close</button>
+    </div>
+  </div>
+
+  <!-- Scripts — load order matters: game → agent → ui -->
+  <script src="game.js"></script>
+  <script src="agent.js"></script>
+  <script src="ui.js"></script>
+
+</body>
+</html>
