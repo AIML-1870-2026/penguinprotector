@@ -9,6 +9,8 @@ const el = {
   keyDot:        $('key-dot'),
   keyText:       $('key-text'),
   envFile:       $('env-file'),
+  keyInput:      $('key-input'),
+  keyEyeBtn:     $('key-eye-btn'),
   aboutBtn:      $('about-btn'),
   aboutModal:    $('about-modal'),
   aboutClose:    $('about-close'),
@@ -121,17 +123,35 @@ function populateModels() {
 // ── Event Wiring ───────────────────────────────────────────────────────────────
 
 function wireEvents() {
+  // Direct key paste input
+  el.keyInput.addEventListener('input', () => {
+    const val = el.keyInput.value.trim();
+    const looksValid = (val.startsWith('sk-ant-') || val.startsWith('sk-')) && val.length > 20;
+    el.keyInput.classList.toggle('valid', looksValid);
+  });
+
+  el.keyInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') applyKeyInput();
+  });
+
+  el.keyInput.addEventListener('blur', () => {
+    if (el.keyInput.value.trim().length > 20) applyKeyInput();
+  });
+
+  // Show/hide key toggle
+  el.keyEyeBtn.addEventListener('click', () => {
+    const isHidden = el.keyInput.type === 'password';
+    el.keyInput.type = isHidden ? 'text' : 'password';
+    el.keyEyeBtn.textContent = isHidden ? '🙈' : '👁';
+  });
+
   // .env upload
   el.envFile.addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
     try {
       const masked = await loadKeyFromFile(file);
-      el.keyDot.classList.add('loaded');
-      el.keyText.textContent = `Key loaded ✓ (${masked})`;
-      el.keyIndicator.classList.add('loaded');
-      el.playBtn.disabled = !canDeal();
-      setStatus('API key loaded. Set your bet and press PLAY.');
+      markKeyLoaded(masked);
     } catch (err) {
       setStatus('Error: ' + err.message, 'lose');
     }
@@ -977,6 +997,35 @@ function renderWLPBar() {
 
 function canDeal() {
   return hasApiKey(currentProvider) && game.balance >= game.bet && game.phase !== 'playing';
+}
+
+function markKeyLoaded(summary) {
+  el.keyDot.classList.add('loaded');
+  el.keyText.textContent = `Key loaded ✓ (${summary})`;
+  el.keyIndicator.classList.add('loaded');
+  el.playBtn.disabled = !canDeal();
+  setStatus('API key loaded. Set your bet and press PLAY.');
+}
+
+function applyKeyInput() {
+  const raw = el.keyInput.value;
+  if (!raw.trim()) return;
+  try {
+    const provider = setKeyDirectly(raw);
+    const key = raw.trim().replace(/\s+/g, '');
+    const masked = key.slice(0, 7) + '••••' + key.slice(-4);
+    markKeyLoaded(`${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} (${masked})`);
+    // Switch family select to match detected provider
+    if (el.familySelect.value !== provider) {
+      el.familySelect.value = provider;
+      currentProvider = provider;
+      populateModels();
+    }
+    el.keyInput.classList.add('valid');
+  } catch (err) {
+    setStatus('Key error: ' + err.message, 'lose');
+    el.keyInput.classList.remove('valid');
+  }
 }
 
 function strategyLabel(code) {
