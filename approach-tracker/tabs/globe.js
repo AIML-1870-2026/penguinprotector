@@ -2,71 +2,39 @@
 import { fetchFeed, parseNeo } from '../shared.js';
 
 let _ro = null;           // ResizeObserver — disconnected on re-init to prevent leak
-let _cloudMesh = null;   // Cloud sphere — reference kept so we can dispose on re-init
-let _rafId = null;       // requestAnimationFrame for cloud rotation
-let _globeInst = null;   // globe.gl instance — kept so preselect listener can update it
-let _points = null;      // current points array — kept for re-render on selection change
-let _preselectAc = null; // AbortController for the preselect-neo listener
+let _points = null;       // current points array
+let _preselectAc = null;  // AbortController for preselect-neo listener
+let _orbEls = new Map();  // id -> { el, p } — direct style updates without re-render
 
-function _addCloudLayer(globe) {
-  // Access the underlying Three.js renderer globals exposed by globe.gl
-  const THREE = window.THREE;
-  if (!THREE) return; // three-globe bundles THREE but may not expose it as window.THREE
-
-  const scene = globe.scene();
-  if (!scene) return;
-
-  const GLOBE_RADIUS = 100; // globe.gl internal radius
-
-  const loader = new THREE.TextureLoader();
-  loader.load(
-    'https://unpkg.com/three-globe/example/img/earth-clouds.png',
-    texture => {
-      const geo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.004, 64, 64);
-      const mat = new THREE.MeshPhongMaterial({
-        map:         texture,
-        transparent: true,
-        opacity:     0.35,
-        depthWrite:  false,
-      });
-      _cloudMesh = new THREE.Mesh(geo, mat);
-      scene.add(_cloudMesh);
-
-      // Slow drift independent of globe rotation
-      const drift = () => {
-        if (_cloudMesh) _cloudMesh.rotation.y += 0.00008;
-        _rafId = requestAnimationFrame(drift);
-      };
-      if (_rafId) cancelAnimationFrame(_rafId);
-      _rafId = requestAnimationFrame(drift);
-    }
-  );
-}
-
-function _disposeCloudLayer() {
-  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-  if (_cloudMesh) {
-    _cloudMesh.geometry.dispose();
-    _cloudMesh.material.map?.dispose();
-    _cloudMesh.material.dispose();
-    _cloudMesh = null;
-  }
-}
-
-// Altitude mapping — square-root compression so objects spread visually.
-// Miss distances range ~0.1 LD to 70+ LD; we map that onto globe altitude
-// 0.3 – 5.0 units. sqrt() compresses the high end so distant objects don't
-// push off-screen while close ones are still distinguishable.
-// Min 0.3 ensures every sphere visibly floats above the surface.
-const MAX_LD_SCALE  = 70;
-const MAX_ALTITUDE  = 5.0;
+// Altitude mapping — sqrt compression so miss distances spread visually.
+// Range: 0.3 (surface-grazing) to 5.3 (very distant), in globe radii above surface.
+const MAX_LD_SCALE = 70;
+const MAX_ALTITUDE = 5.0;
 function ldToAltitude(ld) {
   return Math.sqrt(Math.min(ld, MAX_LD_SCALE) / MAX_LD_SCALE) * MAX_ALTITUDE + 0.3;
 }
 
+// Apply CSS orb style directly to a DOM element.
+// Uses a radial gradient + box-shadow to fake a lit sphere appearance.
+function _applyOrbStyle(el, p, selected) {
+  const size  = p.isMoon ? 14 : (p.isPha ? 18 : 13);
+  const color = p.isMoon ? '#9ca3af' : (p.isPha ? '#f59e0b' : '#00d4aa');
+  const c     = selected ? '#ffffff' : color;
+  const glow  = selected ? size * 2.6 : size * 1.4;
+  el.style.cssText = `
+    width:${size}px;
+    height:${size}px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #ffffffaa, ${c} 65%);
+    box-shadow:0 0 ${glow}px ${c}, 0 0 ${glow * 2}px ${c}55;
+    transform:scale(${selected ? 1.7 : 1.0});
+    transition:transform 0.25s ease, box-shadow 0.25s ease;
+    cursor:${p.isMoon ? 'default' : 'pointer'};
+    pointer-events:auto;
+  `;
+}
+
 function buildPoints(neos) {
-  // Asteroid lat/lng are distributed pseudo-randomly (actual approach geometry
-  // from NeoWs doesn't give a sky position, so we scatter them visually).
   const points = neos.map((neo, i) => ({
     id:       neo.id,
     name:     neo.name,
@@ -75,21 +43,15 @@ function buildPoints(neos) {
     vel:      neo.vel,
     diameter: neo.diameter,
     isPha:    neo.isPha,
-    lat:      ((i * 137.508) % 140) - 70,   // golden-angle spacing
+    lat:      ((i * 137.508) % 140) - 70,   // golden-angle scatter
     lng:      ((i * 222.492) % 360) - 180,
     alt:      ldToAltitude(neo.ld),
-    color:    neo.isPha ? '#f59e0b' : '#00d4aa',
-    size:     neo.isPha ? 0.55 : 0.38,
   }));
 
   // Moon reference at 1 LD
   points.push({
-    id: '__moon__',
-    name: '🌕 Moon (1 LD reference)',
-    lat: 0, lng: 90,
-    alt: ldToAltitude(1),
-    color: '#9ca3af',
-    size: 1.0,
+    id: '__moon__', name: '🌕 Moon (1 LD reference)',
+    lat: 0, lng: 90, alt: ldToAltitude(1),
     isMoon: true,
   });
 
@@ -97,8 +59,7 @@ function buildPoints(neos) {
 }
 
 function renderInfoPanel(p) {
-  const el = document.getElementById('globe-info-content');
-  el.innerHTML = `
+  document.getElementById('globe-info-content').innerHTML = `
     <h3>${p.name}</h3>
     ${p.isPha ? '<div class="pha-badge">⚠ Potentially Hazardous</div>' : ''}
     <div class="info-row"><span class="label">Miss distance</span><span class="value">${p.ld.toFixed(3)} LD</span></div>
@@ -110,11 +71,24 @@ function renderInfoPanel(p) {
     `🪨 ${p.name} will pass at ${p.ld.toFixed(2)} lunar distances — about ${p.km.toLocaleString(undefined, {maximumFractionDigits: 0})} km from Earth`;
 }
 
-export async function initGlobe(state) {
-  const container  = document.getElementById('globe-container');
-  const infoEl     = document.getElementById('globe-info-content');
+// Deselect old orb, select new one — updates DOM directly, no globe re-render needed.
+function _selectOrb(state, p) {
+  const prev = state.selectedNeo;
+  if (prev && _orbEls.has(prev)) {
+    const { el, p: pp } = _orbEls.get(prev);
+    _applyOrbStyle(el, pp, false);
+  }
+  state.selectedNeo = p.id;
+  if (_orbEls.has(p.id)) {
+    const { el } = _orbEls.get(p.id);
+    _applyOrbStyle(el, p, true);
+  }
+}
 
-  // Skeleton while loading
+export async function initGlobe(state) {
+  const container = document.getElementById('globe-container');
+  const infoEl    = document.getElementById('globe-info-content');
+
   infoEl.innerHTML = '<div class="skeleton" style="height:180px;width:100%"></div>';
 
   let neos;
@@ -133,23 +107,14 @@ export async function initGlobe(state) {
   const points = buildPoints(neos);
   _points = points;
 
-  // Guard: globe.gl must be available as a global loaded by <script> tag
   if (typeof Globe !== 'function') {
     infoEl.innerHTML = '<div class="error-card"><p>globe.gl failed to load from CDN.</p></div>';
     return;
   }
 
-  // Clear any previous WebGL canvas — Globe() appends a new canvas each time,
-  // so without this every refresh stacks canvases and leaks GPU memory.
-  _disposeCloudLayer();
   if (_preselectAc) { _preselectAc.abort(); _preselectAc = null; }
   container.innerHTML = '';
-
-  // Invisible click-target points on the surface (no visual, just hit detection)
-  const pointColor  = () => 'rgba(0,0,0,0)';
-  const pointRadius = () => 0.5;
-
-  const asteroidPoints = points.filter(p => !p.isMoon);
+  _orbEls = new Map();
 
   const globe = Globe()(container)
     .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-night.jpg')
@@ -157,107 +122,46 @@ export async function initGlobe(state) {
     .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png')
     .atmosphereColor('#3a7bd5')
     .atmosphereAltitude(0.22)
-    // Flat surface points (base markers) + click handling
-    .pointsData(points)
-    .pointAltitude(0)
-    .pointColor(pointColor)
-    .pointRadius(pointRadius)
-    .pointResolution(12)
-    .pointLabel(p =>
-      `<div style="font-family:monospace;font-size:12px;background:#111827dd;padding:4px 8px;border-radius:4px;color:#f9fafb;border:1px solid #1f2937">${p.name}</div>`
-    )
-    .onPointClick(p => {
-      if (p.isMoon) return;
-      state.selectedNeo = p.id;
-      renderInfoPanel(p);
-      globe.pointsData(points);
-      if (window.THREE) globe.customLayerData(asteroidPoints);
+    // HTML orb layer — each asteroid is a CSS-styled div positioned in 3D space.
+    // globe.gl handles projection, occlusion (hides orbs behind the globe), and depth.
+    // No Three.js dependency required.
+    .htmlElementsData(points)
+    .htmlLat(p => p.lat)
+    .htmlLng(p => p.lng)
+    .htmlAltitude(p => p.alt)
+    .htmlElement(p => {
+      const el = document.createElement('div');
+      _orbEls.set(p.id, { el, p });
+      _applyOrbStyle(el, p, state.selectedNeo === p.id);
+      if (!p.isMoon) {
+        el.title = p.name;
+        el.addEventListener('click', () => {
+          _selectOrb(state, p);
+          renderInfoPanel(p);
+        });
+      }
+      return el;
     })
     .width(container.offsetWidth)
     .height(container.offsetHeight);
 
-  _globeInst = globe;
-
-  // Gentle auto-rotation
   globe.controls().autoRotate      = true;
   globe.controls().autoRotateSpeed = 0.25;
   globe.controls().enableDamping   = true;
 
-  // Cloud layer — thin transparent sphere slightly above the surface
-  _addCloudLayer(globe);
-
-  // Orbs — added AFTER Globe() construction so window.THREE is guaranteed set.
-  // globe.gl sets window.THREE as a side effect of Globe(), so registering
-  // customThreeObject inside the constructor chain sees THREE as null.
-  const T = window.THREE;
-  if (T) {
-    globe
-      .customLayerData(asteroidPoints)
-      .customThreeObject(p => {
-        const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
-        const coreR  = p.isPha ? 3.5 : 2.5;
-        const glowR  = coreR * 2.4;
-
-        const group = new T.Group();
-
-        // Solid bright core
-        const coreMat = new T.MeshPhongMaterial({
-          color,
-          emissive: color,
-          emissiveIntensity: 0.7,
-          shininess: 80,
-        });
-        const core = new T.Mesh(new T.SphereGeometry(coreR, 20, 20), coreMat);
-        group.add(core);
-
-        // Outer glow shell — additive blending gives a bloom-like halo
-        const glowMat = new T.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.18,
-          blending: T.AdditiveBlending,
-          depthWrite: false,
-          side: T.BackSide,
-        });
-        const glow = new T.Mesh(new T.SphereGeometry(glowR, 20, 20), glowMat);
-        group.add(glow);
-
-        group._baseColor = color;
-        group._core = core;
-        group._glow = glow;
-        return group;
-      })
-      .customThreeObjectUpdate((obj, p) => {
-        if (!obj) return;
-        const coords = globe.getCoords(p.lat, p.lng, p.alt);
-        if (coords) Object.assign(obj.position, coords);
-        const isSelected = state.selectedNeo === p.id;
-        const col = isSelected ? 0xffffff : obj._baseColor;
-        obj._core.material.color.set(col);
-        obj._core.material.emissive.set(col);
-        obj._glow.material.color.set(col);
-        obj._glow.material.opacity = isSelected ? 0.35 : 0.18;
-        const s = isSelected ? 1.7 : 1.0;
-        obj.scale.set(s, s, s);
-      });
-  }
-
-  // Pre-select the closest NEO and apply highlight
+  // Pre-select the closest NEO
   const sorted = [...neos].sort((a, b) => a.ld - b.ld);
   if (sorted.length) {
     const first = points.find(p => p.id === sorted[0].id);
     if (first) {
-      state.selectedNeo = first.id;
+      _selectOrb(state, first);
       renderInfoPanel(first);
-      globe.pointsData(points);
-      if (window.THREE) globe.customLayerData(asteroidPoints);
     }
   }
 
-  // Fallback hint + legend if no NEO could be pre-selected
   if (!state.selectedNeo) {
     infoEl.innerHTML = `
-      <p class="hint-text muted">Click any glowing dot on the globe to select an asteroid.</p>
+      <p class="hint-text muted">Click any glowing orb to select an asteroid.</p>
       <div class="legend">
         <div class="legend-item"><span class="dot orange"></span> Potentially Hazardous</div>
         <div class="legend-item"><span class="dot green"></span> Routine Flyby</div>
@@ -265,18 +169,15 @@ export async function initGlobe(state) {
       </div>`;
   }
 
-  // Listen for cross-tab asteroid selection (from This Week or Size & Speed)
+  // Cross-tab selection (from This Week / Size & Speed tabs)
   _preselectAc = new AbortController();
   document.addEventListener('preselect-neo', e => {
     const p = _points.find(pt => pt.id === e.detail);
     if (!p || p.isMoon) return;
-    state.selectedNeo = p.id;
+    _selectOrb(state, p);
     renderInfoPanel(p);
-    globe.pointsData(_points);
-    if (window.THREE) globe.customLayerData(_points.filter(pt => !pt.isMoon));
   }, { signal: _preselectAc.signal });
 
-  // Responsive resize — disconnect previous observer before creating a new one
   if (_ro) _ro.disconnect();
   _ro = new ResizeObserver(() => {
     globe.width(container.offsetWidth).height(container.offsetHeight);
