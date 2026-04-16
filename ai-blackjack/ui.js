@@ -79,16 +79,25 @@ const stats = {
 };
 
 // Pending AI recommendation for the current hand
-let pendingRec  = null;
-let aiWorking   = false;
-let currentModel = 'claude-sonnet-4-6';
+let pendingRec      = null;
+let aiWorking       = false;
+let currentModel    = 'claude-sonnet-4-6';
+let currentProvider = 'anthropic';
 
-// Available Claude models (curated list)
-const MODELS = [
-  { id: 'claude-sonnet-4-6',           label: 'Claude Sonnet 4.6 (Recommended)' },
-  { id: 'claude-opus-4-6',             label: 'Claude Opus 4.6' },
-  { id: 'claude-haiku-4-5-20251001',   label: 'Claude Haiku 4.5' },
-];
+// Available models, keyed by provider
+const MODELS = {
+  anthropic: [
+    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 (Recommended)' },
+    { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
+  ],
+  openai: [
+    { id: 'gpt-4o',                    label: 'GPT-4o (Recommended)' },
+    { id: 'gpt-4o-mini',               label: 'GPT-4o Mini' },
+    { id: 'gpt-4-turbo',               label: 'GPT-4 Turbo' },
+    { id: 'gpt-3.5-turbo',             label: 'GPT-3.5 Turbo' },
+  ],
+};
 
 // ── Initialise ─────────────────────────────────────────────────────────────────
 
@@ -102,10 +111,11 @@ function init() {
 }
 
 function populateModels() {
-  el.modelSelect.innerHTML = MODELS.map(m =>
+  const list = MODELS[currentProvider] || MODELS.anthropic;
+  el.modelSelect.innerHTML = list.map(m =>
     `<option value="${m.id}">${m.label}</option>`
   ).join('');
-  currentModel = MODELS[0].id;
+  currentModel = list[0].id;
 }
 
 // ── Event Wiring ───────────────────────────────────────────────────────────────
@@ -126,6 +136,13 @@ function wireEvents() {
       setStatus('Error: ' + err.message, 'lose');
     }
     e.target.value = '';
+  });
+
+  // Family (provider) selection
+  el.familySelect.addEventListener('change', e => {
+    currentProvider = e.target.value;
+    populateModels();
+    el.playBtn.disabled = !canDeal();
   });
 
   // Model selection
@@ -273,7 +290,7 @@ async function playerTurn() {
 
   try {
     const gs  = buildGameState();
-    const rec = await askAgent(gs, currentModel);
+    const rec = await askAgent(gs, currentModel, currentProvider);
     pendingRec = rec;
     updateAIPanel(rec, gs);
     setStatus(`Your turn — AI recommends ${rec.action.toUpperCase()}`);
@@ -412,7 +429,7 @@ function showResults(results) {
   updateAnalytics(results, totalNet);
 
   setStatus('');
-  el.playBtn.disabled = game.balance < BET_MIN || !hasApiKey();
+  el.playBtn.disabled = !canDeal();
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -957,6 +974,14 @@ function renderWLPBar() {
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
+
+function canDeal() {
+  return hasApiKey(currentProvider) && game.balance >= game.bet && game.phase !== 'playing';
+}
+
+function strategyLabel(code) {
+  return { H: 'Hit', S: 'Stand', D: 'Double', P: 'Split' }[code] || code;
+}
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
