@@ -55,12 +55,13 @@ function _disposeCloudLayer() {
 
 // Altitude mapping — square-root compression so objects spread visually.
 // Miss distances range ~0.1 LD to 70+ LD; we map that onto globe altitude
-// 0.05 – 3.0 units. sqrt() compresses the high end so distant objects don't
+// 0.3 – 5.0 units. sqrt() compresses the high end so distant objects don't
 // push off-screen while close ones are still distinguishable.
+// Min 0.3 ensures every sphere visibly floats above the surface.
 const MAX_LD_SCALE  = 70;
-const MAX_ALTITUDE  = 3.0;
+const MAX_ALTITUDE  = 5.0;
 function ldToAltitude(ld) {
-  return Math.sqrt(Math.min(ld, MAX_LD_SCALE) / MAX_LD_SCALE) * MAX_ALTITUDE + 0.05;
+  return Math.sqrt(Math.min(ld, MAX_LD_SCALE) / MAX_LD_SCALE) * MAX_ALTITUDE + 0.3;
 }
 
 function buildPoints(neos) {
@@ -172,14 +173,6 @@ export async function initGlobe(state) {
       globe.pointsData(points);
       if (window.THREE) globe.customLayerData(asteroidPoints);
     })
-    // Pulsing sonar rings at each asteroid's base
-    .ringsData(asteroidPoints)
-    .ringColor(p => t => p.isPha
-      ? `rgba(245,158,11,${Math.max(0, 0.8 * (1 - t))})`
-      : `rgba(0,212,170,${Math.max(0, 0.6 * (1 - t))})`)
-    .ringMaxRadius(p => p.isPha ? 3.5 : 2.2)
-    .ringPropagationSpeed(p => p.isPha ? 1.8 : 1.1)
-    .ringRepeatPeriod(p => p.isPha ? 700 : 1400)
     .width(container.offsetWidth)
     .height(container.offsetHeight);
 
@@ -202,27 +195,49 @@ export async function initGlobe(state) {
       .customLayerData(asteroidPoints)
       .customThreeObject(p => {
         const color  = p.isPha ? 0xf59e0b : 0x00d4aa;
-        const radius = p.isPha ? 4.0 : 3.0;
-        const geo = new T.SphereGeometry(radius, 16, 16);
-        const mat = new T.MeshBasicMaterial({
+        const coreR  = p.isPha ? 3.5 : 2.5;
+        const glowR  = coreR * 2.4;
+
+        const group = new T.Group();
+
+        // Solid bright core
+        const coreMat = new T.MeshPhongMaterial({
+          color,
+          emissive: color,
+          emissiveIntensity: 0.7,
+          shininess: 80,
+        });
+        const core = new T.Mesh(new T.SphereGeometry(coreR, 20, 20), coreMat);
+        group.add(core);
+
+        // Outer glow shell — additive blending gives a bloom-like halo
+        const glowMat = new T.MeshBasicMaterial({
           color,
           transparent: true,
-          opacity: 0.92,
+          opacity: 0.18,
           blending: T.AdditiveBlending,
           depthWrite: false,
+          side: T.BackSide,
         });
-        const mesh = new T.Mesh(geo, mat);
-        mesh._baseColor = color;
-        return mesh;
+        const glow = new T.Mesh(new T.SphereGeometry(glowR, 20, 20), glowMat);
+        group.add(glow);
+
+        group._baseColor = color;
+        group._core = core;
+        group._glow = glow;
+        return group;
       })
       .customThreeObjectUpdate((obj, p) => {
         if (!obj) return;
         const coords = globe.getCoords(p.lat, p.lng, p.alt);
         if (coords) Object.assign(obj.position, coords);
         const isSelected = state.selectedNeo === p.id;
-        obj.material.color.set(isSelected ? 0xffffff : obj._baseColor);
-        obj.material.opacity = isSelected ? 1.0 : 0.92;
-        const s = isSelected ? 1.8 : 1.0;
+        const col = isSelected ? 0xffffff : obj._baseColor;
+        obj._core.material.color.set(col);
+        obj._core.material.emissive.set(col);
+        obj._glow.material.color.set(col);
+        obj._glow.material.opacity = isSelected ? 0.35 : 0.18;
+        const s = isSelected ? 1.7 : 1.0;
         obj.scale.set(s, s, s);
       });
   }
