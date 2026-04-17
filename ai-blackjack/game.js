@@ -96,6 +96,8 @@ const game = {
   handBets:       [],
   insuranceBet:   0,
   lastResults:    null,
+  sideBetActive:  false,
+  sideBetResult:  null,
 };
 
 // Build a fresh shoe and reset the running count.
@@ -270,6 +272,66 @@ function simulateActionProbs(action, nSims = 3000) {
   };
 }
 
+// ── Even Money ─────────────────────────────────────────────────────────────────
+// Player has Blackjack + dealer shows Ace → accept guaranteed 1:1 payout.
+function doEvenMoney() {
+  const bet = game.handBets[0];
+  game.balance += bet * 2; // return bet + 1:1 win (bet was already deducted)
+  game.phase = 'done';
+  const results = [{ outcome: 'even-money', net: bet, bet, hand: game.playerHands[0] }];
+  results.insuranceDelta = 0;
+  game.lastResults = results;
+  return results;
+}
+
+// ── 21+3 Side Bet ──────────────────────────────────────────────────────────────
+const SIDE_BET_AMOUNT = 10;
+
+// Evaluate player's first 2 cards + dealer up card.
+// Returns { name, payout } on win, or null on loss.
+function evaluate21Plus3(c1, c2, dealerC) {
+  const cards  = [c1, c2, dealerC];
+  const suits  = cards.map(c => c.suit);
+  const ranks  = cards.map(c => c.rank);
+
+  const rv = r => {
+    if (r === 'A') return 1;
+    if (r === 'J') return 11;
+    if (r === 'Q') return 12;
+    if (r === 'K') return 13;
+    return parseInt(r, 10);
+  };
+
+  const vals    = ranks.map(rv).sort((a, b) => a - b);
+  const allSuit = suits.every(s => s === suits[0]);
+  const allRank = ranks.every(r => r === ranks[0]);
+  const consec  = vals[2] - vals[0] === 2 && vals[1] - vals[0] === 1;
+  const aceHigh = vals[0] === 1 && vals[1] === 12 && vals[2] === 13; // Q-K-A
+  const str8    = consec || aceHigh;
+
+  if (allSuit && allRank) return { name: 'Suited Trips',    payout: 100 };
+  if (allSuit && str8)    return { name: 'Straight Flush',  payout: 40  };
+  if (allRank)            return { name: 'Three of a Kind', payout: 30  };
+  if (str8)               return { name: 'Straight',        payout: 10  };
+  if (allSuit)            return { name: 'Flush',            payout: 5   };
+  return null;
+}
+
+// Resolve the side bet immediately after the deal. Credits winnings to balance.
+function resolveSideBet() {
+  if (!game.sideBetActive) return null;
+  const hit = evaluate21Plus3(
+    game.playerHands[0][0], game.playerHands[0][1], game.dealerCards[0]
+  );
+  if (hit) {
+    game.balance += SIDE_BET_AMOUNT * hit.payout + SIDE_BET_AMOUNT;
+    game.sideBetResult = { ...hit, net: SIDE_BET_AMOUNT * hit.payout };
+  } else {
+    game.sideBetResult = { name: null, payout: 0, net: -SIDE_BET_AMOUNT };
+  }
+  return game.sideBetResult;
+}
+
 // Human-readable label for a strategy code.
 function strategyLabel(code) {
   return { H:'Hit', S:'Stand', D:'Double Down', P:'Split', R:'Surrender' }[code] || code;
@@ -327,6 +389,9 @@ function startHand() {
   game.activeHand   = 0;
   game.insuranceBet = 0;
   game.lastResults  = null;
+  game.sideBetResult = null;
+  // Deduct 21+3 side bet ($10) if active and affordable
+  if (game.sideBetActive && game.balance >= 10) game.balance -= 10;
   game.phase        = 'playing';
   return true;
 }

@@ -36,6 +36,7 @@
         <input type="file" id="env-file" accept=".env,.txt,.csv" hidden>
       </label>
       <button class="sound-btn" id="sound-btn" title="Toggle sound">🔊</button>
+      <button class="about-btn" id="shortcuts-btn" title="Keyboard shortcuts">?</button>
       <button class="about-btn" id="about-btn">About</button>
     </div>
   </header>
@@ -65,6 +66,11 @@
         <option value="6" selected>6 decks</option>
         <option value="8">8 decks</option>
       </select>
+    </div>
+
+    <div class="model-group">
+      <span class="ctrl-label">21+3</span>
+      <button class="sidebet-toggle" id="sidebet-toggle" title="Side bet: $10/hand on your 2 cards + dealer up card">OFF</button>
     </div>
 
     <div class="model-group">
@@ -115,8 +121,10 @@
       <!-- Table Info Bar: shoe counter + Hi-Lo count + bust probability -->
       <div class="table-info-bar" id="table-info-bar">
         <span class="info-chip" id="shoe-counter">Shoe: — / —</span>
-        <span class="info-chip count-chip" id="count-display">RC <span id="rc-val">0</span> · TC <span id="tc-val">0.0</span></span>
+        <span class="info-chip count-chip tooltip-host" id="count-display">RC <span id="rc-val">0</span> · TC <span id="tc-val">0.0</span><span class="tooltip-text">Hi-Lo Card Counting<br><br><strong>RC</strong> (Running Count): +1 for low cards (2–6), −1 for high cards (10–A), 0 for neutral (7–9).<br><br><strong>TC</strong> (True Count): RC ÷ decks remaining. TC ≥ +2 favors the player — raise your bet. TC ≤ −2 favors the dealer — lower your bet.</span></span>
         <span class="info-chip bust-chip hidden" id="bust-chip">Bust <span id="bust-val">—</span></span>
+        <span class="info-chip bet-advisor-chip hidden" id="bet-advisor"></span>
+        <span class="info-chip sidebet-result-chip hidden" id="sidebet-result"></span>
         <span class="info-chip shuffle-notice hidden" id="shuffle-notice">♻ Shoe shuffled</span>
       </div>
 
@@ -126,8 +134,18 @@
       <!-- Result Banner -->
       <div class="result-banner hidden" id="result-banner"></div>
 
+      <!-- Deviation Review -->
+      <div class="deviation-bar hidden" id="deviation-bar"></div>
+
       <!-- Player Area (dynamically built by ui.js) -->
       <div id="player-area"></div>
+
+      <!-- Even Money Offer Bar (shown when player has BJ + dealer shows Ace) -->
+      <div class="insurance-bar even-money-bar hidden" id="even-money-bar">
+        <span>🃏 Blackjack! Dealer shows Ace — Take even money? (guaranteed 1:1)</span>
+        <button class="action-btn btn-double" id="em-yes-btn">Take Even Money</button>
+        <button class="action-btn btn-stand" id="em-no-btn" style="padding:8px 14px">No Thanks</button>
+      </div>
 
       <!-- Insurance Offer Bar -->
       <div class="insurance-bar hidden" id="insurance-bar">
@@ -309,6 +327,23 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════
+       STRETCH 3 — HAND HISTORY
+  ═══════════════════════════════════════════════════ -->
+  <div class="collapsible-section">
+    <div class="collapsible-header" id="history-toggle">
+      <span class="collapsible-title">📜 Hand History</span>
+      <span class="chevron" id="history-chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="history-body">
+      <div class="history-header">
+        <span>#</span><span>Cards</span><span>Total</span>
+        <span>Played</span><span>AI Rec</span><span>Outcome</span><span>Net</span>
+      </div>
+      <div id="history-list"><div class="history-placeholder">No hands played yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
        ABOUT MODAL
   ═══════════════════════════════════════════════════ -->
   <div class="modal-overlay hidden" id="about-modal">
@@ -334,6 +369,40 @@
         often the AI agrees with pure basic strategy.
       </p>
       <button class="modal-close-btn" id="about-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       KEYBOARD SHORTCUTS MODAL
+  ═══════════════════════════════════════════════════ -->
+  <div class="modal-overlay hidden" id="shortcuts-modal">
+    <div class="modal">
+      <h2>⌨ Keyboard Shortcuts</h2>
+      <table class="shortcut-table">
+        <tbody>
+          <tr><td>H</td><td>Hit</td></tr>
+          <tr><td>S</td><td>Stand</td></tr>
+          <tr><td>D</td><td>Double Down</td></tr>
+          <tr><td>P</td><td>Split</td></tr>
+          <tr><td>X</td><td>Surrender</td></tr>
+          <tr><td>Space / Enter</td><td>Deal new hand · Execute AI recommendation</td></tr>
+          <tr><td>?</td><td>This screen</td></tr>
+          <tr><td>Escape</td><td>Close any modal</td></tr>
+        </tbody>
+      </table>
+      <button class="modal-close-btn" id="shortcuts-close">Close</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       BROKE OVERLAY
+  ═══════════════════════════════════════════════════ -->
+  <div class="broke-overlay hidden" id="broke-overlay">
+    <div class="broke-box">
+      <div class="broke-icon">💸</div>
+      <h2>Out of Chips</h2>
+      <p>Your balance is below the $5 minimum bet.<br>Start a new session to keep playing.</p>
+      <button class="play-btn" id="broke-reset-btn">↺ New Session</button>
     </div>
   </div>
 

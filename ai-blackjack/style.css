@@ -1819,6 +1819,268 @@ body.no-key .upload-label { animation: key-pulse 2.5s ease 0.3s infinite; }
   .ctrl-label { display: none; }
 }
 
+/* ── CSS Tooltips ────────────────────────────────────────────────────────────── */
+.tooltip-host {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip-text {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 260px;
+  background: rgba(6,18,10,0.98);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--text-dim);
+  line-height: 1.6;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 300;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.7);
+}
+
+.tooltip-host:hover .tooltip-text { opacity: 1; }
+
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border-hi);
+}
+
+/* ── Bet Advisor Chip ────────────────────────────────────────────────────────── */
+.bet-advisor-chip {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+.bet-advisor-chip.raise {
+  color: var(--green);
+  border-color: var(--green-glow);
+  background: rgba(34,197,94,0.1);
+  animation: advisor-glow 2s ease infinite;
+}
+
+.bet-advisor-chip.lower {
+  color: var(--teal);
+  border-color: rgba(20,184,166,0.3);
+  background: rgba(20,184,166,0.08);
+}
+
+@keyframes advisor-glow {
+  0%, 100% { box-shadow: none; }
+  50%       { box-shadow: 0 0 14px var(--green-glow); }
+}
+
+/* ── 21+3 Side Bet ───────────────────────────────────────────────────────────── */
+.sidebet-toggle {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.sidebet-toggle:hover { border-color: var(--purple); color: var(--purple); }
+
+.sidebet-toggle.active {
+  background: rgba(139,92,246,0.15);
+  color: var(--purple);
+  border-color: rgba(139,92,246,0.5);
+  box-shadow: 0 0 8px rgba(139,92,246,0.2);
+}
+
+.sidebet-result-chip {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.sidebet-result-chip.win {
+  color: var(--gold);
+  border-color: var(--border-hi);
+  background: rgba(212,175,55,0.12);
+  animation: chip-pop 0.45s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.sidebet-result-chip.lose {
+  color: var(--text-muted);
+  border-color: var(--felt-border);
+}
+
+@keyframes chip-pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Even Money Bar ──────────────────────────────────────────────────────────── */
+.even-money-bar {
+  background: linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(13,30,53,0.9) 100%);
+  border-color: var(--gold-glow);
+}
+
+/* ── Deviation Review Bar ────────────────────────────────────────────────────── */
+.deviation-bar {
+  padding: 10px 16px;
+  background: rgba(245,158,11,0.09);
+  border: 1px solid var(--amber-glow);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amber);
+  line-height: 1.55;
+  animation: ins-appear 0.3s ease;
+}
+
+/* ── Hand History ────────────────────────────────────────────────────────────── */
+.history-header {
+  display: grid;
+  grid-template-columns: 30px 1fr 52px 68px 68px 68px 50px;
+  gap: 6px;
+  padding: 4px 10px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 30px 1fr 52px 68px 68px 68px 50px;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: rgba(20,55,32,0.3);
+  margin-bottom: 4px;
+  transition: background 0.15s;
+}
+
+.history-row:hover       { background: rgba(20,55,32,0.55); }
+.history-row.deviated    { border-left: 2px solid var(--amber); padding-left: 8px; }
+
+.hh-num   { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+.hh-cards { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-total { font-family: var(--font-mono); font-weight: 700; color: var(--gold); }
+.hh-action, .hh-airec { font-size: 11px; font-weight: 600; text-transform: capitalize; }
+.hh-action { color: var(--text-dim); }
+.hh-airec  { color: var(--text-muted); }
+
+.hh-outcome                             { font-weight: 700; font-size: 11px; text-transform: capitalize; }
+.hh-outcome.win, .hh-outcome.even-money { color: var(--green); }
+.hh-outcome.blackjack                   { color: var(--gold); }
+.hh-outcome.lose, .hh-outcome.bust      { color: var(--red); }
+.hh-outcome.push, .hh-outcome.surrender { color: var(--text-muted); }
+
+.hh-net      { font-family: var(--font-mono); font-size: 11px; font-weight: 700; text-align: right; }
+.hh-net.pos  { color: var(--green); }
+.hh-net.neg  { color: var(--red); }
+.hh-net.zero { color: var(--text-muted); }
+
+.history-placeholder {
+  text-align: center;
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Keyboard Shortcut Table ─────────────────────────────────────────────────── */
+.shortcut-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.shortcut-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+  vertical-align: middle;
+}
+
+.shortcut-table tr:last-child td { border-bottom: none; }
+
+.shortcut-table td:first-child {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(212,175,55,0.07);
+  border-radius: 4px;
+  width: 150px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Broke Overlay ───────────────────────────────────────────────────────────── */
+.broke-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.84);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  animation: overlay-in 0.25s ease;
+}
+
+.broke-box {
+  background: var(--bg2);
+  border: 2px solid rgba(239,68,68,0.45);
+  border-radius: 20px;
+  padding: 44px 52px;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(239,68,68,0.18), 0 20px 60px rgba(0,0,0,0.7);
+  animation: modal-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.broke-icon { font-size: 52px; margin-bottom: 14px; }
+
+.broke-box h2 {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--red);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(239,68,68,0.35);
+}
+
+.broke-box p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
 /* ── Utility ─────────────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 

@@ -41,6 +41,22 @@ const el = {
   aboutBtn:      $('about-btn'),
   aboutModal:    $('about-modal'),
   aboutClose:    $('about-close'),
+  shortcutsBtn:  $('shortcuts-btn'),
+  shortcutsModal:$('shortcuts-modal'),
+  shortcutsClose:$('shortcuts-close'),
+  evenMoneyBar:  $('even-money-bar'),
+  emYesBtn:      $('em-yes-btn'),
+  emNoBtn:       $('em-no-btn'),
+  deviationBar:  $('deviation-bar'),
+  betAdvisor:    $('bet-advisor'),
+  sidebetToggle: $('sidebet-toggle'),
+  sidebetResult: $('sidebet-result'),
+  historyToggle: $('history-toggle'),
+  historyBody:   $('history-body'),
+  historyChevron:$('history-chevron'),
+  historyList:   $('history-list'),
+  brokeOverlay:  $('broke-overlay'),
+  brokeResetBtn: $('broke-reset-btn'),
   // Control bar
   familySelect:  $('family-select'),
   modelSelect:   $('model-select'),
@@ -110,7 +126,12 @@ const stats = {
   deviationWins:    0,
   deviationLosses:  0,
   deviationHands:   0,
+  history:          [],  // last 10 hands
 };
+
+// ── Per-hand tracking vars ─────────────────────────────────────────────────────
+let lastPlayerAction  = null;
+let lastDeviationInfo = null;
 
 // ── Sound System ───────────────────────────────────────────────────────────────
 
@@ -343,6 +364,35 @@ function wireEvents() {
     if (e.target === el.aboutModal) el.aboutModal.classList.add('hidden');
   });
 
+  // Keyboard shortcuts modal
+  el.shortcutsBtn.addEventListener('click',   () => el.shortcutsModal.classList.remove('hidden'));
+  el.shortcutsClose.addEventListener('click', () => el.shortcutsModal.classList.add('hidden'));
+  el.shortcutsModal.addEventListener('click', e => {
+    if (e.target === el.shortcutsModal) el.shortcutsModal.classList.add('hidden');
+  });
+
+  // Even money offer
+  el.emYesBtn.addEventListener('click', () => resolveEvenMoneyChoice(true));
+  el.emNoBtn.addEventListener('click',  () => resolveEvenMoneyChoice(false));
+
+  // 21+3 side bet toggle
+  el.sidebetToggle.addEventListener('click', () => {
+    game.sideBetActive = !game.sideBetActive;
+    el.sidebetToggle.textContent = game.sideBetActive ? 'ON' : 'OFF';
+    el.sidebetToggle.classList.toggle('active', game.sideBetActive);
+    el.playBtn.disabled = !canDeal();
+    sfx.chip();
+  });
+
+  // Hand history collapsible
+  el.historyToggle.addEventListener('click', () => {
+    const open = el.historyBody.classList.toggle('open');
+    el.historyChevron.classList.toggle('open', open);
+  });
+
+  // Broke overlay reset
+  el.brokeResetBtn.addEventListener('click', resetSession);
+
   // Keyboard shortcuts
   document.addEventListener('keydown', handleKeyDown);
 
@@ -364,8 +414,14 @@ async function startRound() {
 
   pendingRec       = null;
   deviatedThisHand = false;
+  lastPlayerAction  = null;
+  lastDeviationInfo = null;
   el.resultBanner.classList.add('hidden');
+  el.deviationBar.classList.add('hidden');
   el.insuranceBar.classList.add('hidden');
+  el.evenMoneyBar.classList.add('hidden');
+  el.sidebetResult.classList.add('hidden');
+  el.sidebetResult.className = 'info-chip sidebet-result-chip hidden';
   el.playBtn.disabled = true;
   resetAIPanel();
 
@@ -383,18 +439,31 @@ async function startRound() {
   sfx.deal();
   setStatus('Dealing…');
 
+  // Resolve 21+3 side bet immediately after deal
+  const sbResult = resolveSideBet();
+  if (sbResult) {
+    updateBalanceDisplay();
+    showSideBetResult(sbResult);
+  }
+
   // Small pause so dealing animation plays before we continue
   await delay(600);
 
   // Check for player blackjack
-  const playerHand  = game.playerHands[0];
+  const playerHand   = game.playerHands[0];
   const dealerUpRank = game.dealerCards[0].rank;
 
   if (isBlackjack(playerHand)) {
     el.dealerScore.textContent = '';  // hide dealer score while hole card is hidden
     if (dealerUpRank === 'A') {
-      // Must resolve insurance first before peeking
-      await showInsuranceOffer();
+      // Offer even money (guaranteed 1:1) instead of insurance
+      const tookEvenMoney = await showEvenMoneyOffer();
+      if (tookEvenMoney) {
+        const results = doEvenMoney();
+        renderDealerCards();
+        showResults(results);
+        return;
+      }
     }
     // Peek at hole card
     await revealHoleCard();
@@ -483,9 +552,20 @@ async function handleAction(type) {
     deviatedThisHand = true;
     stats.deviations++;
     stats.deviationHands++;
+    // Store info for post-hand deviation review
+    const hand = getActiveHand();
+    const bsCode = basicStrategy(hand, game.dealerCards[0].rank,
+      getAvailableActions().includes('double'), getAvailableActions().includes('split'));
+    lastDeviationInfo = {
+      played:    type,
+      rec:       pendingRec.action,
+      bs:        strategyLabel(bsCode),
+      handDesc:  describeHand(hand, game.dealerCards[0]),
+    };
   }
 
   // Record action for analytics
+  lastPlayerAction = type;
   if (stats.actions[type] !== undefined) stats.actions[type]++;
 
   setActionButtons([]);
@@ -588,10 +668,14 @@ function showResults(results) {
   const totalNet = results.reduce((s, r) => s + r.net, 0)
                  + (results.insuranceDelta || 0);
 
-  const isSurrender = results.length === 1 && results[0].outcome === 'surrender';
+  const isSurrender  = results.length === 1 && results[0].outcome === 'surrender';
+  const isEvenMoney  = results.length === 1 && results[0].outcome === 'even-money';
 
   let msg, cls;
-  if (isSurrender) {
+  if (isEvenMoney) {
+    msg = `EVEN MONEY — +$${totalNet} 🤝`;
+    cls = 'result-win';
+  } else if (isSurrender) {
     msg = `SURRENDER — $${Math.abs(totalNet)} lost`;
     cls = 'result-push';
   } else if (anyBJ) {
@@ -620,6 +704,7 @@ function showResults(results) {
 
   if (isSurrender)           sfx.surrender();
   else if (anyBJ)            sfx.blackjack();
+  else if (isEvenMoney)      sfx.win();
   else if (anyWin)           sfx.win();
   else if (anyLose && totalNet < 0) {
     sfx.lose();
@@ -633,8 +718,21 @@ function showResults(results) {
   updateActiveBetChip();
   updateAnalytics(results, totalNet);
 
+  // Deviation review
+  if (lastDeviationInfo) {
+    const d = lastDeviationInfo;
+    el.deviationBar.textContent =
+      `⚠ You played ${d.played.toUpperCase()} on ${d.handDesc} — AI recommended ${d.rec.toUpperCase()}. Basic strategy: ${d.bs}.`;
+    el.deviationBar.classList.remove('hidden');
+  }
+
   setStatus('');
   el.playBtn.disabled = !canDeal();
+
+  // Broke check
+  if (game.balance < BET_MIN) {
+    setTimeout(() => el.brokeOverlay.classList.remove('hidden'), 800);
+  }
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -1238,7 +1336,7 @@ function updateAnalytics(results, totalNet) {
                 : results.some(r => r.outcome === 'push')        ? 'push'
                 : 'lose';
 
-  if (outcome === 'win' || outcome === 'blackjack') stats.wins++;
+  if (outcome === 'win' || outcome === 'blackjack' || outcome === 'even-money') stats.wins++;
   else if (outcome === 'push')      stats.pushes++;
   else if (outcome === 'surrender') stats.surrenders++;
   else                              stats.losses++;
@@ -1250,9 +1348,25 @@ function updateAnalytics(results, totalNet) {
     if (outcome === 'win' || outcome === 'blackjack') stats.deviationWins++;
     else if (outcome === 'lose' || outcome === 'bust') stats.deviationLosses++;
   }
+
+  // Hand history (keep last 10)
+  const primaryHand = results[0]?.hand || game.playerHands[0];
+  stats.history.unshift({
+    num:      stats.hands,
+    cards:    primaryHand.map(c => c.rank + c.suit).join(' '),
+    total:    handValue(primaryHand),
+    action:   lastPlayerAction || '—',
+    aiRec:    pendingRec?.action || '—',
+    outcome,
+    net:      totalNet,
+    deviated: deviatedThisHand,
+  });
+  if (stats.history.length > 10) stats.history.pop();
+
   deviatedThisHand = false;
 
   updateAnalyticsDisplay();
+  renderHandHistory();
 }
 
 function updateAnalyticsDisplay() {
@@ -1363,8 +1477,24 @@ function renderWLPBar() {
 function handleKeyDown(e) {
   // Ignore when typing in any input/select
   if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
-  // Ignore when modal is open
-  if (!el.aboutModal.classList.contains('hidden')) return;
+
+  // Escape closes any open modal
+  if (e.key === 'Escape') {
+    el.aboutModal.classList.add('hidden');
+    el.shortcutsModal.classList.add('hidden');
+    return;
+  }
+
+  // ? opens shortcuts modal
+  if (e.key === '?') {
+    e.preventDefault();
+    el.shortcutsModal.classList.remove('hidden');
+    return;
+  }
+
+  // Ignore game shortcuts when any modal is open
+  if (!el.aboutModal.classList.contains('hidden') ||
+      !el.shortcutsModal.classList.contains('hidden')) return;
 
   // Space / Enter → Play if we're between hands, or Execute if it's our turn
   if (e.key === ' ' || e.key === 'Enter') {
@@ -1429,6 +1559,8 @@ function updateShoeDisplay() {
   if (rc >= 3)       el.countDisplay.classList.add('hot');
   else if (rc <= -3) el.countDisplay.classList.add('cold');
   else if (rc !== 0) el.countDisplay.classList.add('warm');
+
+  updateBetAdvisor();
 }
 
 function updateBustDisplay(showIt) {
@@ -1496,6 +1628,114 @@ function strategyLabel(code) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ── Even Money Flow ────────────────────────────────────────────────────────────
+
+function showEvenMoneyOffer() {
+  return new Promise(resolve => {
+    el.evenMoneyBar.classList.remove('hidden');
+    el._emResolve = resolve;
+    setStatus('You have Blackjack! Take even money (1:1 guaranteed)?', 'thinking');
+    setActionButtons([]);
+  });
+}
+
+function resolveEvenMoneyChoice(takes) {
+  el.evenMoneyBar.classList.add('hidden');
+  if (el._emResolve) { el._emResolve(takes); el._emResolve = null; }
+}
+
+// ── 21+3 Side Bet Display ─────────────────────────────────────────────────────
+
+function showSideBetResult(result) {
+  el.sidebetResult.classList.remove('hidden', 'win', 'lose');
+  if (result.name) {
+    el.sidebetResult.textContent = `21+3: ${result.name} +$${result.net}`;
+    el.sidebetResult.classList.add('win');
+  } else {
+    el.sidebetResult.textContent = `21+3: No win −$10`;
+    el.sidebetResult.classList.add('lose');
+  }
+}
+
+// ── Bet Advisor ────────────────────────────────────────────────────────────────
+
+function updateBetAdvisor() {
+  const tc = trueCount();
+  if (tc >= 2) {
+    el.betAdvisor.textContent = `↑ Raise bet (TC +${tc.toFixed(1)})`;
+    el.betAdvisor.className   = 'info-chip bet-advisor-chip raise';
+  } else if (tc <= -2) {
+    el.betAdvisor.textContent = `↓ Lower bet (TC ${tc.toFixed(1)})`;
+    el.betAdvisor.className   = 'info-chip bet-advisor-chip lower';
+  } else {
+    el.betAdvisor.className = 'info-chip bet-advisor-chip hidden';
+  }
+}
+
+// ── Hand History ──────────────────────────────────────────────────────────────
+
+function renderHandHistory() {
+  if (!stats.history.length) {
+    el.historyList.innerHTML = '<div class="history-placeholder">No hands played yet.</div>';
+    return;
+  }
+  el.historyList.innerHTML = stats.history.map(h => {
+    const netCls = h.net > 0 ? 'pos' : h.net < 0 ? 'neg' : 'zero';
+    const netStr = (h.net > 0 ? '+' : '') + '$' + Math.abs(h.net);
+    return `<div class="history-row${h.deviated ? ' deviated' : ''}">
+      <span class="hh-num">${h.num}</span>
+      <span class="hh-cards" title="${h.cards}">${h.cards}</span>
+      <span class="hh-total">${h.total}</span>
+      <span class="hh-action">${h.action}</span>
+      <span class="hh-airec">${h.aiRec}</span>
+      <span class="hh-outcome ${h.outcome}">${h.outcome}</span>
+      <span class="hh-net ${netCls}">${netStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Session Reset ─────────────────────────────────────────────────────────────
+
+function resetSession() {
+  game.balance = STARTING_BALANCE;
+  game.bet     = 25;
+  game.phase   = 'idle';
+  initShoe();
+  game.shuffledRecently = false;
+
+  Object.assign(stats, {
+    hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0, surrenders: 0,
+    bankroll: [STARTING_BALANCE],
+    actions: { hit:0, stand:0, double:0, split:0, insurance:0, surrender:0 },
+    aiAgreements: 0, aiTotal: 0,
+    deviations: 0, deviationWins: 0, deviationLosses: 0, deviationHands: 0,
+    history: [],
+  });
+
+  el.brokeOverlay.classList.add('hidden');
+  el.betDisplay.textContent  = '$' + game.bet;
+  updateBalanceDisplay();
+  updateActiveBetChip();
+  updateShoeDisplay();
+  updateAnalyticsDisplay();
+  renderHandHistory();
+  setActionButtons([]);
+  resetAIPanel();
+  el.resultBanner.classList.add('hidden');
+  el.deviationBar.classList.add('hidden');
+  setStatus('New session started. Set your bet and press PLAY.');
+  el.playBtn.disabled = !canDeal();
+}
+
+// ── Hand Description Helper ───────────────────────────────────────────────────
+
+function describeHand(cards, dealerCard) {
+  const v   = handValue(cards);
+  const sft = isSoft(cards) ? 'Soft ' : 'Hard ';
+  const du  = dealerCard ? ` vs dealer ${dealerCard.rank}` : '';
+  return `${sft}${v}${du}`;
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────────
