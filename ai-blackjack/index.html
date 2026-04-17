@@ -55,6 +55,15 @@
       <select class="ctrl-select" id="model-select"></select>
       <button class="refresh-btn" id="refresh-models" title="Refresh model list">↻</button>
     </div>
+    <div class="model-group">
+      <span class="ctrl-label">Risk</span>
+      <div class="pill-toggle" id="risk-toggle">
+        <button class="pill-btn" data-risk="conservative">Conservative</button>
+        <button class="pill-btn pill-active" data-risk="balanced">Balanced</button>
+        <button class="pill-btn" data-risk="aggressive">Aggressive</button>
+      </div>
+    </div>
+
     <div class="bet-group">
       <span class="ctrl-label">Bet</span>
       <button class="bet-adj-btn" id="bet-minus">−</button>
@@ -117,6 +126,16 @@
 
       <div class="ai-panel-title">⚡ AI Analysis</div>
 
+      <!-- Explainability + Risk indicators -->
+      <div class="ai-controls-row">
+        <div class="pill-toggle pill-toggle-sm" id="detail-toggle">
+          <button class="pill-btn" data-detail="brief">Brief</button>
+          <button class="pill-btn pill-active" data-detail="standard">Standard</button>
+          <button class="pill-btn" data-detail="deep">Deep</button>
+        </div>
+        <span class="risk-badge" id="risk-badge">Balanced</span>
+      </div>
+
       <!-- AI Recommendation -->
       <div class="ai-recommend-block">
         <span class="ai-recommend-label">AI Recommends</span>
@@ -139,6 +158,19 @@
 
       <!-- Full Analysis -->
       <div class="ai-analysis-text" id="ai-analysis">Waiting for deal…</div>
+
+      <!-- Deep stats (only shown in deep detail mode) -->
+      <div class="ai-deep-stats hidden" id="ai-deep-stats">
+        <div class="deep-stat-row">
+          <span class="deep-stat-label">Dealer Bust Prob.</span>
+          <span class="deep-stat-val" id="deep-bust-prob">—</span>
+        </div>
+        <div class="deep-stat-row">
+          <span class="deep-stat-label">Move EV</span>
+          <span class="deep-stat-val" id="deep-ev">—</span>
+        </div>
+        <div class="deep-alt-table" id="deep-alt-table"></div>
+      </div>
 
       <!-- Execute Button -->
       <button class="execute-btn" id="execute-btn" disabled>

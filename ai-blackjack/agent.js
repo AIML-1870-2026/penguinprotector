@@ -83,8 +83,61 @@ function setKeyDirectly(raw) {
 
 // ── Prompt Construction ────────────────────────────────────────────────────────
 
-function _systemPrompt() {
-  return `You are an expert Blackjack strategy advisor. Analyze the game state and recommend the optimal action based on basic strategy, probability, and expected value.
+const _RISK_INSTRUCTIONS = {
+  conservative: 'The player uses a CONSERVATIVE risk profile. Prioritize bankroll preservation above all. Avoid doubles and splits unless the mathematical edge is strong (>15%). Favour standing in any borderline situation. Let confidence reflect how safe the move is.',
+  balanced:     'Use pure basic strategy as the foundation. Recommend the move with the highest expected value.',
+  aggressive:   'The player uses an AGGRESSIVE risk profile. Maximise expected value — double and split liberally whenever mathematically positive. Consider hitting borderline standing hands. Higher confidence scores are acceptable when the EV edge exists.',
+};
+
+function _systemPrompt(detailLevel = 'standard', riskProfile = 'balanced') {
+  const risk = _RISK_INSTRUCTIONS[riskProfile] || _RISK_INSTRUCTIONS.balanced;
+
+  if (detailLevel === 'brief') {
+    return `You are a Blackjack strategy advisor. ${risk}
+
+CRITICAL: Respond ONLY with a single valid JSON object — no prose, no markdown.
+
+{ "action": "stand", "confidence": 0.92, "brief_reason": "Hard 18 vs dealer 6 — stand.", "basic_strategy_action": "stand" }
+
+Rules:
+- action: one of available_actions
+- confidence: float 0.0–1.0
+- brief_reason: one sentence, 15 words max
+- basic_strategy_action: pure basic strategy recommendation`;
+  }
+
+  if (detailLevel === 'deep') {
+    return `You are an expert Blackjack strategy advisor. ${risk}
+
+CRITICAL: Respond ONLY with a single valid JSON object — no prose, no markdown fences.
+
+{
+  "action": "double",
+  "confidence": 0.88,
+  "brief_reason": "Soft 18 vs dealer 3 — doubling maximises EV.",
+  "full_analysis": "Your soft 18 is strong against a weak dealer 3...",
+  "basic_strategy_action": "double",
+  "dealer_bust_probability": 0.37,
+  "player_ev": 0.28,
+  "alternatives": [
+    { "action": "stand", "ev": 0.10, "notes": "Leaves value on the table." },
+    { "action": "hit",   "ev": 0.08, "notes": "Wastes the doubling opportunity." }
+  ]
+}
+
+Rules:
+- action: one of available_actions
+- confidence: float 0.0–1.0
+- brief_reason: one sentence
+- full_analysis: 3–5 sentences with probabilistic reasoning
+- basic_strategy_action: pure basic strategy recommendation
+- dealer_bust_probability: estimated probability dealer busts (0.0–1.0)
+- player_ev: expected value of recommended action (may be negative)
+- alternatives: 2 other candidate actions with estimated EV and brief notes`;
+  }
+
+  // standard (default)
+  return `You are an expert Blackjack strategy advisor. ${risk}
 
 CRITICAL REQUIREMENT: Respond ONLY with a single valid JSON object — no prose, no markdown fences, no explanation outside the JSON. The JSON must match this exact shape:
 
@@ -92,7 +145,7 @@ CRITICAL REQUIREMENT: Respond ONLY with a single valid JSON object — no prose,
   "action": "stand",
   "confidence": 0.92,
   "brief_reason": "Hard 18 vs dealer 6 — dealer bust probability is high.",
-  "full_analysis": "Your hard 18 is a strong hand. The dealer showing 6 is in a weak position, likely to bust. Standing maximizes EV here.",
+  "full_analysis": "Your hard 18 is a strong hand. The dealer showing 6 is in a weak position, likely to bust. Standing maximises EV here.",
   "basic_strategy_action": "stand"
 }
 
@@ -120,7 +173,7 @@ What is the optimal action?`;
 
 // ── API Calls ──────────────────────────────────────────────────────────────────
 
-async function _callAnthropic(key, model, gs) {
+async function _callAnthropic(key, model, gs, sysPrompt) {
   console.log('[BJ Agent] Sending request to Anthropic API...');
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -132,7 +185,7 @@ async function _callAnthropic(key, model, gs) {
     },
     body: JSON.stringify({
       model,
-      system:      _systemPrompt(),
+      system:      sysPrompt,
       messages:    [{ role: 'user', content: _userMessage(gs) }],
       max_tokens:  1024,
       temperature: 0,
@@ -149,7 +202,7 @@ async function _callAnthropic(key, model, gs) {
   return data.content[0]?.text ?? '';
 }
 
-async function _callOpenAI(key, model, gs) {
+async function _callOpenAI(key, model, gs, sysPrompt) {
   console.log('[BJ Agent] Sending request to OpenAI API...');
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -160,7 +213,7 @@ async function _callOpenAI(key, model, gs) {
     body: JSON.stringify({
       model,
       messages: [
-        { role: 'system', content: _systemPrompt() },
+        { role: 'system', content: sysPrompt },
         { role: 'user',   content: _userMessage(gs) },
       ],
       max_tokens:      1024,
@@ -183,7 +236,9 @@ async function _callOpenAI(key, model, gs) {
 
 // Calls the selected provider's API and returns a parsed recommendation object.
 // provider: 'anthropic' | 'openai'
-async function askAgent(gameState, model, provider) {
+// detailLevel: 'brief' | 'standard' | 'deep'
+// riskProfile:  'conservative' | 'balanced' | 'aggressive'
+async function askAgent(gameState, model, provider, detailLevel = 'standard', riskProfile = 'balanced') {
   const key = _keys[provider];
   if (!key) throw new Error(`No ${provider} API key loaded. Please upload your .env file.`);
 
@@ -194,13 +249,15 @@ async function askAgent(gameState, model, provider) {
   console.log(`[BJ Agent] Player hand: [${handStr}] → ${softStr} ${gameState.playerTotal}`);
   console.log(`[BJ Agent] Dealer up card: ${gameState.dealerUpCard.rank}${gameState.dealerUpCard.suit}`);
   console.log(`[BJ Agent] Available actions: ${gameState.availableActions.join(', ')}`);
-  console.log(`[BJ Agent] Provider: ${provider}  Model: ${model}`);
+  console.log(`[BJ Agent] Provider: ${provider}  Model: ${model}  Detail: ${detailLevel}  Risk: ${riskProfile}`);
+
+  const sysPrompt = _systemPrompt(detailLevel, riskProfile);
 
   let rawText;
   try {
     rawText = provider === 'openai'
-      ? await _callOpenAI(_keys.openai, model, gameState)
-      : await _callAnthropic(_keys.anthropic, model, gameState);
+      ? await _callOpenAI(_keys.openai, model, gameState, sysPrompt)
+      : await _callAnthropic(_keys.anthropic, model, gameState, sysPrompt);
   } catch (err) {
     console.error('[BJ Agent] API error:', err.message);
     throw err;

@@ -11,6 +11,15 @@ const el = {
   envFile:       $('env-file'),
   keyInput:      $('key-input'),
   keyEyeBtn:     $('key-eye-btn'),
+  // Explainability + risk controls
+  detailToggle:  $('detail-toggle'),
+  riskToggle:    $('risk-toggle'),
+  riskBadge:     $('risk-badge'),
+  // Deep stats
+  aiDeepStats:   $('ai-deep-stats'),
+  deepBustProb:  $('deep-bust-prob'),
+  deepEv:        $('deep-ev'),
+  deepAltTable:  $('deep-alt-table'),
   aboutBtn:      $('about-btn'),
   aboutModal:    $('about-modal'),
   aboutClose:    $('about-close'),
@@ -85,6 +94,8 @@ let pendingRec      = null;
 let aiWorking       = false;
 let currentModel    = 'claude-sonnet-4-6';
 let currentProvider = 'anthropic';
+let detailLevel     = 'standard';
+let riskProfile     = 'balanced';
 
 // Available models, keyed by provider
 const MODELS = {
@@ -108,6 +119,7 @@ function init() {
   buildStrategyMatrix();
   wireEvents();
   setActionButtons([]);
+  updateRiskBadge();
   el.playBtn.disabled = true;
   setStatus('Upload your .env file to begin');
 }
@@ -156,6 +168,26 @@ function wireEvents() {
       setStatus('Error: ' + err.message, 'lose');
     }
     e.target.value = '';
+  });
+
+  // Detail level toggle
+  el.detailToggle.addEventListener('click', e => {
+    const btn = e.target.closest('.pill-btn');
+    if (!btn) return;
+    detailLevel = btn.dataset.detail;
+    el.detailToggle.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('pill-active'));
+    btn.classList.add('pill-active');
+    applyDetailLevel();
+  });
+
+  // Risk profile toggle
+  el.riskToggle.addEventListener('click', e => {
+    const btn = e.target.closest('.pill-btn');
+    if (!btn) return;
+    riskProfile = btn.dataset.risk;
+    el.riskToggle.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('pill-active'));
+    btn.classList.add('pill-active');
+    updateRiskBadge();
   });
 
   // Family (provider) selection
@@ -310,7 +342,7 @@ async function playerTurn() {
 
   try {
     const gs  = buildGameState();
-    const rec = await askAgent(gs, currentModel, currentProvider);
+    const rec = await askAgent(gs, currentModel, currentProvider, detailLevel, riskProfile);
     pendingRec = rec;
     updateAIPanel(rec, gs);
     setStatus(`Your turn — AI recommends ${rec.action.toUpperCase()}`);
@@ -659,6 +691,21 @@ function resetAIPanel() {
   el.executeBtn.disabled        = true;
   el.strategyBadge.className    = 'strategy-badge';
   el.strategyBadge.textContent  = '';
+  el.aiDeepStats.classList.add('hidden');
+  el.deepAltTable.innerHTML     = '';
+}
+
+function applyDetailLevel() {
+  // Show/hide full analysis and deep stats based on current detailLevel
+  el.aiAnalysis.style.display    = detailLevel === 'brief'  ? 'none' : '';
+  el.aiBriefReason.style.display = detailLevel === 'deep'   ? 'none' : '';
+  if (detailLevel !== 'deep') el.aiDeepStats.classList.add('hidden');
+}
+
+function updateRiskBadge() {
+  const labels = { conservative: 'Conservative', balanced: 'Balanced', aggressive: 'Aggressive' };
+  el.riskBadge.textContent = labels[riskProfile] || riskProfile;
+  el.riskBadge.className = 'risk-badge ' + (riskProfile !== 'balanced' ? riskProfile : '');
 }
 
 function updateAIPanel(rec, gs) {
@@ -674,9 +721,24 @@ function updateAIPanel(rec, gs) {
   el.confidenceFill.setAttribute('data-level', level);
   el.confidencePct.textContent  = `${Math.round(conf * 100)}%`;
 
-  // Analysis text
-  el.aiAnalysis.textContent    = rec.full_analysis || rec.brief_reason || '—';
-  el.aiBriefReason.textContent = rec.brief_reason || '';
+  // Analysis text — varies by detail level
+  if (detailLevel === 'brief') {
+    el.aiAnalysis.style.display    = 'none';
+    el.aiBriefReason.style.display = '';
+    el.aiBriefReason.textContent   = rec.brief_reason || '—';
+    el.aiDeepStats.classList.add('hidden');
+  } else if (detailLevel === 'deep') {
+    el.aiAnalysis.style.display    = '';
+    el.aiBriefReason.style.display = 'none';
+    el.aiAnalysis.textContent      = rec.full_analysis || rec.brief_reason || '—';
+    renderDeepStats(rec);
+  } else {
+    el.aiAnalysis.style.display    = '';
+    el.aiBriefReason.style.display = '';
+    el.aiAnalysis.textContent      = rec.full_analysis || rec.brief_reason || '—';
+    el.aiBriefReason.textContent   = rec.brief_reason || '';
+    el.aiDeepStats.classList.add('hidden');
+  }
 
   // Highlight strategy matrix cell
   if (gs) {
@@ -704,6 +766,58 @@ function updateAIPanel(rec, gs) {
       stats.aiAgreements++;
     }
     updateAnalyticsDisplay();
+  }
+}
+
+function renderDeepStats(rec) {
+  const hasStat = rec.dealer_bust_probability != null || rec.player_ev != null;
+  el.aiDeepStats.classList.toggle('hidden', !hasStat && !rec.alternatives?.length);
+
+  if (rec.dealer_bust_probability != null) {
+    const pct = Math.round(rec.dealer_bust_probability * 100);
+    el.deepBustProb.textContent = pct + '%';
+    el.deepBustProb.style.color = pct >= 40 ? 'var(--green)' : pct >= 25 ? 'var(--amber)' : 'var(--red)';
+  } else {
+    el.deepBustProb.textContent = '—';
+    el.deepBustProb.style.color = '';
+  }
+
+  if (rec.player_ev != null) {
+    const ev = rec.player_ev;
+    el.deepEv.textContent = (ev >= 0 ? '+' : '') + ev.toFixed(2);
+    el.deepEv.style.color = ev >= 0 ? 'var(--green)' : 'var(--red)';
+  } else {
+    el.deepEv.textContent = '—';
+    el.deepEv.style.color = '';
+  }
+
+  el.deepAltTable.innerHTML = '';
+  if (Array.isArray(rec.alternatives)) {
+    const header = document.createElement('div');
+    header.className = 'deep-stat-label';
+    header.style.marginBottom = '4px';
+    header.textContent = 'Alternatives';
+    el.deepAltTable.appendChild(header);
+
+    rec.alternatives.forEach(alt => {
+      const row = document.createElement('div');
+      row.className = 'deep-alt-row';
+
+      const actionEl = document.createElement('span');
+      actionEl.className = 'deep-alt-action';
+      actionEl.textContent = alt.action || '—';
+
+      const evEl = document.createElement('span');
+      evEl.className = 'deep-alt-ev' + (alt.ev >= 0 ? ' pos' : ' neg');
+      evEl.textContent = alt.ev != null ? ((alt.ev >= 0 ? '+' : '') + Number(alt.ev).toFixed(2)) : '—';
+
+      const notesEl = document.createElement('span');
+      notesEl.className = 'deep-alt-notes';
+      notesEl.textContent = alt.notes || '';
+
+      row.append(actionEl, evEl, notesEl);
+      el.deepAltTable.appendChild(row);
+    });
   }
 }
 
