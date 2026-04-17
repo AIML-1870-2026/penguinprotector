@@ -35,6 +35,7 @@
         Upload .env
         <input type="file" id="env-file" accept=".env,.txt,.csv" hidden>
       </label>
+      <button class="sound-btn" id="sound-btn" title="Toggle sound">🔊</button>
       <button class="about-btn" id="about-btn">About</button>
     </div>
   </header>
@@ -77,6 +78,12 @@
 
     <div class="bet-group">
       <span class="ctrl-label">Bet</span>
+      <div class="bet-chips">
+        <button class="bet-chip" data-amount="5">$5</button>
+        <button class="bet-chip" data-amount="25">$25</button>
+        <button class="bet-chip" data-amount="100">$100</button>
+        <button class="bet-chip" data-amount="500">$500</button>
+      </div>
       <button class="bet-adj-btn" id="bet-minus">−</button>
       <span class="bet-display" id="bet-display">$25</span>
       <button class="bet-adj-btn" id="bet-plus">+</button>
@@ -131,12 +138,12 @@
 
       <!-- Action Buttons -->
       <div class="action-bar" id="action-bar">
-        <button class="action-btn btn-hit"       id="hit-btn"       disabled>HIT</button>
-        <button class="action-btn btn-stand"     id="stand-btn"     disabled>STAND</button>
-        <button class="action-btn btn-double"    id="double-btn"    disabled>DOUBLE</button>
-        <button class="action-btn btn-split"     id="split-btn"     disabled>SPLIT</button>
+        <button class="action-btn btn-hit"       id="hit-btn"       data-key="H" disabled>HIT</button>
+        <button class="action-btn btn-stand"     id="stand-btn"     data-key="S" disabled>STAND</button>
+        <button class="action-btn btn-double"    id="double-btn"    data-key="D" disabled>DOUBLE</button>
+        <button class="action-btn btn-split"     id="split-btn"     data-key="P" disabled>SPLIT</button>
         <button class="action-btn btn-insurance" id="insurance-btn" disabled>INSURANCE</button>
-        <button class="action-btn btn-surrender" id="surrender-btn" disabled>SURRENDER</button>
+        <button class="action-btn btn-surrender" id="surrender-btn" data-key="X" disabled>SURRENDER</button>
       </div>
 
     </div><!-- /game-area -->
@@ -194,11 +201,17 @@
 
       <!-- Execute Button -->
       <button class="execute-btn" id="execute-btn" disabled>
-        ▶ Execute Recommendation
+        ▶ Execute Recommendation <span class="execute-key-hint">Space</span>
       </button>
 
       <!-- Strategy Match Badge -->
       <div class="strategy-badge" id="strategy-badge"></div>
+
+      <!-- Probability Breakdown -->
+      <div class="prob-breakdown" id="prob-breakdown">
+        <div class="prob-breakdown-title">Outcome Probabilities</div>
+        <div id="prob-rows"><div class="prob-placeholder">Deal a hand to see probabilities</div></div>
+      </div>
 
     </aside><!-- /ai-panel -->
 

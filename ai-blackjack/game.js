@@ -214,6 +214,62 @@ function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit, canSurren
   return 'H';
 }
 
+// ── Action Probability Simulation ─────────────────────────────────────────────
+
+// Sample a random card from the remaining shoe (with replacement).
+function _sampleCard() {
+  return game.deck[Math.floor(Math.random() * game.deck.length)];
+}
+
+// Simulate the dealer playing out their hand (using known hole card + sampled draws).
+// Returns the dealer's final total.
+function _simulateDealerTotal() {
+  const dc = game.dealerCards.map(c => ({ rank: c.rank }));
+  while (handValue(dc) < 17) dc.push({ rank: _sampleCard().rank });
+  return handValue(dc);
+}
+
+// Simulate a player action nSims times and return outcome percentages.
+// Returns { win, push, lose, bust } as integers 0–100, or null if unavailable.
+// Surrender is deterministic — always returns { win:0, push:0, lose:50, bust:0 }.
+function simulateActionProbs(action, nSims = 3000) {
+  if (action === 'surrender') return { win: 0, push: 0, lose: 50, bust: 0 };
+  if (!game.deck.length)      return null;
+
+  const playerHand = getActiveHand();
+  let wins = 0, pushes = 0, losses = 0, busts = 0;
+
+  for (let i = 0; i < nSims; i++) {
+    let playerTotal;
+    let busted = false;
+
+    if (action === 'stand') {
+      playerTotal = handValue(playerHand);
+    } else {
+      // hit or double: draw one card
+      const c       = _sampleCard();
+      const newHand = [...playerHand, { rank: c.rank }];
+      playerTotal   = handValue(newHand);
+      if (playerTotal > 21) { busts++; losses++; busted = true; }
+    }
+
+    if (!busted) {
+      const dTotal = _simulateDealerTotal();
+      if (dTotal > 21 || playerTotal > dTotal) wins++;
+      else if (playerTotal === dTotal)         pushes++;
+      else                                     losses++;
+    }
+  }
+
+  const loseNoB = losses - busts;
+  return {
+    win:  Math.round(wins   / nSims * 100),
+    push: Math.round(pushes / nSims * 100),
+    lose: Math.round(loseNoB / nSims * 100),
+    bust: Math.round(busts  / nSims * 100),
+  };
+}
+
 // Human-readable label for a strategy code.
 function strategyLabel(code) {
   return { H:'Hit', S:'Stand', D:'Double Down', P:'Split', R:'Surrender' }[code] || code;

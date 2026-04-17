@@ -35,6 +35,9 @@ const el = {
   deepBustProb:  $('deep-bust-prob'),
   deepEv:        $('deep-ev'),
   deepAltTable:  $('deep-alt-table'),
+  soundBtn:      $('sound-btn'),
+  probBreakdown: $('prob-breakdown'),
+  probRows:      $('prob-rows'),
   aboutBtn:      $('about-btn'),
   aboutModal:    $('about-modal'),
   aboutClose:    $('about-close'),
@@ -109,6 +112,52 @@ const stats = {
   deviationHands:   0,
 };
 
+// ── Sound System ───────────────────────────────────────────────────────────────
+
+let _audioCtx   = null;
+let soundEnabled = true;
+
+function _ctx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function _tone(freq, type, vol, dur, delay = 0) {
+  if (!soundEnabled) return;
+  try {
+    const ctx  = _ctx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const t    = ctx.currentTime + delay;
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.01);
+  } catch(_) {}
+}
+
+const sfx = {
+  deal:      () => { _tone(900,'sine',0.14,0.06); _tone(550,'sine',0.07,0.05,0.04); },
+  chip:      () =>   _tone(1100,'sine',0.08,0.04),
+  win:       () => { _tone(523,'sine',0.18,0.22); _tone(659,'sine',0.18,0.22,0.13); },
+  blackjack: () => { _tone(523,'sine',0.18,0.18); _tone(659,'sine',0.18,0.18,0.10);
+                     _tone(784,'sine',0.22,0.35,0.20); },
+  lose:      () => { const ctx=_ctx(); const o=ctx.createOscillator(),g=ctx.createGain();
+                     o.type='sawtooth'; o.frequency.setValueAtTime(260,ctx.currentTime);
+                     o.frequency.exponentialRampToValueAtTime(120,ctx.currentTime+0.3);
+                     g.gain.setValueAtTime(0.12,ctx.currentTime);
+                     g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+                     o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.31); },
+  surrender: () => { _tone(380,'sine',0.12,0.15); _tone(300,'sine',0.08,0.18,0.1); },
+  shuffle:   () => { for(let i=0;i<4;i++) _tone(400+i*60,'sine',0.06,0.04,i*0.05); },
+};
+
+// ── Pending AI recommendation for the current hand ─────────────────────────────
 // Pending AI recommendation for the current hand
 let pendingRec        = null;
 let aiWorking         = false;
@@ -142,7 +191,9 @@ function init() {
   setActionButtons([]);
   updateRiskBadge();
   updateShoeDisplay();
+  updateActiveBetChip();
   el.playBtn.disabled = true;
+  document.body.classList.add('no-key');
   setStatus('Upload your .env file to begin');
 }
 
@@ -190,6 +241,27 @@ function wireEvents() {
       setStatus('Error: ' + err.message, 'lose');
     }
     e.target.value = '';
+  });
+
+  // Sound toggle
+  el.soundBtn.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    el.soundBtn.textContent = soundEnabled ? '🔊' : '🔇';
+    el.soundBtn.classList.toggle('muted', !soundEnabled);
+    if (soundEnabled) sfx.chip();
+  });
+
+  // Bet chip presets
+  document.querySelectorAll('.bet-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const amount = parseInt(btn.dataset.amount, 10);
+      if (amount > game.balance) return;
+      game.bet = Math.min(BET_MAX, Math.max(BET_MIN, amount));
+      el.betDisplay.textContent = '$' + game.bet;
+      el.playBtn.disabled = !canDeal();
+      updateActiveBetChip();
+      sfx.chip();
+    });
   });
 
   // Deck count selector
@@ -271,6 +343,9 @@ function wireEvents() {
     if (e.target === el.aboutModal) el.aboutModal.classList.add('hidden');
   });
 
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyDown);
+
   // Collapsible sections
   el.matrixToggle.addEventListener('click', () => {
     const open = el.matrixBody.classList.toggle('open');
@@ -303,7 +378,9 @@ async function startRound() {
   updateShoeDisplay();
 
   updateBalanceDisplay();
+  updateActiveBetChip();
   renderTable(true);    // animate = true
+  sfx.deal();
   setStatus('Dealing…');
 
   // Small pause so dealing animation plays before we continue
@@ -374,9 +451,11 @@ async function playerTurn() {
   }
 
   setActionButtons(actions);
+  updateProbBreakdown(actions);
   setStatus('AI is thinking…', 'thinking');
   aiWorking = true;
   el.executeBtn.disabled = true;
+  showAIThinking();
 
   try {
     const gs  = buildGameState();
@@ -478,6 +557,7 @@ async function dealerPhase() {
   // Animate each newly drawn dealer card
   for (let i = beforeLen; i < afterLen; i++) {
     renderDealerCards(i);
+    sfx.deal();
     setStatus(`Dealer draws: ${game.dealerCards[i].rank}${game.dealerCards[i].suit}`);
     updateShoeDisplay();
     await delay(550);
@@ -538,14 +618,19 @@ function showResults(results) {
   el.resultBanner.className   = `result-banner ${cls}`;
   el.resultBanner.classList.remove('hidden');
 
-  if (anyLose && totalNet < 0) {
+  if (isSurrender)           sfx.surrender();
+  else if (anyBJ)            sfx.blackjack();
+  else if (anyWin)           sfx.win();
+  else if (anyLose && totalNet < 0) {
+    sfx.lose();
     document.body.classList.remove('lose-flash');
-    void document.body.offsetWidth; // reflow to restart animation
+    void document.body.offsetWidth;
     document.body.classList.add('lose-flash');
     setTimeout(() => document.body.classList.remove('lose-flash'), 900);
   }
 
   updateBalanceDisplay(totalNet);
+  updateActiveBetChip();
   updateAnalytics(results, totalNet);
 
   setStatus('');
@@ -750,6 +835,7 @@ function resetAIPanel() {
   el.aiActionWord.className   = 'ai-action-word';
   el.confidenceFill.style.width = '0%';
   el.confidencePct.textContent  = '—';
+  el.aiAnalysis.className       = 'ai-analysis-text';
   el.aiAnalysis.textContent     = 'Waiting for deal…';
   el.aiBriefReason.textContent  = '';
   el.executeBtn.disabled        = true;
@@ -757,6 +843,7 @@ function resetAIPanel() {
   el.strategyBadge.textContent  = '';
   el.aiDeepStats.classList.add('hidden');
   el.deepAltTable.innerHTML     = '';
+  el.probRows.innerHTML = '<div class="prob-placeholder">Deal a hand to see probabilities</div>';
 }
 
 function applyDetailLevel() {
@@ -786,6 +873,7 @@ function updateAIPanel(rec, gs) {
   el.confidencePct.textContent  = `${Math.round(conf * 100)}%`;
 
   // Analysis text — varies by detail level
+  el.aiAnalysis.className = 'ai-analysis-text';  // clear loading state
   if (detailLevel === 'brief') {
     el.aiAnalysis.style.display    = 'none';
     el.aiBriefReason.style.display = '';
@@ -831,6 +919,59 @@ function updateAIPanel(rec, gs) {
     }
     updateAnalyticsDisplay();
   }
+}
+
+// ── Probability Breakdown ─────────────────────────────────────────────────────
+
+const PROB_ACTION_ORDER = ['stand','hit','double','split','surrender'];
+
+function updateProbBreakdown(availableActions) {
+  if (!availableActions?.length || !game.deck.length) {
+    el.probRows.innerHTML = '<div class="prob-placeholder">—</div>';
+    return;
+  }
+
+  const toShow = PROB_ACTION_ORDER.filter(a => availableActions.includes(a) && a !== 'insurance');
+  if (!toShow.length) { el.probRows.innerHTML = ''; return; }
+
+  // Find best win% to highlight
+  const probs = Object.fromEntries(toShow.map(a => [a, simulateActionProbs(a, 3000)]));
+  const bestWin = Math.max(...Object.values(probs).map(p => p?.win ?? 0));
+
+  el.probRows.innerHTML = toShow.map(action => {
+    const p = probs[action];
+    if (!p) return '';
+
+    const isSurr    = action === 'surrender';
+    const winPct    = p.win;
+    const pushPct   = p.push;
+    const losePct   = p.lose;
+    const bustPct   = p.bust;
+    const isBest    = !isSurr && winPct === bestWin && bestWin > 0;
+    const totalLose = losePct + bustPct;
+
+    const barWin  = isSurr ? 0   : winPct;
+    const barPush = isSurr ? 50  : pushPct;
+    const barLose = isSurr ? 50  : totalLose;
+
+    const label = isSurr
+      ? `50% returned`
+      : `${winPct}%W · ${pushPct}%P · ${totalLose}%L${bustPct ? ` (${bustPct}% bust)` : ''}`;
+
+    return `<div class="prob-row">
+      <span class="prob-action">${action === 'surrender' ? 'SURR.' : action.toUpperCase()}</span>
+      <div class="prob-bar-wrap">
+        <div class="prob-seg prob-win"  style="width:${barWin}%"></div>
+        <div class="prob-seg prob-push" style="width:${barPush}%"></div>
+        <div class="prob-seg prob-lose" style="width:${barLose}%"></div>
+      </div>
+      <span class="prob-pct${isBest ? ' best' : ''}">${label}</span>
+    </div>`;
+  }).join('') + `<div class="prob-legend">
+    <div class="prob-legend-item"><div class="prob-legend-dot" style="background:var(--green)"></div>Win</div>
+    <div class="prob-legend-item"><div class="prob-legend-dot" style="background:var(--gold)"></div>Push</div>
+    <div class="prob-legend-item"><div class="prob-legend-dot" style="background:var(--red)"></div>Lose</div>
+  </div>`;
 }
 
 function renderDeepStats(rec) {
@@ -885,7 +1026,24 @@ function renderDeepStats(rec) {
   }
 }
 
+function showAIThinking() {
+  el.aiActionWord.textContent = '…';
+  el.aiActionWord.className   = 'ai-action-word';
+  el.aiBriefReason.textContent = '';
+  el.confidenceFill.style.width = '0%';
+  el.confidencePct.textContent  = '—';
+  el.aiAnalysis.className = 'ai-analysis-text loading';
+  el.aiAnalysis.innerHTML = `
+    <div class="ai-thinking">
+      Analyzing
+      <span class="dot-1"></span>
+      <span class="dot-2"></span>
+      <span class="dot-3"></span>
+    </div>`;
+}
+
 function showAIError(msg) {
+  el.aiAnalysis.className = 'ai-analysis-text';
   el.aiAnalysis.innerHTML = `<span class="ai-error">AI error: ${msg}</span>`;
   el.aiActionWord.textContent = '—';
   el.aiActionWord.className   = 'ai-action-word';
@@ -1200,6 +1358,55 @@ function renderWLPBar() {
   if (pushSeg) pushSeg.style.width = pPct + '%';
 }
 
+// ── Keyboard Shortcuts ─────────────────────────────────────────────────────────
+
+function handleKeyDown(e) {
+  // Ignore when typing in any input/select
+  if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  // Ignore when modal is open
+  if (!el.aboutModal.classList.contains('hidden')) return;
+
+  // Space / Enter → Play if we're between hands, or Execute if it's our turn
+  if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault();
+    if (game.phase !== 'playing') {
+      if (!el.playBtn.disabled) startRound();
+    } else {
+      if (!el.executeBtn.disabled) executeRecommendation();
+    }
+    return;
+  }
+
+  if (game.phase !== 'playing') return;
+
+  const keyMap = {
+    'h': 'hit',   'H': 'hit',
+    's': 'stand', 'S': 'stand',
+    'd': 'double','D': 'double',
+    'p': 'split', 'P': 'split',
+    'x': 'surrender', 'X': 'surrender',
+  };
+
+  const action = keyMap[e.key];
+  if (!action) return;
+  e.preventDefault();
+
+  const actions = getAvailableActions();
+  if (actions.includes(action)) {
+    // Brief visual flash on the button
+    const btnMap = {
+      hit: el.hitBtn, stand: el.standBtn, double: el.doubleBtn,
+      split: el.splitBtn, surrender: el.surrenderBtn,
+    };
+    const btn = btnMap[action];
+    if (btn && !btn.disabled) {
+      btn.classList.add('btn-pulsing');
+      btn.addEventListener('animationend', () => btn.classList.remove('btn-pulsing'), { once: true });
+      setTimeout(() => handleAction(action), 120);
+    }
+  }
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────────────
 
 function canDeal() {
@@ -1242,13 +1449,22 @@ function updateBustDisplay(showIt) {
 
 function showShuffleNotice() {
   el.shuffleNotice.classList.remove('hidden');
+  sfx.shuffle();
   setTimeout(() => el.shuffleNotice.classList.add('hidden'), 4000);
+}
+
+function updateActiveBetChip() {
+  document.querySelectorAll('.bet-chip').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.amount, 10) === game.bet);
+    btn.disabled = parseInt(btn.dataset.amount, 10) > game.balance || game.phase === 'playing';
+  });
 }
 
 function markKeyLoaded(summary) {
   el.keyDot.classList.add('loaded');
   el.keyText.textContent = `Key loaded ✓ (${summary})`;
   el.keyIndicator.classList.add('loaded');
+  document.body.classList.remove('no-key');
   el.playBtn.disabled = !canDeal();
   setStatus('API key loaded. Set your bet and press PLAY.');
 }
