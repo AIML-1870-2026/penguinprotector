@@ -56,6 +56,17 @@
       <button class="refresh-btn" id="refresh-models" title="Refresh model list">↻</button>
     </div>
     <div class="model-group">
+      <span class="ctrl-label">Decks</span>
+      <select class="ctrl-select ctrl-select-sm" id="deck-select">
+        <option value="1">1 deck</option>
+        <option value="2">2 decks</option>
+        <option value="4">4 decks</option>
+        <option value="6" selected>6 decks</option>
+        <option value="8">8 decks</option>
+      </select>
+    </div>
+
+    <div class="model-group">
       <span class="ctrl-label">Risk</span>
       <div class="pill-toggle" id="risk-toggle">
         <button class="pill-btn" data-risk="conservative">Conservative</button>
@@ -94,6 +105,14 @@
         <div class="card-row" id="dealer-cards"></div>
       </div>
 
+      <!-- Table Info Bar: shoe counter + Hi-Lo count + bust probability -->
+      <div class="table-info-bar" id="table-info-bar">
+        <span class="info-chip" id="shoe-counter">Shoe: — / —</span>
+        <span class="info-chip count-chip" id="count-display">RC <span id="rc-val">0</span> · TC <span id="tc-val">0.0</span></span>
+        <span class="info-chip bust-chip hidden" id="bust-chip">Bust <span id="bust-val">—</span></span>
+        <span class="info-chip shuffle-notice hidden" id="shuffle-notice">♻ Shoe shuffled</span>
+      </div>
+
       <!-- Status -->
       <div class="status-bar" id="status-bar">Upload your .env file to begin</div>
 
@@ -117,6 +136,7 @@
         <button class="action-btn btn-double"    id="double-btn"    disabled>DOUBLE</button>
         <button class="action-btn btn-split"     id="split-btn"     disabled>SPLIT</button>
         <button class="action-btn btn-insurance" id="insurance-btn" disabled>INSURANCE</button>
+        <button class="action-btn btn-surrender" id="surrender-btn" disabled>SURRENDER</button>
       </div>
 
     </div><!-- /game-area -->
@@ -239,6 +259,14 @@
         <div class="stat-card">
           <span class="stat-val" id="stat-ai-agree">—</span>
           <span class="stat-lbl">AI vs Basic Strategy</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-deviations">0</span>
+          <span class="stat-lbl">AI Overrides</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val" id="stat-deviation-outcome">—</span>
+          <span class="stat-lbl">Override Win%</span>
         </div>
       </div>
 

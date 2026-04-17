@@ -11,6 +11,17 @@ const BET_STEP = 5;
 const BET_MIN  = 5;
 const BET_MAX  = 500;
 
+// ── Shoe Configuration ─────────────────────────────────────────────────────────
+
+let numDecks = 6;
+
+// Hi-Lo counting values: low cards (2-6) = +1, neutral (7-9) = 0, high cards (10-A) = -1
+const HI_LO = {
+  '2':1,'3':1,'4':1,'5':1,'6':1,
+  '7':0,'8':0,'9':0,
+  '10':-1,'J':-1,'Q':-1,'K':-1,'A':-1,
+};
+
 // ── Card Utilities ─────────────────────────────────────────────────────────────
 
 function rankValue(rank) {
@@ -47,7 +58,7 @@ function isBust(cards) {
   return handValue(cards) > 21;
 }
 
-// ── Deck ───────────────────────────────────────────────────────────────────────
+// ── Deck / Shoe ────────────────────────────────────────────────────────────────
 
 function buildDeck() {
   return SUITS.flatMap(suit => RANKS.map(rank => ({ rank, suit })));
@@ -63,14 +74,105 @@ function shuffleDeck(deck) {
   return d;
 }
 
+function buildShoe(decks) {
+  const shoe = [];
+  for (let d = 0; d < decks; d++) shoe.push(...buildDeck());
+  return shuffleDeck(shoe);
+}
+
+// ── Game State ─────────────────────────────────────────────────────────────────
+
+const game = {
+  phase:          'idle',  // idle | playing | dealer | done
+  balance:        STARTING_BALANCE,
+  bet:            25,
+  deck:           [],
+  shoeTotalCards: 0,
+  runningCount:   0,
+  shuffledRecently: false,  // flag for UI to flash shuffle notice
+  dealerCards:    [],
+  playerHands:    [[]],
+  activeHand:     0,
+  handBets:       [],
+  insuranceBet:   0,
+  lastResults:    null,
+};
+
+// Build a fresh shoe and reset the running count.
+function initShoe() {
+  game.deck           = buildShoe(numDecks);
+  game.shoeTotalCards = game.deck.length;
+  game.runningCount   = 0;
+  game.shuffledRecently = true;
+}
+
+function setNumDecks(n) {
+  numDecks = n;
+  initShoe();
+}
+
+// Initialise on load.
+initShoe();
+game.shuffledRecently = false; // suppress flash on first load
+
+// ── Drawing ────────────────────────────────────────────────────────────────────
+
+// Draw the next card from the shoe; reshuffle when below 25% penetration.
+function drawCard(faceDown = false) {
+  const reshuffleAt = Math.ceil(game.shoeTotalCards * 0.25);
+  if (game.deck.length <= reshuffleAt) {
+    initShoe();
+    // shuffledRecently is now true → ui.js will show a flash notice
+  }
+  const card = { ...game.deck.pop(), faceDown };
+  if (!faceDown) game.runningCount += HI_LO[card.rank] ?? 0;
+  return card;
+}
+
+// Call this when a face-down card is turned face-up (hole card reveal).
+function countRevealedCard(card) {
+  game.runningCount += HI_LO[card.rank] ?? 0;
+}
+
+// ── Probability Helpers ────────────────────────────────────────────────────────
+
+// Decks remaining in the shoe (used for true count).
+function getDecksRemaining() {
+  return Math.max(0.5, game.deck.length / 52);
+}
+
+// True count = running count ÷ decks remaining.
+function trueCount() {
+  return game.runningCount / getDecksRemaining();
+}
+
+// Probability (0–1) that the next card will bust the active hand.
+// Returns null when not in playing phase.
+function bustProbability() {
+  if (game.phase !== 'playing') return null;
+  const hand = getActiveHand();
+  const remaining = game.deck;
+  if (remaining.length === 0) return null;
+
+  let bustCount = 0;
+  for (const card of remaining) {
+    if (handValue([...hand, { rank: card.rank, suit: card.suit }]) > 21) bustCount++;
+  }
+  return bustCount / remaining.length;
+}
+
 // ── Basic Strategy ─────────────────────────────────────────────────────────────
-// Returns 'H' (hit), 'S' (stand), 'D' (double), 'P' (split).
-// canDouble / canSplit control which options are available.
-function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit) {
+// Returns 'H' (hit), 'S' (stand), 'D' (double), 'P' (split), 'R' (surrender).
+function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit, canSurrender) {
   const total = handValue(playerCards);
   const soft  = isSoft(playerCards);
-  // Treat dealer Ace as 11 for strategy indexing
   const du    = dealerUpRank === 'A' ? 11 : rankValue(dealerUpRank);
+
+  // ── Surrender ────────────────────────────────────────────────────────────────
+  if (canSurrender && playerCards.length === 2) {
+    if (total === 16 && [9,10,11].includes(du)) return 'R';
+    if (total === 15 && du === 10)              return 'R';
+  }
 
   // ── Pairs ────────────────────────────────────────────────────────────────────
   if (canSplit && playerCards.length === 2) {
@@ -114,50 +216,13 @@ function basicStrategy(playerCards, dealerUpRank, canDouble, canSplit) {
 
 // Human-readable label for a strategy code.
 function strategyLabel(code) {
-  return { H:'Hit', S:'Stand', D:'Double Down', P:'Split' }[code] || code;
+  return { H:'Hit', S:'Stand', D:'Double Down', P:'Split', R:'Surrender' }[code] || code;
 }
 
-// ── Game State ─────────────────────────────────────────────────────────────────
-
-const game = {
-  phase:        'idle',  // idle | playing | dealer | done
-  balance:      STARTING_BALANCE,
-  bet:          25,
-  deck:         shuffleDeck(buildDeck()),
-  dealerCards:  [],
-  playerHands:  [[]],   // supports split (up to 2 hands)
-  activeHand:   0,
-  handBets:     [],
-  insuranceBet: 0,
-  lastResults:  null,   // resolved after each round
-};
-
-// Draw the next card from the shoe; reshuffle if nearly empty.
-function drawCard(faceDown = false) {
-  if (game.deck.length < 15) game.deck = shuffleDeck(buildDeck());
-  return { ...game.deck.pop(), faceDown };
-}
+// ── Available Actions ──────────────────────────────────────────────────────────
 
 function canDeal() {
   return (game.phase === 'idle' || game.phase === 'done') && game.balance >= game.bet;
-}
-
-// Begin a new hand: deduct bet, deal initial cards.
-function startHand() {
-  if (!canDeal()) return false;
-  game.balance     -= game.bet;
-  game.dealerCards  = [drawCard(false), drawCard(true)];
-  game.playerHands  = [[drawCard(false), drawCard(false)]];
-  game.handBets     = [game.bet];
-  game.activeHand   = 0;
-  game.insuranceBet = 0;
-  game.lastResults  = null;
-  game.phase        = 'playing';
-  return true;
-}
-
-function getActiveHand() {
-  return game.playerHands[game.activeHand];
 }
 
 // Returns the list of valid actions for the current state.
@@ -186,7 +251,32 @@ function getAvailableActions() {
     actions.push('insurance');
   }
 
+  // Surrender: first two cards on original (non-split) hand
+  if (isFirstTwo && game.playerHands.length === 1) {
+    actions.push('surrender');
+  }
+
   return actions;
+}
+
+// ── Hand Setup ─────────────────────────────────────────────────────────────────
+
+// Begin a new hand: deduct bet, deal initial cards.
+function startHand() {
+  if (!canDeal()) return false;
+  game.balance     -= game.bet;
+  game.dealerCards  = [drawCard(false), drawCard(true)];
+  game.playerHands  = [[drawCard(false), drawCard(false)]];
+  game.handBets     = [game.bet];
+  game.activeHand   = 0;
+  game.insuranceBet = 0;
+  game.lastResults  = null;
+  game.phase        = 'playing';
+  return true;
+}
+
+function getActiveHand() {
+  return game.playerHands[game.activeHand];
 }
 
 // ── Player Actions ─────────────────────────────────────────────────────────────
@@ -194,7 +284,6 @@ function getAvailableActions() {
 function doHit() {
   const hand = getActiveHand();
   hand.push(drawCard());
-  // Auto-advance if bust or 21
   if (isBust(hand) || handValue(hand) === 21) _advanceHand();
 }
 
@@ -219,7 +308,18 @@ function doSplit() {
   ];
   game.handBets  = [game.bet, game.bet];
   game.activeHand = 0;
-  // Remain in playing phase; player now acts on hand 0
+}
+
+// Late surrender: return half the bet, end the hand immediately (no dealer reveal).
+function doSurrender() {
+  const bet    = game.handBets[game.activeHand];
+  const refund = Math.floor(bet / 2);
+  game.balance += refund;
+  game.phase    = 'done';
+  const results = [{ outcome: 'surrender', net: -(bet - refund), bet, hand: getActiveHand() }];
+  results.insuranceDelta = 0;
+  game.lastResults = results;
+  return results;
 }
 
 // Take insurance side bet (half of original bet).
@@ -242,8 +342,8 @@ function _advanceHand() {
 // Reveals the hole card and draws until 17+. Returns resolved results.
 function runDealer() {
   game.dealerCards[1].faceDown = false;
+  countRevealedCard(game.dealerCards[1]);  // add hole card to running count
 
-  // Dealer stands on hard 17+; hits on 16 and below (including soft 16)
   while (handValue(game.dealerCards) < 17) {
     game.dealerCards.push(drawCard());
   }
@@ -263,7 +363,7 @@ function _resolveHands() {
   // Insurance payout: 2:1 if dealer has blackjack
   let insuranceDelta = 0;
   if (game.insuranceBet > 0 && dBJ) {
-    const ins = game.insuranceBet * 3; // 2:1 + original side bet returned
+    const ins = game.insuranceBet * 3;
     game.balance  += ins;
     insuranceDelta = game.insuranceBet * 2;
   }
@@ -273,7 +373,6 @@ function _resolveHands() {
     const bet   = game.handBets[i];
     const total = handValue(hand);
     const bust  = isBust(hand);
-    // Blackjack only counts on the original single hand (not after split)
     const bjack = isBlackjack(hand) && game.playerHands.length === 1;
 
     let outcome, payout, net;
@@ -284,7 +383,6 @@ function _resolveHands() {
       outcome = 'push';      payout = bet;                        net = 0;
       game.balance += payout;
     } else if (bjack) {
-      // Blackjack pays 3:2
       outcome = 'blackjack'; payout = bet + Math.floor(bet * 1.5); net = Math.floor(bet * 1.5);
       game.balance += payout;
     } else if (dBJ) {

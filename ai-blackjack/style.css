@@ -201,6 +201,8 @@ body {
   color: var(--text-muted);
 }
 
+.ctrl-select-sm { min-width: 60px !important; }
+
 select.ctrl-select {
   background: var(--surface2);
   color: var(--text);
@@ -530,6 +532,62 @@ select.ctrl-select:focus {
 .chip-red   { background: #8b1c1c; color: #ffd0d0; border-color: #ef4444; }
 .chip-green { background: #145214; color: #d0ffd0; border-color: #22c55e; }
 .chip-blue  { background: #1a2e7a; color: #d0d8ff; border-color: #60a5fa; }
+
+/* Surrender — muted orange */
+.btn-surrender {
+  background: rgba(249,115,22,0.12);
+  color: #fb923c;
+  border-color: rgba(249,115,22,0.4);
+}
+.btn-surrender:not(:disabled) {
+  background: rgba(249,115,22,0.18);
+  box-shadow: 0 0 8px rgba(249,115,22,0.2);
+}
+.btn-surrender:hover:not(:disabled) {
+  box-shadow: 0 0 18px rgba(249,115,22,0.5);
+}
+
+/* ── Table Info Bar ──────────────────────────────────────────────────────────── */
+.table-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+
+.info-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--felt-border);
+  background: rgba(20,55,32,0.5);
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.count-chip { cursor: default; }
+.count-chip.hot  { color: var(--green); border-color: var(--green-glow); }
+.count-chip.cold { color: var(--red);   border-color: rgba(239,68,68,0.3); }
+.count-chip.warm { color: var(--amber); border-color: rgba(245,158,11,0.3); }
+
+.bust-chip { color: var(--text-dim); }
+.bust-chip.danger { color: var(--red);   border-color: rgba(239,68,68,0.3); }
+.bust-chip.caution{ color: var(--amber); border-color: rgba(245,158,11,0.3); }
+
+@keyframes shuffle-flash {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.shuffle-notice {
+  color: var(--teal);
+  border-color: rgba(20,184,166,0.4);
+  animation: shuffle-flash 1.2s ease 3;
+}
 
 /* ── Insurance Bar ───────────────────────────────────────────────────────────── */
 .insurance-bar {
@@ -1020,6 +1078,7 @@ body.lose-flash::after {
 .cell-S { background: rgba(34,197,94,0.22);  color: #86efac; }
 .cell-D { background: rgba(212,175,55,0.22); color: #fde68a; }
 .cell-P { background: rgba(139,92,246,0.22); color: #c4b5fd; }
+.cell-R { background: rgba(249,115,22,0.2);  color: #fdba74; }
 
 /* Row label cells */
 .strategy-matrix td.row-label {
@@ -1446,6 +1505,108 @@ body.lose-flash::after {
 .key-eye-btn:hover {
   color: var(--gold);
   border-color: var(--gold);
+}
+
+/* ── Mobile Responsive ───────────────────────────────────────────────────────── */
+
+/* Tablet breakpoint — AI panel stacks below game */
+@media (max-width: 900px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .ai-panel    { border-left: none; border-top: 1px solid var(--border); }
+}
+
+/* Phone breakpoint */
+@media (max-width: 680px) {
+  :root {
+    --card-w: 56px;
+    --card-h: 82px;
+    --card-r: 8px;
+  }
+
+  .site-header {
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .key-input-wrap { flex: 1; }
+  .key-input      { width: 100%; min-width: 0; }
+
+  .control-bar {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  /* Stack model group label+select vertically on very small screens */
+  .model-group { flex-wrap: wrap; gap: 4px; }
+
+  /* Pill toggles: compress */
+  .pill-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* Balance pushes to its own row */
+  .balance-group { margin-left: 0; }
+
+  .play-btn { width: 100%; }
+
+  .game-area { padding: 14px; gap: 12px; }
+
+  .area-section {
+    padding: 14px 16px;
+    min-height: 100px;
+  }
+
+  .card-row { gap: 7px; }
+
+  .action-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .action-btn {
+    padding: 8px 6px;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    min-width: 0;
+  }
+
+  .ai-panel { padding: 14px; gap: 12px; }
+
+  .ai-controls-row { flex-wrap: wrap; }
+
+  .pill-toggle-sm .pill-btn { padding: 3px 8px; font-size: 10px; }
+
+  .site-title { font-size: 18px; }
+
+  .suit-icons { font-size: 16px; letter-spacing: 2px; }
+
+  .hand-score { font-size: 15px; }
+
+  .result-banner { font-size: 17px; padding: 10px; }
+
+  .collapsible-header { padding: 12px 14px; }
+  .collapsible-body   { padding: 12px 14px 18px; }
+
+  .strategy-matrix th,
+  .strategy-matrix td { width: 30px; height: 22px; font-size: 10px; }
+
+  .analytics-grid { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+  .stat-val { font-size: 18px; }
+
+  .charts-row { grid-template-columns: 1fr; }
+}
+
+/* Very small phones */
+@media (max-width: 400px) {
+  :root { --card-w: 48px; --card-h: 70px; }
+  .action-bar { grid-template-columns: 1fr 1fr; }
+  .ctrl-label { display: none; }
 }
 
 /* ── Utility ─────────────────────────────────────────────────────────────────── */

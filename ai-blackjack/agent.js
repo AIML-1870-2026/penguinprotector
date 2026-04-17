@@ -158,15 +158,18 @@ Rules:
 }
 
 function _userMessage(gs) {
-  const handStr  = gs.playerCards.map(c => `${c.rank}${c.suit}`).join(', ');
-  const softStr  = gs.isSoft ? 'Soft' : 'Hard';
+  const handStr   = gs.playerCards.map(c => `${c.rank}${c.suit}`).join(', ');
+  const softStr   = gs.isSoft ? 'Soft' : 'Hard';
   const splitNote = gs.isAfterSplit ? '\nNote: This hand resulted from a split.' : '';
+  const countNote = gs.runningCount != null
+    ? `\n- Running count: ${gs.runningCount >= 0 ? '+' : ''}${gs.runningCount}  True count: ${gs.trueCount >= 0 ? '+' : ''}${gs.trueCount}`
+    : '';
   return `Game state:
 - Player hand: [${handStr}] → ${softStr} ${gs.playerTotal}
 - Dealer up card: ${gs.dealerUpCard.rank}${gs.dealerUpCard.suit}
 - Available actions: ${gs.availableActions.join(', ')}
 - Current bet: $${gs.bet}
-- Balance: $${gs.balance}${splitNote}
+- Balance: $${gs.balance}${countNote}${splitNote}
 
 What is the optimal action?`;
 }

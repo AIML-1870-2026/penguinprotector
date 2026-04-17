@@ -15,6 +15,21 @@ const el = {
   detailToggle:  $('detail-toggle'),
   riskToggle:    $('risk-toggle'),
   riskBadge:     $('risk-badge'),
+  // Table info bar
+  shoeCounter:    $('shoe-counter'),
+  countDisplay:   $('count-display'),
+  rcVal:          $('rc-val'),
+  tcVal:          $('tc-val'),
+  bustChip:       $('bust-chip'),
+  bustVal:        $('bust-val'),
+  shuffleNotice:  $('shuffle-notice'),
+  // Action buttons
+  surrenderBtn:   $('surrender-btn'),
+  // Analytics extras
+  statDeviations:       $('stat-deviations'),
+  statDeviationOutcome: $('stat-deviation-outcome'),
+  // Deck selector
+  deckSelect:     $('deck-select'),
   // Deep stats
   aiDeepStats:   $('ai-deep-stats'),
   deepBustProb:  $('deep-bust-prob'),
@@ -78,24 +93,30 @@ const el = {
 
 // ── Session Analytics State ────────────────────────────────────────────────────
 const stats = {
-  hands:        0,
-  wins:         0,
-  losses:       0,
-  pushes:       0,
-  blackjacks:   0,
-  bankroll:     [STARTING_BALANCE],
-  actions:      { hit:0, stand:0, double:0, split:0, insurance:0 },
-  aiAgreements: 0,
-  aiTotal:      0,
+  hands:            0,
+  wins:             0,
+  losses:           0,
+  pushes:           0,
+  blackjacks:       0,
+  surrenders:       0,
+  bankroll:         [STARTING_BALANCE],
+  actions:          { hit:0, stand:0, double:0, split:0, insurance:0, surrender:0 },
+  aiAgreements:     0,
+  aiTotal:          0,
+  deviations:       0,
+  deviationWins:    0,
+  deviationLosses:  0,
+  deviationHands:   0,
 };
 
 // Pending AI recommendation for the current hand
-let pendingRec      = null;
-let aiWorking       = false;
-let currentModel    = 'claude-sonnet-4-6';
-let currentProvider = 'anthropic';
-let detailLevel     = 'standard';
-let riskProfile     = 'balanced';
+let pendingRec        = null;
+let aiWorking         = false;
+let currentModel      = 'claude-sonnet-4-6';
+let currentProvider   = 'anthropic';
+let detailLevel       = 'standard';
+let riskProfile       = 'balanced';
+let deviatedThisHand  = false;
 
 // Available models, keyed by provider
 const MODELS = {
@@ -120,6 +141,7 @@ function init() {
   wireEvents();
   setActionButtons([]);
   updateRiskBadge();
+  updateShoeDisplay();
   el.playBtn.disabled = true;
   setStatus('Upload your .env file to begin');
 }
@@ -168,6 +190,14 @@ function wireEvents() {
       setStatus('Error: ' + err.message, 'lose');
     }
     e.target.value = '';
+  });
+
+  // Deck count selector
+  el.deckSelect.addEventListener('change', e => {
+    setNumDecks(parseInt(e.target.value, 10));
+    updateShoeDisplay();
+    showShuffleNotice();
+    setStatus(`Shoe reshuffled — ${e.target.value}-deck shoe in play.`);
   });
 
   // Detail level toggle
@@ -225,6 +255,7 @@ function wireEvents() {
   el.doubleBtn.addEventListener('click',    () => handleAction('double'));
   el.splitBtn.addEventListener('click',     () => handleAction('split'));
   el.insuranceBtn.addEventListener('click', () => handleAction('insurance'));
+  el.surrenderBtn.addEventListener('click', () => handleAction('surrender'));
 
   // Insurance bar
   el.insYesBtn.addEventListener('click',    () => resolveInsuranceChoice(true));
@@ -256,13 +287,20 @@ function wireEvents() {
 async function startRound() {
   if (!canDeal()) return;
 
-  pendingRec = null;
+  pendingRec       = null;
+  deviatedThisHand = false;
   el.resultBanner.classList.add('hidden');
   el.insuranceBar.classList.add('hidden');
   el.playBtn.disabled = true;
   resetAIPanel();
 
   startHand();          // game.js — deducts bet, deals cards
+
+  if (game.shuffledRecently) {
+    game.shuffledRecently = false;
+    showShuffleNotice();
+  }
+  updateShoeDisplay();
 
   updateBalanceDisplay();
   renderTable(true);    // animate = true
@@ -360,11 +398,29 @@ async function handleAction(type) {
   const actions = getAvailableActions();
   if (!actions.includes(type)) return;
 
-  // Record action for analytics
-  if (type !== 'insurance') stats.actions[type]++;
+  // Track deviation from AI recommendation (ignore insurance/surrender for deviation purposes)
+  if (pendingRec && type !== pendingRec.action &&
+      !['insurance', 'surrender'].includes(type) && !deviatedThisHand) {
+    deviatedThisHand = true;
+    stats.deviations++;
+    stats.deviationHands++;
+  }
 
-  setActionButtons([]);    // disable buttons while processing
+  // Record action for analytics
+  if (stats.actions[type] !== undefined) stats.actions[type]++;
+
+  setActionButtons([]);
   el.executeBtn.disabled = true;
+
+  // Surrender ends hand immediately without dealer reveal
+  if (type === 'surrender') {
+    const results = doSurrender();
+    renderTable();
+    updateBalanceDisplay();
+    updateShoeDisplay();
+    showResults(results);
+    return;
+  }
 
   switch (type) {
     case 'hit':       doHit();       break;
@@ -372,8 +428,6 @@ async function handleAction(type) {
     case 'double':    doDouble();    break;
     case 'split':     doSplit();     break;
     case 'insurance':
-      // Insurance is handled via the insurance bar flow, not buttons normally
-      // (but keep as fallback)
       doInsurance();
       updateBalanceDisplay();
       break;
@@ -381,6 +435,7 @@ async function handleAction(type) {
 
   renderTable();
   updateBalanceDisplay();
+  updateShoeDisplay();
 
   if (game.phase === 'dealer') {
     await dealerPhase();
@@ -398,7 +453,7 @@ function executeRecommendation() {
   // Brief visual pulse on the corresponding button
   const btnMap = {
     hit: el.hitBtn, stand: el.standBtn, double: el.doubleBtn,
-    split: el.splitBtn, insurance: el.insuranceBtn,
+    split: el.splitBtn, insurance: el.insuranceBtn, surrender: el.surrenderBtn,
   };
   const btn = btnMap[action];
   if (btn) {
@@ -424,6 +479,7 @@ async function dealerPhase() {
   for (let i = beforeLen; i < afterLen; i++) {
     renderDealerCards(i);
     setStatus(`Dealer draws: ${game.dealerCards[i].rank}${game.dealerCards[i].suit}`);
+    updateShoeDisplay();
     await delay(550);
   }
 
@@ -452,8 +508,13 @@ function showResults(results) {
   const totalNet = results.reduce((s, r) => s + r.net, 0)
                  + (results.insuranceDelta || 0);
 
+  const isSurrender = results.length === 1 && results[0].outcome === 'surrender';
+
   let msg, cls;
-  if (anyBJ) {
+  if (isSurrender) {
+    msg = `SURRENDER — $${Math.abs(totalNet)} lost`;
+    cls = 'result-push';
+  } else if (anyBJ) {
     msg = `BLACKJACK! +$${Math.abs(totalNet)} 🎰`;
     cls = 'result-blackjack';
   } else if (results.length > 1) {
@@ -677,6 +738,9 @@ function setActionButtons(actions) {
   el.doubleBtn.disabled    = !actions.includes('double');
   el.splitBtn.disabled     = !actions.includes('split');
   el.insuranceBtn.disabled = !actions.includes('insurance');
+  el.surrenderBtn.disabled = !actions.includes('surrender');
+  // Show bust probability when it's the player's turn
+  updateBustDisplay(actions.includes('hit'));
 }
 
 // ── AI Panel ──────────────────────────────────────────────────────────────────
@@ -830,15 +894,18 @@ function showAIError(msg) {
 // Build the game state object passed to agent.js
 function buildGameState() {
   const hand = getActiveHand();
+  const available = getAvailableActions();
   return {
     playerCards:      hand,
     playerTotal:      handValue(hand),
     isSoft:           isSoft(hand),
     dealerUpCard:     game.dealerCards[0],
-    availableActions: getAvailableActions(),
+    availableActions: available,
     bet:              game.handBets[game.activeHand],
     balance:          game.balance,
     isAfterSplit:     game.playerHands.length > 1,
+    runningCount:     game.runningCount,
+    trueCount:        parseFloat(trueCount().toFixed(1)),
   };
 }
 
@@ -1006,16 +1073,26 @@ function updateAnalytics(results, totalNet) {
   stats.hands++;
   stats.bankroll.push(game.balance);
 
-  const outcome = results.some(r => r.outcome === 'blackjack') ? 'blackjack'
-                : results.some(r => r.outcome === 'win')       ? 'win'
-                : results.some(r => r.outcome === 'push')      ? 'push'
+  const isSurrender = results.length === 1 && results[0].outcome === 'surrender';
+  const outcome = isSurrender                                     ? 'surrender'
+                : results.some(r => r.outcome === 'blackjack')   ? 'blackjack'
+                : results.some(r => r.outcome === 'win')         ? 'win'
+                : results.some(r => r.outcome === 'push')        ? 'push'
                 : 'lose';
 
   if (outcome === 'win' || outcome === 'blackjack') stats.wins++;
-  else if (outcome === 'push') stats.pushes++;
-  else stats.losses++;
+  else if (outcome === 'push')      stats.pushes++;
+  else if (outcome === 'surrender') stats.surrenders++;
+  else                              stats.losses++;
 
   if (outcome === 'blackjack') stats.blackjacks++;
+
+  // Deviation outcome tracking
+  if (deviatedThisHand) {
+    if (outcome === 'win' || outcome === 'blackjack') stats.deviationWins++;
+    else if (outcome === 'lose' || outcome === 'bust') stats.deviationLosses++;
+  }
+  deviatedThisHand = false;
 
   updateAnalyticsDisplay();
 }
@@ -1034,6 +1111,15 @@ function updateAnalyticsDisplay() {
 
   if (stats.aiTotal > 0) {
     el.statAiAgree.textContent = Math.round(stats.aiAgreements / stats.aiTotal * 100) + '%';
+  }
+
+  el.statDeviations.textContent = stats.deviations;
+  if (stats.deviationHands > 0) {
+    const devOutcomeTotal = stats.deviationWins + stats.deviationLosses;
+    if (devOutcomeTotal > 0) {
+      el.statDeviationOutcome.textContent =
+        Math.round(stats.deviationWins / devOutcomeTotal * 100) + '%';
+    }
   }
 
   renderBankrollChart();
@@ -1118,6 +1204,45 @@ function renderWLPBar() {
 
 function canDeal() {
   return hasApiKey(currentProvider) && game.balance >= game.bet && game.phase !== 'playing';
+}
+
+function updateShoeDisplay() {
+  const remaining = game.deck.length;
+  const total     = game.shoeTotalCards;
+  const pct       = Math.round((remaining / total) * 100);
+  el.shoeCounter.textContent = `Shoe: ${remaining} / ${total}  (${pct}%)`;
+
+  const rc = game.runningCount;
+  const tc = trueCount().toFixed(1);
+  el.rcVal.textContent = (rc > 0 ? '+' : '') + rc;
+  el.tcVal.textContent = (parseFloat(tc) > 0 ? '+' : '') + tc;
+
+  // Colour the count chip: hot (positive) = good for player, cold (negative) = bad
+  el.countDisplay.classList.remove('hot', 'cold', 'warm');
+  if (rc >= 3)       el.countDisplay.classList.add('hot');
+  else if (rc <= -3) el.countDisplay.classList.add('cold');
+  else if (rc !== 0) el.countDisplay.classList.add('warm');
+}
+
+function updateBustDisplay(showIt) {
+  if (!showIt) {
+    el.bustChip.classList.add('hidden');
+    return;
+  }
+  const prob = bustProbability();
+  if (prob === null) { el.bustChip.classList.add('hidden'); return; }
+
+  el.bustChip.classList.remove('hidden');
+  const pct = Math.round(prob * 100);
+  el.bustVal.textContent = pct + '%';
+  el.bustChip.classList.remove('danger', 'caution');
+  if (pct >= 50)      el.bustChip.classList.add('danger');
+  else if (pct >= 30) el.bustChip.classList.add('caution');
+}
+
+function showShuffleNotice() {
+  el.shuffleNotice.classList.remove('hidden');
+  setTimeout(() => el.shuffleNotice.classList.add('hidden'), 4000);
 }
 
 function markKeyLoaded(summary) {
