@@ -445,6 +445,13 @@ function showResults(results) {
   el.resultBanner.className   = `result-banner ${cls}`;
   el.resultBanner.classList.remove('hidden');
 
+  if (anyLose && totalNet < 0) {
+    document.body.classList.remove('lose-flash');
+    void document.body.offsetWidth; // reflow to restart animation
+    document.body.classList.add('lose-flash');
+    setTimeout(() => document.body.classList.remove('lose-flash'), 900);
+  }
+
   updateBalanceDisplay(totalNet);
   updateAnalytics(results, totalNet);
 

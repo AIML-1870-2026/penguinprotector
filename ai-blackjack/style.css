@@ -290,11 +290,13 @@ select.ctrl-select:focus {
   50%      { color: var(--green); text-shadow: 0 0 10px var(--green-glow); }
 }
 @keyframes bal-lose {
-  0%,100% { color: var(--text); text-shadow: none; }
-  50%      { color: var(--red); text-shadow: 0 0 10px var(--red-glow); }
+  0%   { color: var(--text); text-shadow: none; transform: scale(1); }
+  20%  { color: var(--red); text-shadow: 0 0 16px rgba(239,68,68,0.8); transform: scale(1.12); }
+  50%  { color: var(--red); text-shadow: 0 0 10px var(--red-glow); transform: scale(1.06); }
+  100% { color: var(--text); text-shadow: none; transform: scale(1); }
 }
 .balance-win  { animation: bal-win  0.7s ease; }
-.balance-lose { animation: bal-lose 0.7s ease; }
+.balance-lose { animation: bal-lose 1s ease; }
 
 .play-btn {
   padding: 10px 28px;
@@ -708,11 +710,45 @@ select.ctrl-select:focus {
 }
 
 .result-win       { background: rgba(34,197,94,0.15);  color: var(--green); border: 1px solid var(--green-glow); }
-.result-lose      { background: rgba(239,68,68,0.12);   color: var(--red);   border: 1px solid var(--red-glow);   }
 .result-push      { background: rgba(212,175,55,0.1);  color: var(--gold);  border: 1px solid var(--border-hi);  }
 .result-blackjack { background: rgba(212,175,55,0.2);  color: var(--gold);  border: 1px solid var(--gold);
                     box-shadow: 0 0 24px var(--gold-glow); }
-.result-bust      { background: rgba(239,68,68,0.1);   color: var(--red);   border: 1px solid var(--red-glow);   }
+
+.result-lose {
+  background: rgba(239,68,68,0.28);
+  color: #ff6b6b;
+  border: 2px solid rgba(239,68,68,0.7);
+  box-shadow: 0 0 32px rgba(239,68,68,0.35), inset 0 0 20px rgba(239,68,68,0.1);
+  font-size: 24px;
+  animation: banner-shake 0.55s cubic-bezier(0.36,0.07,0.19,0.97) both;
+  text-shadow: 0 0 16px rgba(239,68,68,0.6);
+}
+
+@keyframes banner-shake {
+  0%,100% { transform: translateX(0) scale(1); }
+  10%     { transform: translateX(-8px) scale(1.04); }
+  25%     { transform: translateX(7px)  scale(1.04); }
+  40%     { transform: translateX(-5px) scale(1.02); }
+  55%     { transform: translateX(4px)  scale(1.01); }
+  70%     { transform: translateX(-2px) scale(1); }
+}
+
+/* Red screen vignette on loss */
+body.lose-flash::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%,
+    transparent 40%, rgba(200,30,30,0.45) 100%);
+  pointer-events: none;
+  z-index: 999;
+  animation: lose-vignette 0.9s ease forwards;
+}
+
+@keyframes lose-vignette {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 /* ── AI Panel (right sidebar) ────────────────────────────────────────────────── */
 .ai-panel {
